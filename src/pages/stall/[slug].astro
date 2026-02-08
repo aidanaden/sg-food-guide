@@ -1,0 +1,188 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Badge from '../../components/ui/Badge.astro';
+import Button from '../../components/ui/Button.astro';
+import { stalls, getRatingLabel, getRatingVariant, getGoogleMapsUrl, getYouTubeSearchUrl, getStallArea, timeCategoryLabels, timeCategoryIcons } from '../../data/stalls';
+
+export function getStaticPaths() {
+  return stalls.map((stall) => ({
+    params: { slug: stall.slug },
+    props: { stall },
+  }));
+}
+
+const { stall } = Astro.props;
+const area = getStallArea(stall);
+const mapsUrl = getGoogleMapsUrl(stall.googleMapsName, stall.address);
+const youtubeUrl = stall.youtubeTitle ? getYouTubeSearchUrl(stall.youtubeTitle) : null;
+const ratingLabel = getRatingLabel(stall.ratingModerated);
+const ratingVariant = getRatingVariant(stall.ratingModerated);
+---
+
+<Layout title={`${stall.name} — SG Food Guide`} description={`${stall.name} review: ${stall.dishName} at $${stall.price}. Rated ${stall.ratingModerated}/3 (${ratingLabel}).`}>
+  <div class="min-h-screen">
+    <!-- Back nav -->
+    <nav class="border-b border-warm-800/40">
+      <div class="mx-auto max-w-3xl px-4 py-3 flex items-center gap-4">
+        <a href="/" class="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-flame-400 transition-colors group">
+          <span class="i-ph-arrow-left text-sm group-hover:-translate-x-0.5 transition-transform" />
+          All stalls
+        </a>
+        <a href={`/cuisine/${stall.cuisine}`} class="inline-flex items-center gap-1.5 text-sm text-ink-faint hover:text-flame-400 transition-colors">
+          <span class="i-ph-bowl-food text-xs" />
+          {stall.cuisineLabel}
+        </a>
+      </div>
+    </nav>
+
+    <main class="mx-auto max-w-3xl px-4 py-8 sm:py-12">
+      <!-- Awards -->
+      {stall.awards.length > 0 && (
+        <div class="flex flex-wrap gap-2 mb-5">
+          {stall.awards.map((award) => (
+            <Badge variant="award" size="md">
+              <span class="i-ph-trophy-fill text-xs" />
+              {award}
+            </Badge>
+          ))}
+        </div>
+      )}
+
+      <!-- Title -->
+      <h1 class="font-display text-3xl sm:text-4xl font-800 tracking-tight leading-tight">
+        {stall.name}
+      </h1>
+
+      <!-- Meta row -->
+      <div class="flex flex-wrap items-center gap-x-4 gap-y-2 mt-4">
+        <Badge variant={ratingVariant} size="md">
+          <span class="font-mono font-bold text-lg">{stall.ratingModerated}/3</span>
+          <span class="text-sm font-medium">{ratingLabel}</span>
+        </Badge>
+        <span class="font-mono text-2xl font-bold text-flame-400">${stall.price.toFixed(stall.price % 1 ? 1 : 0)}</span>
+        {stall.episodeNumber && (
+          <span class="text-ink-faint text-sm">Ep. {stall.episodeNumber}</span>
+        )}
+      </div>
+
+      <!-- Time categories -->
+      <div class="flex flex-wrap gap-2 mt-3">
+        {stall.timeCategories.map((tc) => (
+          <Badge variant="time" size="sm">
+            <span class={`${timeCategoryIcons[tc]} text-xs`} />
+            {timeCategoryLabels[tc]}
+          </Badge>
+        ))}
+      </div>
+
+      <!-- Info cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-8">
+        <div class="rounded-xl border border-warm-800/50 bg-surface-card p-4">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="i-ph-bowl-food text-flame-400" />
+            <h3 class="text-xs font-semibold text-ink-faint uppercase tracking-wider">Dish</h3>
+          </div>
+          <p class="text-ink font-medium">{stall.dishName}</p>
+        </div>
+
+        <div class="rounded-xl border border-warm-800/50 bg-surface-card p-4">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="i-ph-map-trifold text-flame-400" />
+            <h3 class="text-xs font-semibold text-ink-faint uppercase tracking-wider">Area</h3>
+          </div>
+          <p class="text-ink font-medium">{area}</p>
+        </div>
+
+        <div class="rounded-xl border border-warm-800/50 bg-surface-card p-4">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="i-ph-map-pin text-flame-400" />
+            <h3 class="text-xs font-semibold text-ink-faint uppercase tracking-wider">Address</h3>
+          </div>
+          <p class="text-ink font-medium text-sm leading-relaxed">{stall.address}</p>
+        </div>
+
+        <div class="rounded-xl border border-warm-800/50 bg-surface-card p-4">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="i-ph-clock text-flame-400" />
+            <h3 class="text-xs font-semibold text-ink-faint uppercase tracking-wider">Opening Times</h3>
+          </div>
+          <p class="text-ink font-medium text-sm leading-relaxed">{stall.openingTimes}</p>
+        </div>
+      </div>
+
+      <!-- Hits & Misses -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+        {stall.hits.length > 0 && (
+          <div class="rounded-xl border border-jade-500/20 bg-jade-500/5 p-5">
+            <div class="flex items-center gap-2 mb-3">
+              <span class="i-ph-thumbs-up text-jade-400" />
+              <h3 class="text-sm font-semibold text-jade-400">Hits</h3>
+            </div>
+            <ul class="space-y-2">
+              {stall.hits.map((hit) => (
+                <li class="flex items-start gap-2 text-sm text-ink-muted">
+                  <span class="i-ph-check text-jade-500/70 shrink-0 mt-0.5 text-xs" />
+                  <span>{hit}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {stall.misses.length > 0 && (
+          <div class="rounded-xl border border-flame-500/20 bg-flame-500/5 p-5">
+            <div class="flex items-center gap-2 mb-3">
+              <span class="i-ph-thumbs-down text-flame-400" />
+              <h3 class="text-sm font-semibold text-flame-400">Misses</h3>
+            </div>
+            <ul class="space-y-2">
+              {stall.misses.map((miss) => (
+                <li class="flex items-start gap-2 text-sm text-ink-muted">
+                  <span class="i-ph-x text-flame-500/70 shrink-0 mt-0.5 text-xs" />
+                  <span>{miss}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+
+      {stall.ratingOriginal !== stall.ratingModerated && (
+        <div class="rounded-xl border border-warm-800/50 bg-surface-card p-4 mt-4">
+          <p class="text-xs text-ink-faint">
+            <span class="font-medium text-ink-muted">Rating at time of shoot:</span> {stall.ratingOriginal}/3
+            <span class="mx-2 text-ink-faint/50">&rarr;</span>
+            <span class="font-medium text-ink-muted">Moderated:</span> {stall.ratingModerated}/3
+          </p>
+        </div>
+      )}
+
+      <!-- Action buttons -->
+      <div class="flex flex-wrap gap-3 mt-8">
+        <Button variant="outline" href={mapsUrl} target="_blank" rel="noopener">
+          <span class="i-ph-map-pin" />
+          Open in Google Maps
+        </Button>
+
+        {youtubeUrl && (
+          <Button variant="outline" href={youtubeUrl} target="_blank" rel="noopener">
+            <span class="i-ph-play-circle" />
+            Watch Review
+          </Button>
+        )}
+      </div>
+
+      {stall.youtubeTitle && (
+        <p class="text-ink-faint text-xs mt-3 italic">
+          Video: {stall.youtubeTitle}
+        </p>
+      )}
+    </main>
+
+    <footer class="border-t border-warm-800/40 py-6 mt-8 text-center">
+      <a href="/" class="text-ink-faint text-xs hover:text-flame-400 transition-colors">
+        &larr; Back to all stalls
+      </a>
+    </footer>
+  </div>
+</Layout>

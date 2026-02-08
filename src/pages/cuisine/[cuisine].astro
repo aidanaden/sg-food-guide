@@ -1,70 +1,72 @@
 ---
-import Layout from '../layouts/Layout.astro';
-import StallCard from '../components/StallCard.astro';
-import FilterBar from '../components/FilterBar.astro';
-import RoutePlanner from '../components/RoutePlanner.astro';
-import Button from '../components/ui/Button.astro';
-import Badge from '../components/ui/Badge.astro';
-import { stalls, getAreas, getAllTimeCategories, getCuisines, getCountries } from '../data/stalls';
+import Layout from '../../layouts/Layout.astro';
+import StallCard from '../../components/StallCard.astro';
+import FilterBar from '../../components/FilterBar.astro';
+import RoutePlanner from '../../components/RoutePlanner.astro';
+import Badge from '../../components/ui/Badge.astro';
+import { stalls, getCuisines, getStallsByCuisine, getAreas, getAllTimeCategories, getRatingLabel, getCountries } from '../../data/stalls';
 
-const areas = getAreas();
-const timeCategories = getAllTimeCategories();
-const cuisines = getCuisines();
-const countries = getCountries();
+export function getStaticPaths() {
+  const cuisines = getCuisines();
+  return cuisines.map((c) => ({
+    params: { cuisine: c.id },
+    props: { cuisineId: c.id, cuisineLabel: c.label },
+  }));
+}
+
+const { cuisineId, cuisineLabel } = Astro.props;
+const cuisineStalls = getStallsByCuisine(cuisineId);
+const areas = getAreas(cuisineStalls);
+const timeCategories = [...new Set(cuisineStalls.flatMap((s) => s.timeCategories))];
+const countries = getCountries(cuisineStalls);
+const mustTryCount = cuisineStalls.filter((s) => s.ratingModerated === 3).length;
+const awardCount = cuisineStalls.filter((s) => s.awards.length > 0).length;
 ---
 
-<Layout title="SG Food Guide — Best Hawker Food in Singapore">
+<Layout title={`Best ${cuisineLabel} in Singapore — SG Food Guide`} description={`${cuisineStalls.length} ${cuisineLabel} stalls reviewed and ranked in Singapore.`}>
   <!-- Hero -->
   <header class="relative overflow-hidden border-b border-warm-800">
     <div class="absolute inset-0 bg-gradient-to-br from-warm-950 via-surface to-warm-900 opacity-80"></div>
     <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--color-flame-600)_0%,_transparent_50%)] opacity-15"></div>
-    <div class="relative mx-auto max-w-6xl px-4 py-16 sm:py-20">
-      <div class="flex items-start gap-3 mb-4">
-        <span class="i-ph-bowl-food-fill text-flame-400 text-3xl sm:text-4xl mt-1 shrink-0"></span>
+    <div class="relative mx-auto max-w-6xl px-4 py-12 sm:py-16">
+      <!-- Breadcrumb -->
+      <a href="/" class="inline-flex items-center gap-1.5 text-sm text-ink-faint hover:text-flame-400 transition-colors mb-6 group">
+        <span class="i-ph-arrow-left text-sm group-hover:-translate-x-0.5 transition-transform" />
+        All cuisines
+      </a>
+
+      <div class="flex items-start gap-3">
+        <span class="i-ph-bowl-food-fill text-flame-400 text-3xl mt-1 shrink-0"></span>
         <div>
-          <h1 class="font-display text-4xl sm:text-5xl lg:text-6xl font-800 tracking-tight">
-            <span class="text-flame-400">SG</span> Food Guide
+          <h1 class="font-display text-3xl sm:text-4xl lg:text-5xl font-800 tracking-tight">
+            Best <span class="text-flame-400">{cuisineLabel}</span> in Singapore
           </h1>
-          <p class="text-ink-muted text-lg sm:text-xl mt-2 max-w-xl leading-relaxed">
-            The definitive ranking of Singapore's best hawker food. {stalls.length} stalls reviewed and ranked.
+          <p class="text-ink-muted text-base sm:text-lg mt-2 max-w-xl leading-relaxed">
+            {cuisineStalls.length} stalls reviewed and ranked.
           </p>
         </div>
       </div>
 
       <!-- Stats -->
-      <div class="flex flex-wrap gap-6 mt-8 text-sm">
+      <div class="flex flex-wrap gap-6 mt-6 text-sm">
         <div class="flex items-center gap-2">
-          <span class="i-ph-fork-knife text-warm-400"></span>
-          <span class="text-ink-muted"><strong class="text-ink font-semibold">{stalls.length}</strong> stalls</span>
+          <span class="i-ph-fork-knife text-warm-400" />
+          <span class="text-ink-muted"><strong class="text-ink font-semibold">{cuisineStalls.length}</strong> stalls</span>
         </div>
-        <div class="flex items-center gap-2">
-          <span class="i-ph-trophy-fill text-gold-400"></span>
-          <span class="text-ink-muted"><strong class="text-ink font-semibold">{stalls.filter(s => s.awards.length > 0).length}</strong> award winners</span>
-        </div>
-        <div class="flex items-center gap-2">
-          <span class="i-ph-star-fill text-jade-400"></span>
-          <span class="text-ink-muted"><strong class="text-ink font-semibold">{stalls.filter(s => s.ratingModerated === 3).length}</strong> must-try</span>
-        </div>
-        <div class="flex items-center gap-2">
-          <span class="i-ph-currency-dollar text-warm-400"></span>
-          <span class="text-ink-muted">$4–$10 range</span>
-        </div>
+        {awardCount > 0 && (
+          <div class="flex items-center gap-2">
+            <span class="i-ph-trophy-fill text-gold-400" />
+            <span class="text-ink-muted"><strong class="text-ink font-semibold">{awardCount}</strong> award winners</span>
+          </div>
+        )}
+        {mustTryCount > 0 && (
+          <div class="flex items-center gap-2">
+            <span class="i-ph-star-fill text-jade-400" />
+            <span class="text-ink-muted"><strong class="text-ink font-semibold">{mustTryCount}</strong> must-try</span>
+          </div>
+        )}
       </div>
 
-      <!-- Cuisine links -->
-      <div class="flex flex-wrap gap-2 mt-6">
-        {cuisines.map((c) => (
-          <a href={`/cuisine/${c.id}`}>
-            <Badge variant="cuisine" size="md">
-              <span class="i-ph-bowl-food text-xs" />
-              {c.label}
-              <span class="text-flame-400/50 ml-0.5">{c.count}</span>
-            </Badge>
-          </a>
-        ))}
-      </div>
-
-      <!-- Route planner toggle -->
       <div class="mt-6">
         <RoutePlanner />
       </div>
@@ -75,23 +77,20 @@ const countries = getCountries();
   <FilterBar
     areas={areas}
     timeCategories={timeCategories}
-    cuisines={cuisines}
     countries={countries}
-    totalCount={stalls.length}
-    showCuisineFilter={cuisines.length > 1}
+    totalCount={cuisineStalls.length}
     showCountryFilter={countries.length > 1}
-    defaultCountry="SG"
+    defaultCountry={countries.length > 1 ? 'SG' : ''}
   />
 
   <!-- Stall Grid -->
   <main class="mx-auto max-w-6xl px-4 py-8">
     <div id="stall-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-      {stalls.map((stall) => (
-        <StallCard stall={stall} showCuisine={cuisines.length > 1} />
+      {cuisineStalls.map((stall) => (
+        <StallCard stall={stall} />
       ))}
     </div>
 
-    <!-- Empty state -->
     <div id="empty-state" class="hidden text-center py-16">
       <span class="i-ph-magnifying-glass text-5xl text-ink-faint"></span>
       <p class="text-ink-muted mt-4 text-lg font-display">No stalls match your filters</p>
@@ -102,20 +101,10 @@ const countries = getCountries();
     </div>
   </main>
 
-  <!-- Footer -->
   <footer class="border-t border-warm-800/40 py-8 text-center">
-    <p class="text-ink-faint text-xs">
-      Data sourced from
-      <a
-        href="https://docs.google.com/spreadsheets/d/1UMOZE2SM3_y5oUHafwJFEB9RrPDMqBbWjWnMGkO4gGg/edit?gid=1935025317"
-        target="_blank"
-        rel="noopener"
-        class="text-flame-400/70 hover:text-flame-400 underline underline-offset-2"
-      >
-        SG Food Guide
-      </a>
-      spreadsheet.
-    </p>
+    <a href="/" class="text-ink-faint text-xs hover:text-flame-400 transition-colors">
+      &larr; Back to all cuisines
+    </a>
   </footer>
 </Layout>
 
@@ -124,7 +113,6 @@ const countries = getCountries();
   const ratingFilter = document.getElementById('filter-rating') as HTMLSelectElement;
   const areaFilter = document.getElementById('filter-area') as HTMLSelectElement;
   const timeFilter = document.getElementById('filter-time') as HTMLSelectElement;
-  const cuisineFilter = document.getElementById('filter-cuisine') as HTMLSelectElement | null;
   const countryFilter = document.getElementById('filter-country') as HTMLSelectElement | null;
   const sortBy = document.getElementById('sort-by') as HTMLSelectElement;
   const grid = document.getElementById('stall-grid') as HTMLElement;
@@ -148,7 +136,6 @@ const countries = getCountries();
     const rating = ratingFilter.value;
     const area = areaFilter.value;
     const time = timeFilter.value;
-    const cuisine = cuisineFilter?.value || '';
     const country = countryFilter?.value || '';
     const cards = getCards();
     let visible = 0;
@@ -158,20 +145,18 @@ const countries = getCountries();
       const name = el.dataset.name || '';
       const dish = el.dataset.dish || '';
       const address = el.dataset.address || '';
-      const cardRating = el.dataset.rating || '';
-      const cardArea = el.dataset.area || '';
-      const cardTime = el.dataset.time || '';
-      const cardCuisine = el.dataset.cuisine || '';
-      const cardCountry = el.dataset.country || '';
+      const r = el.dataset.rating || '';
+      const a = el.dataset.area || '';
+      const t = el.dataset.time || '';
+      const c = el.dataset.country || '';
 
-      const matchesSearch = !query || name.includes(query) || dish.includes(query) || address.includes(query);
-      const matchesRating = !rating || cardRating === rating;
-      const matchesArea = !area || cardArea === area;
-      const matchesTime = !time || cardTime.split(',').includes(time);
-      const matchesCuisine = !cuisine || cardCuisine === cuisine;
-      const matchesCountry = !country || cardCountry === country;
+      const show =
+        (!query || name.includes(query) || dish.includes(query) || address.includes(query)) &&
+        (!rating || r === rating) &&
+        (!area || a === area) &&
+        (!time || t.split(',').includes(time)) &&
+        (!country || c === country);
 
-      const show = matchesSearch && matchesRating && matchesArea && matchesTime && matchesCuisine && matchesCountry;
       (card.closest('.stall-card') as HTMLElement || card).style.display = show ? '' : 'none';
       if (show) visible++;
     });
@@ -180,13 +165,11 @@ const countries = getCountries();
     emptyState.classList.toggle('hidden', visible > 0);
     grid.classList.toggle('hidden', visible === 0);
 
-    // Active filter chips
     const chips: string[] = [];
     if (query) chips.push(`Search: "${query}"`);
     if (rating) chips.push(`Rating: ${rating === 'unrated' ? 'Unrated' : rating + '/3'}`);
     if (area) chips.push(`Area: ${area}`);
     if (time) chips.push(`Hours: ${time}`);
-    if (cuisine) chips.push(`Cuisine: ${cuisine}`);
     if (country) chips.push(`Country: ${country}`);
 
     if (chips.length) {
@@ -203,8 +186,6 @@ const countries = getCountries();
 
   function applySorting() {
     const cards = getCards();
-    const sort = sortBy.value;
-
     cards.sort((a, b) => {
       const el = (c: HTMLElement) => c.closest('[data-rating]') as HTMLElement || c;
       const ratingA = el(a).dataset.rating || '0';
@@ -215,8 +196,7 @@ const countries = getCountries();
       const aE = Number(el(a).dataset.episode); const bE = Number(el(b).dataset.episode);
       const aA = el(a).dataset.awards === 'true' ? 1 : 0;
       const bA = el(b).dataset.awards === 'true' ? 1 : 0;
-
-      switch (sort) {
+      switch (sortBy.value) {
         case 'rating-desc': return bR - aR || bA - aA;
         case 'rating-asc': return aR - bR;
         case 'price-asc': return aP - bP;
@@ -225,30 +205,19 @@ const countries = getCountries();
         default: return 0;
       }
     });
-
-    cards.forEach((card) => {
-      const wrapper = card.closest('.stall-card') as HTMLElement || card;
-      grid.appendChild(wrapper);
-    });
+    cards.forEach((c) => { const w = c.closest('.stall-card') as HTMLElement || c; grid.appendChild(w); });
   }
 
   function clearFilters() {
-    searchInput.value = '';
-    ratingFilter.value = '';
-    areaFilter.value = '';
-    timeFilter.value = '';
-    if (cuisineFilter) cuisineFilter.value = '';
+    searchInput.value = ''; ratingFilter.value = ''; areaFilter.value = ''; timeFilter.value = '';
     if (countryFilter) countryFilter.value = '';
-    sortBy.value = 'rating-desc';
-    applyFilters();
-    applySorting();
+    sortBy.value = 'rating-desc'; applyFilters(); applySorting();
   }
 
   searchInput.addEventListener('input', applyFilters);
   ratingFilter.addEventListener('change', () => { applyFilters(); applySorting(); });
   areaFilter.addEventListener('change', applyFilters);
   timeFilter.addEventListener('change', applyFilters);
-  cuisineFilter?.addEventListener('change', applyFilters);
   countryFilter?.addEventListener('change', applyFilters);
   sortBy.addEventListener('change', applySorting);
   clearFiltersBtn.addEventListener('click', clearFilters);

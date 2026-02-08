@@ -1,0 +1,309 @@
+---
+/**
+ * Route Planner — client-side only (Leaflet + vanilla JS).
+ * Renders a toggleable panel with a Leaflet map and nearest-neighbor route optimizer.
+ * All interactivity is in the <script> tag below.
+ */
+---
+
+<!-- Toggle Button -->
+<button
+  id="route-toggle"
+  type="button"
+  class="inline-flex items-center gap-2 rounded-lg border border-warm-700/50 bg-surface-raised px-4 py-2.5 text-sm font-medium text-ink hover:border-flame-500/40 hover:text-flame-400 transition-colors cursor-pointer"
+>
+  <span class="i-ph-path text-base" />
+  <span>Plan Route</span>
+</button>
+
+<!-- Route Planner Panel (hidden by default) -->
+<div
+  id="route-panel"
+  class="hidden fixed inset-x-0 bottom-0 z-50 bg-surface border-t border-warm-700 shadow-2xl max-h-[70vh] flex flex-col"
+>
+  <!-- Panel Header -->
+  <div class="flex items-center justify-between px-4 py-3 border-b border-warm-800/60 shrink-0">
+    <div class="flex items-center gap-2">
+      <span class="i-ph-path text-flame-400" />
+      <h3 class="font-display font-700 text-sm">Route Planner</h3>
+      <span id="route-count" class="text-ink-faint text-xs">(0 selected)</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <button id="route-clear" type="button" class="text-xs text-ink-faint hover:text-ink transition-colors cursor-pointer px-2 py-1">
+        Clear
+      </button>
+      <button id="route-close" type="button" class="text-ink-faint hover:text-ink transition-colors cursor-pointer p-1">
+        <span class="i-ph-x text-lg" />
+      </button>
+    </div>
+  </div>
+
+  <!-- Panel Body -->
+  <div class="flex flex-col md:flex-row flex-1 overflow-hidden">
+    <!-- Map -->
+    <div id="route-map" class="w-full md:w-2/3 h-64 md:h-auto min-h-48"></div>
+
+    <!-- Route List -->
+    <div class="w-full md:w-1/3 overflow-y-auto p-4 border-t md:border-t-0 md:border-l border-warm-800/40">
+      <div id="route-empty" class="text-center py-8">
+        <span class="i-ph-map-pin-plus text-3xl text-ink-faint" />
+        <p class="text-ink-muted text-sm mt-2">Click stall cards to add them to your route</p>
+      </div>
+      <ol id="route-list" class="space-y-3 hidden"></ol>
+      <div id="route-summary" class="hidden mt-4 pt-3 border-t border-warm-800/40">
+        <div class="flex items-center justify-between text-sm">
+          <span class="text-ink-muted">Total distance</span>
+          <span id="route-distance" class="font-mono font-semibold text-flame-400">0 km</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Leaflet CSS — only loaded when panel opens -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+<script>
+  import L from 'leaflet';
+
+  // ─── State ─────────────────────────────────────────────
+  interface RouteStop {
+    slug: string;
+    name: string;
+    lat: number;
+    lng: number;
+    rating: number;
+    price: string;
+  }
+
+  let selectedStops: RouteStop[] = [];
+  let map: L.Map | null = null;
+  let markers: L.Marker[] = [];
+  let routeLine: L.Polyline | null = null;
+  let isOpen = false;
+
+  // ─── Elements ──────────────────────────────────────────
+  const toggle = document.getElementById('route-toggle')!;
+  const panel = document.getElementById('route-panel')!;
+  const closeBtn = document.getElementById('route-close')!;
+  const clearBtn = document.getElementById('route-clear')!;
+  const countEl = document.getElementById('route-count')!;
+  const listEl = document.getElementById('route-list')!;
+  const emptyEl = document.getElementById('route-empty')!;
+  const summaryEl = document.getElementById('route-summary')!;
+  const distanceEl = document.getElementById('route-distance')!;
+  const mapContainer = document.getElementById('route-map')!;
+
+  // ─── Custom marker icon ────────────────────────────────
+  function makeIcon(color: string, label: string): L.DivIcon {
+    return L.divIcon({
+      className: '',
+      iconSize: [28, 28],
+      iconAnchor: [14, 28],
+      html: `<div style="
+        width:28px;height:28px;border-radius:50% 50% 50% 0;
+        background:${color};transform:rotate(-45deg);
+        display:flex;align-items:center;justify-content:center;
+        border:2px solid rgba(0,0,0,0.3);box-shadow:0 2px 6px rgba(0,0,0,0.3);
+      "><span style="transform:rotate(45deg);font-size:11px;font-weight:700;color:white;">${label}</span></div>`,
+    });
+  }
+
+  // ─── Haversine distance (km) ───────────────────────────
+  function haversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371;
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  // ─── Nearest neighbor route optimization ───────────────
+  function optimizeRoute(stops: RouteStop[]): RouteStop[] {
+    if (stops.length <= 2) return [...stops];
+    const remaining = [...stops];
+    const route: RouteStop[] = [remaining.shift()!];
+    while (remaining.length > 0) {
+      const last = route[route.length - 1];
+      let nearest = 0;
+      let minDist = Infinity;
+      for (let i = 0; i < remaining.length; i++) {
+        const d = haversine(last.lat, last.lng, remaining[i].lat, remaining[i].lng);
+        if (d < minDist) { minDist = d; nearest = i; }
+      }
+      route.push(remaining.splice(nearest, 1)[0]);
+    }
+    return route;
+  }
+
+  function totalDistance(stops: RouteStop[]): number {
+    let d = 0;
+    for (let i = 1; i < stops.length; i++) {
+      d += haversine(stops[i - 1].lat, stops[i - 1].lng, stops[i].lat, stops[i].lng);
+    }
+    return d;
+  }
+
+  // ─── Map init ──────────────────────────────────────────
+  function initMap() {
+    if (map) return;
+    map = L.map(mapContainer, { zoomControl: true }).setView([1.3521, 103.8198], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>',
+      maxZoom: 18,
+    }).addTo(map);
+
+    // Show all stalls as faded markers
+    document.querySelectorAll<HTMLElement>('.stall-card').forEach((card) => {
+      const lat = parseFloat(card.dataset.lat || '0');
+      const lng = parseFloat(card.dataset.lng || '0');
+      if (lat && lng) {
+        const m = L.circleMarker([lat, lng], {
+          radius: 5, fillColor: '#7a6e62', fillOpacity: 0.4,
+          stroke: false,
+        }).addTo(map!);
+      }
+    });
+  }
+
+  // ─── Render route on map ───────────────────────────────
+  function renderRoute() {
+    if (!map) return;
+
+    // Clear previous
+    markers.forEach((m) => map!.removeLayer(m));
+    markers = [];
+    if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
+
+    const optimized = optimizeRoute(selectedStops);
+    const colors: Record<number, string> = { 1: '#ff6b35', 2: '#fbbf24', 3: '#4ade80' };
+
+    // Add numbered markers
+    optimized.forEach((stop, i) => {
+      const color = colors[stop.rating] || '#7a6e62';
+      const m = L.marker([stop.lat, stop.lng], {
+        icon: makeIcon(color, String(i + 1)),
+      }).addTo(map!).bindPopup(`<b>${i + 1}. ${stop.name}</b><br>$${stop.price}`);
+      markers.push(m);
+    });
+
+    // Draw route line
+    if (optimized.length >= 2) {
+      const latlngs = optimized.map((s) => [s.lat, s.lng] as [number, number]);
+      routeLine = L.polyline(latlngs, {
+        color: '#ff6b35', weight: 3, opacity: 0.7, dashArray: '8 6',
+      }).addTo(map);
+    }
+
+    // Fit bounds
+    if (optimized.length > 0) {
+      const group = L.featureGroup(markers);
+      map.fitBounds(group.getBounds().pad(0.15));
+    }
+
+    // Update list
+    renderList(optimized);
+  }
+
+  function renderList(optimized: RouteStop[]) {
+    const hasStops = optimized.length > 0;
+    emptyEl.classList.toggle('hidden', hasStops);
+    listEl.classList.toggle('hidden', !hasStops);
+    summaryEl.classList.toggle('hidden', !hasStops);
+    countEl.textContent = `(${optimized.length} selected)`;
+
+    if (!hasStops) return;
+
+    listEl.innerHTML = optimized.map((stop, i) => {
+      const dist = i > 0
+        ? `<span class="text-ink-faint text-xs font-mono">${haversine(optimized[i-1].lat, optimized[i-1].lng, stop.lat, stop.lng).toFixed(1)} km</span>`
+        : '';
+      return `
+        <li class="flex items-start gap-3">
+          <span class="shrink-0 w-6 h-6 rounded-full bg-flame-500/20 text-flame-400 text-xs font-bold flex items-center justify-center mt-0.5">${i + 1}</span>
+          <div class="min-w-0 flex-1">
+            <p class="text-sm font-medium text-ink truncate">${stop.name}</p>
+            <p class="text-xs text-ink-faint">$${stop.price}</p>
+          </div>
+          ${dist ? `<div class="flex items-center gap-1 shrink-0">${dist}</div>` : ''}
+        </li>
+      `;
+    }).join('');
+
+    distanceEl.textContent = `${totalDistance(optimized).toFixed(1)} km`;
+  }
+
+  // ─── Toggle card selection ─────────────────────────────
+  function toggleStall(card: HTMLElement) {
+    const slug = card.closest('a')?.getAttribute('href')?.split('/').pop() || '';
+    const name = card.dataset.name || '';
+    const lat = parseFloat(card.dataset.lat || '0');
+    const lng = parseFloat(card.dataset.lng || '0');
+    const ratingStr = card.dataset.rating || '0';
+    const rating = ratingStr === 'unrated' ? 0 : parseInt(ratingStr);
+    const price = card.dataset.price || '0';
+
+    // Skip stalls without valid coordinates
+    if (!lat && !lng) return;
+
+    const idx = selectedStops.findIndex((s) => s.slug === slug);
+    if (idx >= 0) {
+      selectedStops.splice(idx, 1);
+      card.classList.remove('ring-2', 'ring-flame-400/50');
+    } else {
+      selectedStops.push({ slug, name, lat, lng, rating, price });
+      card.classList.add('ring-2', 'ring-flame-400/50');
+    }
+    renderRoute();
+  }
+
+  // ─── Event handlers ────────────────────────────────────
+  toggle.addEventListener('click', () => {
+    isOpen = !isOpen;
+    panel.classList.toggle('hidden', !isOpen);
+    toggle.classList.toggle('border-flame-500/50', isOpen);
+    toggle.classList.toggle('text-flame-400', isOpen);
+
+    if (isOpen) {
+      initMap();
+      setTimeout(() => map?.invalidateSize(), 100);
+
+      // In route mode, intercept card clicks
+      document.querySelectorAll<HTMLElement>('.stall-card').forEach((card) => {
+        card.addEventListener('click', routeClickHandler);
+      });
+    } else {
+      document.querySelectorAll<HTMLElement>('.stall-card').forEach((card) => {
+        card.removeEventListener('click', routeClickHandler);
+        card.classList.remove('ring-2', 'ring-flame-400/50');
+      });
+    }
+  });
+
+  function routeClickHandler(e: Event) {
+    if (!isOpen) return;
+    e.preventDefault();
+    e.stopPropagation();
+    toggleStall(e.currentTarget as HTMLElement);
+  }
+
+  closeBtn.addEventListener('click', () => {
+    isOpen = false;
+    panel.classList.add('hidden');
+    toggle.classList.remove('border-flame-500/50', 'text-flame-400');
+    document.querySelectorAll<HTMLElement>('.stall-card').forEach((card) => {
+      card.removeEventListener('click', routeClickHandler);
+      card.classList.remove('ring-2', 'ring-flame-400/50');
+    });
+  });
+
+  clearBtn.addEventListener('click', () => {
+    selectedStops = [];
+    document.querySelectorAll<HTMLElement>('.stall-card').forEach((card) => {
+      card.classList.remove('ring-2', 'ring-flame-400/50');
+    });
+    renderRoute();
+  });
+</script>

@@ -1,0 +1,34 @@
+---
+interface Props {
+  variant?: 'default' | 'interactive';
+  href?: string;
+  class?: string;
+  [key: string]: any;
+}
+
+const { variant = 'default', href, class: className, ...rest } = Astro.props;
+const Tag = href ? 'a' : 'div';
+
+const variants: Record<string, string> = {
+  default: 'border-warm-800/60 bg-surface-card',
+  interactive: 'border-warm-800/60 bg-surface-card hover:bg-surface-raised hover:border-warm-600/40 transition-all duration-200',
+};
+---
+
+<Tag
+  href={href}
+  class:list={[
+    'rounded-xl border overflow-hidden',
+    variant === 'interactive' && 'group',
+    variants[variant],
+    className,
+  ]}
+  {...rest}
+>
+  <slot name="banner" />
+  <div class="flex flex-col flex-1 p-4">
+    <slot name="header" />
+    <slot />
+    <slot name="footer" />
+  </div>
+</Tag>

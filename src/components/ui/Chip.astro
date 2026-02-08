@@ -1,0 +1,24 @@
+---
+interface Props {
+  value: string;
+  active?: boolean;
+  class?: string;
+}
+
+const { value, active = false, class: className } = Astro.props;
+---
+
+<button
+  type="button"
+  data-chip-value={value}
+  aria-pressed={active ? 'true' : 'false'}
+  class:list={[
+    'inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium border transition-colors cursor-pointer',
+    active
+      ? 'bg-flame-500/20 border-flame-500/30 text-flame-400'
+      : 'bg-surface-raised border-warm-700/40 text-ink-muted hover:border-warm-600/50 hover:text-ink',
+    className,
+  ]}
+>
+  <slot />
+</button>

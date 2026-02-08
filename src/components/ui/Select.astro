@@ -1,0 +1,31 @@
+---
+interface Option {
+  value: string;
+  label: string;
+}
+
+interface Props {
+  options: Option[];
+  placeholder?: string;
+  class?: string;
+  [key: string]: any;
+}
+
+const { options, placeholder, class: className, ...rest } = Astro.props;
+---
+
+<div class="relative">
+  <select
+    class:list={[
+      'rounded-lg border border-warm-700/50 bg-surface-raised px-3 py-2.5 pr-8 text-sm text-ink',
+      'focus:border-flame-500/50 focus:outline-none focus:ring-1 focus:ring-flame-500/30',
+      'transition-colors appearance-none cursor-pointer',
+      className,
+    ]}
+    {...rest}
+  >
+    {placeholder && <option value="">{placeholder}</option>}
+    {options.map((opt) => <option value={opt.value}>{opt.label}</option>)}
+  </select>
+  <span class="i-ph-caret-down absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-faint text-xs pointer-events-none" />
+</div>
