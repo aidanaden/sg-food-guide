@@ -19,6 +19,7 @@ const ratingLabel = getRatingLabel(stall.ratingModerated);
   accent={ratingVariant}
   href={`/stall/${stall.slug}`}
   class="stall-card relative flex flex-col"
+  data-slug={stall.slug}
   data-name={stall.name.toLowerCase()}
   data-dish={stall.dishName.toLowerCase()}
   data-address={stall.address.toLowerCase()}
@@ -47,9 +48,20 @@ const ratingLabel = getRatingLabel(stall.ratingModerated);
   <Fragment slot="header">
     <div class="flex items-start justify-between gap-3 mb-3">
       <div class="min-w-0 flex-1">
-        <h2 class="font-display font-700 text-base leading-snug group-hover:text-flame-400 transition-colors truncate">
-          {stall.name}
-        </h2>
+        <div class="flex items-start gap-1">
+          <h2 class="font-display font-700 text-base leading-snug group-hover:text-flame-400 transition-colors line-clamp-2 flex-1">
+            {stall.name}
+          </h2>
+          <button
+            type="button"
+            data-fav-btn={stall.slug}
+            class="fav-btn shrink-0 p-1 -mr-1 -mt-0.5 transition-colors text-ink-faint hover:text-flame-400"
+            aria-label="Toggle favorite"
+          >
+            <span class="fav-icon-outline i-ph-heart text-base" />
+            <span class="fav-icon-filled i-ph-heart-fill text-base text-flame-400 hidden" />
+          </button>
+        </div>
         <div class="flex items-center gap-2 mt-0.5">
           <p class="text-ink-faint text-xs">{stall.dishName}</p>
           {showCuisine && (
@@ -107,3 +119,54 @@ const ratingLabel = getRatingLabel(stall.ratingModerated);
     )}
   </Fragment>
 </Card>
+
+<script>
+  import { isFavorite, toggleFavorite, getVisited } from '../scripts/preferences';
+
+  // Initialize all favorite buttons once (Astro deduplicates this script)
+  function initFavorites() {
+    const visited = getVisited();
+
+    document.querySelectorAll<HTMLButtonElement>('.fav-btn').forEach((btn) => {
+      const slug = btn.dataset.favBtn;
+      if (!slug) return;
+
+      // Set initial state
+      updateFavIcon(btn, isFavorite(slug));
+
+      // Mark visited cards
+      if (visited.has(slug)) {
+        const card = btn.closest('.stall-card');
+        card?.setAttribute('data-visited', 'true');
+      }
+
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const newState = toggleFavorite(slug);
+        updateFavIcon(btn, newState);
+
+        // Update data attribute for filtering
+        const card = btn.closest('.stall-card');
+        card?.setAttribute('data-fav', newState ? 'true' : 'false');
+      });
+    });
+  }
+
+  function updateFavIcon(btn: HTMLButtonElement, active: boolean) {
+    const outline = btn.querySelector('.fav-icon-outline') as HTMLElement;
+    const filled = btn.querySelector('.fav-icon-filled') as HTMLElement;
+    if (outline) outline.classList.toggle('hidden', active);
+    if (filled) filled.classList.toggle('hidden', !active);
+
+    const card = btn.closest('.stall-card');
+    card?.setAttribute('data-fav', active ? 'true' : 'false');
+  }
+
+  // Run on DOMContentLoaded and after Astro page transitions
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initFavorites);
+  } else {
+    initFavorites();
+  }
+</script>

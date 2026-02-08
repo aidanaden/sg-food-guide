@@ -28,16 +28,44 @@ const mapsSearchEmbedUrl = `https://maps.google.com/maps?q=${mapsEmbedQuery}&out
 const youtubeSearchQuery = stall.youtubeTitle ? encodeURIComponent(stall.youtubeTitle) : '';
 ---
 
-<Layout title={`${stall.name} — SG Food Guide`} description={`${stall.name} review: ${stall.dishName} at $${stall.price}. Rated ${stall.ratingModerated}/3 (${ratingLabel}).`}>
+<Layout title={`${stall.name} — SG Food Guide`} description={`${stall.name} review: ${stall.dishName} at $${stall.price}.${stall.ratingModerated !== null ? ` Rated ${stall.ratingModerated}/3 (${ratingLabel}).` : ''} ${area}.`} ogType="article" canonicalPath={`/stall/${stall.slug}`}>
+  <script type="application/ld+json" set:html={JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "Restaurant",
+    "name": stall.name,
+    "servesCuisine": stall.cuisineLabel,
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": stall.address,
+      "addressCountry": stall.country,
+    },
+    ...(stall.lat && stall.lng ? {
+      "geo": {
+        "@type": "GeoCoordinates",
+        "latitude": stall.lat,
+        "longitude": stall.lng,
+      }
+    } : {}),
+    "priceRange": `$${stall.price.toFixed(0)}`,
+    ...(stall.ratingModerated !== null ? {
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": stall.ratingModerated,
+        "bestRating": 3,
+        "worstRating": 1,
+        "ratingCount": 1,
+      }
+    } : {}),
+  })} />
   <div class="min-h-screen">
     <!-- Back nav -->
     <nav class="border-b border-warm-800/40">
       <div class="mx-auto max-w-3xl px-4 py-3 flex items-center gap-4">
-        <a href="/" class="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-flame-400 transition-colors group">
+        <a href="/" class="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-flame-400 transition-colors group py-2">
           <span class="i-ph-arrow-left text-sm group-hover:-translate-x-0.5 transition-transform" />
           All stalls
         </a>
-        <a href={`/cuisine/${stall.cuisine}`} class="inline-flex items-center gap-1.5 text-sm text-ink-faint hover:text-flame-400 transition-colors">
+        <a href={`/cuisine/${stall.cuisine}`} class="inline-flex items-center gap-1.5 text-sm text-ink-faint hover:text-flame-400 transition-colors py-2">
           <span class="i-ph-bowl-food text-xs" />
           {stall.cuisineLabel}
         </a>
@@ -58,9 +86,21 @@ const youtubeSearchQuery = stall.youtubeTitle ? encodeURIComponent(stall.youtube
       )}
 
       <!-- Title -->
-      <h1 class="font-display text-3xl sm:text-4xl font-800 tracking-tight leading-tight">
-        {stall.name}
-      </h1>
+      <div class="flex items-start gap-3">
+        <h1 class="font-display text-3xl sm:text-4xl font-800 tracking-tight leading-tight flex-1">
+          {stall.name}
+        </h1>
+        <button
+          type="button"
+          id="detail-fav-btn"
+          data-slug={stall.slug}
+          class="shrink-0 p-2 rounded-lg border border-warm-700/50 bg-surface-raised hover:border-flame-500/40 transition-colors cursor-pointer"
+          aria-label="Toggle favorite"
+        >
+          <span id="detail-fav-outline" class="i-ph-heart text-xl text-ink-faint" />
+          <span id="detail-fav-filled" class="i-ph-heart-fill text-xl text-flame-400 hidden" />
+        </button>
+      </div>
 
       <!-- Meta row -->
       <div class="flex flex-wrap items-center gap-x-4 gap-y-2 mt-4">
@@ -107,7 +147,7 @@ const youtubeSearchQuery = stall.youtubeTitle ? encodeURIComponent(stall.youtube
             <span class="i-ph-map-pin text-flame-400" />
             <h3 class="text-xs font-semibold text-ink-faint uppercase tracking-wider">Address</h3>
           </div>
-          <p class="text-ink font-medium text-sm leading-relaxed">{stall.address}</p>
+          <p class="text-ink font-medium text-sm leading-relaxed break-words">{stall.address}</p>
         </div>
 
         <div class="rounded-xl border border-warm-800/50 bg-surface-card p-4">
@@ -176,12 +216,11 @@ const youtubeSearchQuery = stall.youtubeTitle ? encodeURIComponent(stall.youtube
           <iframe
             src={mapsSearchEmbedUrl}
             width="100%"
-            height="300"
             style="border:0"
             loading="lazy"
             referrerpolicy="no-referrer-when-downgrade"
             title={`Map showing ${stall.name}`}
-            class="w-full"
+            class="w-full h-48 sm:h-64 md:h-80"
           ></iframe>
         </div>
         <div class="mt-2">
@@ -223,12 +262,36 @@ const youtubeSearchQuery = stall.youtubeTitle ? encodeURIComponent(stall.youtube
     </main>
 
     <footer class="border-t border-warm-800/40 py-6 mt-8 text-center">
-      <a href="/" class="text-ink-faint text-xs hover:text-flame-400 transition-colors">
+      <a href="/" class="inline-block text-ink-faint text-xs hover:text-flame-400 transition-colors py-3">
         &larr; Back to all stalls
       </a>
     </footer>
   </div>
 </Layout>
+
+<script>
+  import { markVisited, isFavorite, toggleFavorite } from '../../scripts/preferences';
+
+  // Mark stall as visited
+  const favBtn = document.getElementById('detail-fav-btn') as HTMLButtonElement;
+  const slug = favBtn?.dataset.slug;
+  if (slug) {
+    markVisited(slug);
+
+    // Initialize favorite state
+    const outline = document.getElementById('detail-fav-outline');
+    const filled = document.getElementById('detail-fav-filled');
+    const fav = isFavorite(slug);
+    if (outline) outline.classList.toggle('hidden', fav);
+    if (filled) filled.classList.toggle('hidden', !fav);
+
+    favBtn.addEventListener('click', () => {
+      const newState = toggleFavorite(slug);
+      if (outline) outline.classList.toggle('hidden', newState);
+      if (filled) filled.classList.toggle('hidden', !newState);
+    });
+  }
+</script>
 
 <script>
   // YouTube embed: use YouTube's search to find the video and embed it

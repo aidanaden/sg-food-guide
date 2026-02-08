@@ -58,7 +58,7 @@ const sortOptions = [
         />
       </div>
 
-      <div class="flex gap-2 flex-wrap">
+      <div class="flex gap-2 overflow-x-auto sm:flex-wrap sm:overflow-visible pb-1 sm:pb-0">
         <Select id="filter-rating" options={ratingOptions} placeholder="All Ratings" />
         <Select id="filter-area" options={areaOptions} placeholder="All Areas" />
         <Select id="filter-time" options={timeOptions} placeholder="All Hours" />
@@ -73,11 +73,24 @@ const sortOptions = [
     </div>
 
     <!-- Active filter chips -->
-    <div id="active-filters" class="hidden flex-wrap gap-2 mt-2"></div>
+    <div id="active-filters" class="hidden overflow-x-auto sm:flex-wrap gap-2 mt-2"></div>
 
-    <!-- Result count -->
-    <p id="result-count" class="text-ink-faint text-xs mt-2">
-      Showing {totalCount} stalls
-    </p>
+    <!-- Quick toggles -->
+    <div class="flex items-center gap-3 mt-2">
+      <label class="inline-flex items-center gap-1.5 text-xs text-ink-muted cursor-pointer select-none">
+        <input type="checkbox" id="filter-favorites" class="accent-flame-500 w-3.5 h-3.5" />
+        <span class="i-ph-heart-fill text-flame-400 text-xs" />
+        Favorites only
+      </label>
+      <label class="inline-flex items-center gap-1.5 text-xs text-ink-muted cursor-pointer select-none">
+        <input type="checkbox" id="filter-hide-visited" class="accent-flame-500 w-3.5 h-3.5" />
+        <span class="i-ph-eye-slash text-ink-faint text-xs" />
+        Hide visited
+      </label>
+      <!-- Result count -->
+      <p id="result-count" class="text-ink-faint text-xs ml-auto">
+        Showing {totalCount} stalls
+      </p>
+    </div>
   </div>
 </section>

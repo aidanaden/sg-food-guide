@@ -14,7 +14,7 @@ const { icon, class: className, ...rest } = Astro.props;
   )}
   <input
     class:list={[
-      'w-full rounded-lg border border-warm-700/50 bg-surface-raised py-2.5 text-sm text-ink',
+      'w-full rounded-lg border border-warm-700/50 bg-surface-raised py-3 text-sm text-ink min-h-[44px]',
       'placeholder:text-ink-faint focus:border-flame-500/50 focus:outline-none focus:ring-1 focus:ring-flame-500/30 transition-colors',
       icon ? 'pl-10 pr-4' : 'px-4',
       className,

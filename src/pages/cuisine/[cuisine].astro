@@ -23,14 +23,14 @@ const mustTryCount = cuisineStalls.filter((s) => s.ratingModerated === 3).length
 const awardCount = cuisineStalls.filter((s) => s.awards.length > 0).length;
 ---
 
-<Layout title={`Best ${cuisineLabel} in Singapore — SG Food Guide`} description={`${cuisineStalls.length} ${cuisineLabel} stalls reviewed and ranked in Singapore.`}>
+<Layout title={`Best ${cuisineLabel} in Singapore — SG Food Guide`} description={`${cuisineStalls.length} ${cuisineLabel} stalls reviewed and ranked.${mustTryCount > 0 ? ` ${mustTryCount} must-try rated stalls.` : ''}`} canonicalPath={`/cuisine/${cuisineId}`}>
   <!-- Hero -->
   <header class="relative overflow-hidden border-b border-warm-800">
     <div class="absolute inset-0 bg-gradient-to-br from-warm-950 via-surface to-warm-900 opacity-80"></div>
     <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--color-flame-600)_0%,_transparent_50%)] opacity-15"></div>
     <div class="relative mx-auto max-w-6xl px-4 py-12 sm:py-16">
       <!-- Breadcrumb -->
-      <a href="/" class="inline-flex items-center gap-1.5 text-sm text-ink-faint hover:text-flame-400 transition-colors mb-6 group">
+      <a href="/" class="inline-flex items-center gap-1.5 text-sm text-ink-faint hover:text-flame-400 transition-colors mb-6 group py-2">
         <span class="i-ph-arrow-left text-sm group-hover:-translate-x-0.5 transition-transform" />
         All cuisines
       </a>
@@ -91,29 +91,33 @@ const awardCount = cuisineStalls.filter((s) => s.awards.length > 0).length;
       ))}
     </div>
 
-    <div id="empty-state" class="hidden text-center py-16">
+    <div id="empty-state" class="hidden text-center py-8 sm:py-16">
       <span class="i-ph-magnifying-glass text-5xl text-ink-faint"></span>
       <p class="text-ink-muted mt-4 text-lg font-display">No stalls match your filters</p>
       <p class="text-ink-faint text-sm mt-1">Try adjusting your search or filters</p>
-      <button id="clear-filters" class="mt-4 rounded-lg bg-flame-500/20 text-flame-400 px-4 py-2 text-sm font-medium hover:bg-flame-500/30 transition-colors cursor-pointer">
+      <button id="clear-filters" class="mt-4 rounded-lg bg-flame-500/20 text-flame-400 px-4 py-3 text-sm font-medium hover:bg-flame-500/30 transition-colors cursor-pointer min-h-[44px]">
         Clear all filters
       </button>
     </div>
   </main>
 
   <footer class="border-t border-warm-800/40 py-8 text-center">
-    <a href="/" class="text-ink-faint text-xs hover:text-flame-400 transition-colors">
+    <a href="/" class="inline-block text-ink-faint text-xs hover:text-flame-400 transition-colors py-3">
       &larr; Back to all cuisines
     </a>
   </footer>
 </Layout>
 
 <script>
+  import { fuzzyMatch, highlightText } from '../../scripts/search';
+
   const searchInput = document.getElementById('search') as HTMLInputElement;
   const ratingFilter = document.getElementById('filter-rating') as HTMLSelectElement;
   const areaFilter = document.getElementById('filter-area') as HTMLSelectElement;
   const timeFilter = document.getElementById('filter-time') as HTMLSelectElement;
   const countryFilter = document.getElementById('filter-country') as HTMLSelectElement | null;
+  const favoritesFilter = document.getElementById('filter-favorites') as HTMLInputElement;
+  const hideVisitedFilter = document.getElementById('filter-hide-visited') as HTMLInputElement;
   const sortBy = document.getElementById('sort-by') as HTMLSelectElement;
   const grid = document.getElementById('stall-grid') as HTMLElement;
   const resultCount = document.getElementById('result-count') as HTMLElement;
@@ -121,7 +125,15 @@ const awardCount = cuisineStalls.filter((s) => s.awards.length > 0).length;
   const activeFiltersContainer = document.getElementById('active-filters') as HTMLElement;
   const clearFiltersBtn = document.getElementById('clear-filters') as HTMLButtonElement;
 
-  // Apply default country filter on load
+  interface CardCache {
+    el: HTMLElement;
+    nameEl: HTMLElement | null;
+    dishEl: HTMLElement | null;
+    nameText: string;
+    dishText: string;
+  }
+  const cardCache: CardCache[] = [];
+
   if (countryFilter) {
     const defaultCountry = countryFilter.dataset.default || '';
     if (defaultCountry) countryFilter.value = defaultCountry;
@@ -131,17 +143,36 @@ const awardCount = cuisineStalls.filter((s) => s.awards.length > 0).length;
     return Array.from(grid.querySelectorAll('.stall-card')) as HTMLElement[];
   }
 
+  function buildCache() {
+    cardCache.length = 0;
+    getCards().forEach((card) => {
+      const el = card.closest('[data-name]') as HTMLElement || card;
+      const nameEl = el.querySelector('h2');
+      const dishEl = el.querySelector('p.text-ink-faint.text-xs') as HTMLElement | null;
+      cardCache.push({
+        el,
+        nameEl,
+        dishEl,
+        nameText: nameEl?.textContent || '',
+        dishText: dishEl?.textContent || '',
+      });
+    });
+  }
+
   function applyFilters() {
     const query = searchInput.value.toLowerCase().trim();
     const rating = ratingFilter.value;
     const area = areaFilter.value;
     const time = timeFilter.value;
     const country = countryFilter?.value || '';
-    const cards = getCards();
     let visible = 0;
 
-    cards.forEach((card) => {
-      const el = card.closest('[data-name]') as HTMLElement || card;
+    const onlyFavs = favoritesFilter?.checked || false;
+    const hideVisited = hideVisitedFilter?.checked || false;
+
+    if (cardCache.length === 0) buildCache();
+
+    cardCache.forEach(({ el, nameEl, dishEl, nameText, dishText }) => {
       const name = el.dataset.name || '';
       const dish = el.dataset.dish || '';
       const address = el.dataset.address || '';
@@ -149,19 +180,26 @@ const awardCount = cuisineStalls.filter((s) => s.awards.length > 0).length;
       const a = el.dataset.area || '';
       const t = el.dataset.time || '';
       const c = el.dataset.country || '';
+      const cardFav = el.dataset.fav === 'true';
+      const cardVisited = el.dataset.visited === 'true';
 
       const show =
-        (!query || name.includes(query) || dish.includes(query) || address.includes(query)) &&
+        fuzzyMatch(query, [name, dish, address]) &&
         (!rating || r === rating) &&
         (!area || a === area) &&
         (!time || t.split(',').includes(time)) &&
-        (!country || c === country);
+        (!country || c === country) &&
+        (!onlyFavs || cardFav) &&
+        (!hideVisited || !cardVisited);
 
-      (card.closest('.stall-card') as HTMLElement || card).style.display = show ? '' : 'none';
+      (el.closest('.stall-card') as HTMLElement || el).style.display = show ? '' : 'none';
       if (show) visible++;
+
+      if (nameEl) nameEl.innerHTML = highlightText(nameText, query);
+      if (dishEl) dishEl.innerHTML = highlightText(dishText, query);
     });
 
-    resultCount.textContent = `Showing ${visible} of ${cards.length} stalls`;
+    resultCount.textContent = `Showing ${visible} of ${cardCache.length} stalls`;
     emptyState.classList.toggle('hidden', visible > 0);
     grid.classList.toggle('hidden', visible === 0);
 
@@ -176,7 +214,7 @@ const awardCount = cuisineStalls.filter((s) => s.awards.length > 0).length;
       activeFiltersContainer.classList.remove('hidden');
       activeFiltersContainer.classList.add('flex');
       activeFiltersContainer.innerHTML = chips
-        .map((c) => `<span class="inline-flex items-center gap-1 rounded-full bg-warm-800/60 px-2.5 py-0.5 text-xs text-ink-muted">${c}</span>`)
+        .map((c) => `<span class="inline-flex items-center gap-1 rounded-full bg-warm-800/60 px-2.5 py-1 text-xs text-ink-muted">${c}</span>`)
         .join('');
     } else {
       activeFiltersContainer.classList.add('hidden');
@@ -219,10 +257,11 @@ const awardCount = cuisineStalls.filter((s) => s.awards.length > 0).length;
   areaFilter.addEventListener('change', applyFilters);
   timeFilter.addEventListener('change', applyFilters);
   countryFilter?.addEventListener('change', applyFilters);
+  favoritesFilter?.addEventListener('change', applyFilters);
+  hideVisitedFilter?.addEventListener('change', applyFilters);
   sortBy.addEventListener('change', applySorting);
   clearFiltersBtn.addEventListener('click', clearFilters);
 
-  // Apply initial filters (respects default country)
   applyFilters();
   applySorting();
 </script>
