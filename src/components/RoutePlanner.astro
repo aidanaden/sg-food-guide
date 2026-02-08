@@ -1,8 +1,8 @@
 ---
 /**
  * Route Planner — client-side only (Leaflet + vanilla JS).
- * Renders a toggleable panel with a Leaflet map and nearest-neighbor route optimizer.
- * All interactivity is in the <script> tag below.
+ * Renders a toggleable panel with a Leaflet map, nearest-neighbor route optimizer,
+ * transport mode selector, and Google Maps directions link.
  */
 ---
 
@@ -15,6 +15,17 @@
   <span class="i-ph-path text-base" />
   <span>Plan Route</span>
 </button>
+
+<!-- Toast notification for no-coords stalls -->
+<div
+  id="route-toast"
+  class="fixed top-4 left-1/2 -translate-x-1/2 z-[60] hidden"
+>
+  <div class="flex items-center gap-2 rounded-lg border border-warm-700 bg-surface-overlay px-4 py-2.5 shadow-xl text-sm">
+    <span class="i-ph-warning-circle text-gold-400" />
+    <span id="route-toast-msg" class="text-ink-muted">This stall has no location data</span>
+  </div>
+</div>
 
 <!-- Route Planner Panel (hidden by default) -->
 <div
@@ -29,6 +40,18 @@
       <span id="route-count" class="text-ink-faint text-xs">(0 selected)</span>
     </div>
     <div class="flex items-center gap-2">
+      <!-- Transport mode selector -->
+      <div id="transport-modes" class="flex items-center border border-warm-700/50 rounded-lg overflow-hidden">
+        <button type="button" data-mode="walking" class="transport-btn active px-2.5 py-1.5 text-xs flex items-center gap-1 transition-colors cursor-pointer" title="Walking">
+          <span class="i-ph-person-simple-walk text-sm" />
+        </button>
+        <button type="button" data-mode="transit" class="transport-btn px-2.5 py-1.5 text-xs flex items-center gap-1 border-l border-warm-700/50 transition-colors cursor-pointer" title="Public Transit">
+          <span class="i-ph-train text-sm" />
+        </button>
+        <button type="button" data-mode="driving" class="transport-btn px-2.5 py-1.5 text-xs flex items-center gap-1 border-l border-warm-700/50 transition-colors cursor-pointer" title="Driving">
+          <span class="i-ph-car text-sm" />
+        </button>
+      </div>
       <button id="route-clear" type="button" class="text-xs text-ink-faint hover:text-ink transition-colors cursor-pointer px-2 py-1">
         Clear
       </button>
@@ -48,13 +71,28 @@
       <div id="route-empty" class="text-center py-8">
         <span class="i-ph-map-pin-plus text-3xl text-ink-faint" />
         <p class="text-ink-muted text-sm mt-2">Click stall cards to add them to your route</p>
+        <p class="text-ink-faint text-xs mt-1">Stalls without location data cannot be added</p>
       </div>
       <ol id="route-list" class="space-y-3 hidden"></ol>
-      <div id="route-summary" class="hidden mt-4 pt-3 border-t border-warm-800/40">
+      <div id="route-summary" class="hidden mt-4 pt-3 border-t border-warm-800/40 space-y-2">
         <div class="flex items-center justify-between text-sm">
           <span class="text-ink-muted">Total distance</span>
           <span id="route-distance" class="font-mono font-semibold text-flame-400">0 km</span>
         </div>
+        <div class="flex items-center justify-between text-sm">
+          <span class="text-ink-muted">Est. travel time</span>
+          <span id="route-time" class="font-mono font-semibold text-ink">0 min</span>
+        </div>
+        <a
+          id="route-gmaps-link"
+          href="#"
+          target="_blank"
+          rel="noopener"
+          class="hidden mt-2 w-full inline-flex items-center justify-center gap-2 rounded-lg border border-flame-500/30 bg-flame-500/10 px-3 py-2 text-sm font-medium text-flame-400 hover:bg-flame-500/20 transition-colors"
+        >
+          <span class="i-ph-navigation-arrow text-xs" />
+          Open in Google Maps
+        </a>
       </div>
     </div>
   </div>
@@ -62,6 +100,21 @@
 
 <!-- Leaflet CSS — only loaded when panel opens -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+<style>
+  .transport-btn {
+    background: transparent;
+    color: var(--color-ink-faint);
+  }
+  .transport-btn:hover {
+    color: var(--color-ink-muted);
+    background: var(--color-warm-800);
+  }
+  .transport-btn.active {
+    background: var(--color-flame-400);
+    color: white;
+  }
+</style>
 
 <script>
   import L from 'leaflet';
@@ -76,11 +129,29 @@
     price: string;
   }
 
+  type TransportMode = 'walking' | 'transit' | 'driving';
+
+  // Average speeds in km/h for time estimation
+  const SPEEDS: Record<TransportMode, number> = {
+    walking: 5,
+    transit: 25,
+    driving: 35,
+  };
+
+  // Google Maps direction mode names
+  const GMAPS_MODE: Record<TransportMode, string> = {
+    walking: 'walking',
+    transit: 'transit',
+    driving: 'driving',
+  };
+
   let selectedStops: RouteStop[] = [];
+  let transportMode: TransportMode = 'walking';
   let map: L.Map | null = null;
   let markers: L.Marker[] = [];
   let routeLine: L.Polyline | null = null;
   let isOpen = false;
+  let toastTimeout: ReturnType<typeof setTimeout> | null = null;
 
   // ─── Elements ──────────────────────────────────────────
   const toggle = document.getElementById('route-toggle')!;
@@ -92,7 +163,30 @@
   const emptyEl = document.getElementById('route-empty')!;
   const summaryEl = document.getElementById('route-summary')!;
   const distanceEl = document.getElementById('route-distance')!;
+  const timeEl = document.getElementById('route-time')!;
+  const gmapsLink = document.getElementById('route-gmaps-link') as HTMLAnchorElement;
   const mapContainer = document.getElementById('route-map')!;
+  const toast = document.getElementById('route-toast')!;
+  const toastMsg = document.getElementById('route-toast-msg')!;
+  const transportBtns = document.querySelectorAll<HTMLButtonElement>('.transport-btn');
+
+  // ─── Toast ─────────────────────────────────────────────
+  function showToast(msg: string) {
+    toastMsg.textContent = msg;
+    toast.classList.remove('hidden');
+    if (toastTimeout) clearTimeout(toastTimeout);
+    toastTimeout = setTimeout(() => toast.classList.add('hidden'), 3000);
+  }
+
+  // ─── Transport mode ────────────────────────────────────
+  transportBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      transportMode = btn.dataset.mode as TransportMode;
+      transportBtns.forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderRoute();
+    });
+  });
 
   // ─── Custom marker icon ────────────────────────────────
   function makeIcon(color: string, label: string): L.DivIcon {
@@ -118,6 +212,26 @@
       Math.sin(dLat / 2) ** 2 +
       Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  // ─── Time estimation ──────────────────────────────────
+  function estimateTime(distKm: number): string {
+    const mins = Math.round((distKm / SPEEDS[transportMode]) * 60);
+    if (mins < 60) return `${mins} min`;
+    const hrs = Math.floor(mins / 60);
+    const rem = mins % 60;
+    return rem > 0 ? `${hrs}h ${rem}m` : `${hrs}h`;
+  }
+
+  // ─── Google Maps directions URL ────────────────────────
+  function buildGmapsUrl(stops: RouteStop[]): string {
+    if (stops.length < 2) return '#';
+    const origin = `${stops[0].lat},${stops[0].lng}`;
+    const dest = `${stops[stops.length - 1].lat},${stops[stops.length - 1].lng}`;
+    const waypoints = stops.slice(1, -1).map((s) => `${s.lat},${s.lng}`).join('|');
+    let url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}&travelmode=${GMAPS_MODE[transportMode]}`;
+    if (waypoints) url += `&waypoints=${waypoints}`;
+    return url;
   }
 
   // ─── Nearest neighbor route optimization ───────────────
@@ -160,7 +274,7 @@
       const lat = parseFloat(card.dataset.lat || '0');
       const lng = parseFloat(card.dataset.lng || '0');
       if (lat && lng) {
-        const m = L.circleMarker([lat, lng], {
+        L.circleMarker([lat, lng], {
           radius: 5, fillColor: '#7a6e62', fillOpacity: 0.4,
           stroke: false,
         }).addTo(map!);
@@ -214,25 +328,55 @@
     summaryEl.classList.toggle('hidden', !hasStops);
     countEl.textContent = `(${optimized.length} selected)`;
 
-    if (!hasStops) return;
+    if (!hasStops) {
+      gmapsLink.classList.add('hidden');
+      return;
+    }
+
+    const modeIcon = transportMode === 'walking' ? '🚶' : transportMode === 'transit' ? '🚇' : '🚗';
 
     listEl.innerHTML = optimized.map((stop, i) => {
-      const dist = i > 0
-        ? `<span class="text-ink-faint text-xs font-mono">${haversine(optimized[i-1].lat, optimized[i-1].lng, stop.lat, stop.lng).toFixed(1)} km</span>`
-        : '';
+      if (i === 0) {
+        return `
+          <li class="flex items-start gap-3">
+            <span class="shrink-0 w-6 h-6 rounded-full bg-flame-500/20 text-flame-400 text-xs font-bold flex items-center justify-center mt-0.5">1</span>
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-medium text-ink truncate">${stop.name}</p>
+              <p class="text-xs text-ink-faint">$${stop.price}</p>
+            </div>
+          </li>
+        `;
+      }
+      const dist = haversine(optimized[i-1].lat, optimized[i-1].lng, stop.lat, stop.lng);
+      const time = estimateTime(dist);
       return `
-        <li class="flex items-start gap-3">
-          <span class="shrink-0 w-6 h-6 rounded-full bg-flame-500/20 text-flame-400 text-xs font-bold flex items-center justify-center mt-0.5">${i + 1}</span>
-          <div class="min-w-0 flex-1">
-            <p class="text-sm font-medium text-ink truncate">${stop.name}</p>
-            <p class="text-xs text-ink-faint">$${stop.price}</p>
+        <li>
+          <div class="flex items-center gap-2 py-1 pl-2 text-ink-faint">
+            <span class="w-px h-4 bg-warm-700 ml-2.5"></span>
+            <span class="text-[10px] font-mono">${dist.toFixed(1)} km · ${time}</span>
           </div>
-          ${dist ? `<div class="flex items-center gap-1 shrink-0">${dist}</div>` : ''}
+          <div class="flex items-start gap-3">
+            <span class="shrink-0 w-6 h-6 rounded-full bg-flame-500/20 text-flame-400 text-xs font-bold flex items-center justify-center mt-0.5">${i + 1}</span>
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-medium text-ink truncate">${stop.name}</p>
+              <p class="text-xs text-ink-faint">$${stop.price}</p>
+            </div>
+          </div>
         </li>
       `;
     }).join('');
 
-    distanceEl.textContent = `${totalDistance(optimized).toFixed(1)} km`;
+    const dist = totalDistance(optimized);
+    distanceEl.textContent = `${dist.toFixed(1)} km`;
+    timeEl.textContent = estimateTime(dist);
+
+    // Google Maps directions link
+    if (optimized.length >= 2) {
+      gmapsLink.href = buildGmapsUrl(optimized);
+      gmapsLink.classList.remove('hidden');
+    } else {
+      gmapsLink.classList.add('hidden');
+    }
   }
 
   // ─── Toggle card selection ─────────────────────────────
@@ -245,8 +389,13 @@
     const rating = ratingStr === 'unrated' ? 0 : parseInt(ratingStr);
     const price = card.dataset.price || '0';
 
-    // Skip stalls without valid coordinates
-    if (!lat && !lng) return;
+    // Show toast for stalls without valid coordinates
+    if (!lat && !lng) {
+      // Capitalize the name properly for display
+      const displayName = card.querySelector('h2')?.textContent?.trim() || name;
+      showToast(`${displayName || 'This stall'} has no location data and can't be added to the route`);
+      return;
+    }
 
     const idx = selectedStops.findIndex((s) => s.slug === slug);
     if (idx >= 0) {

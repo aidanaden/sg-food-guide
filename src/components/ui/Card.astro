@@ -1,17 +1,34 @@
 ---
 interface Props {
   variant?: 'default' | 'interactive';
+  accent?: 'rating-0' | 'rating-1' | 'rating-2' | 'rating-3' | 'none';
   href?: string;
   class?: string;
   [key: string]: any;
 }
 
-const { variant = 'default', href, class: className, ...rest } = Astro.props;
+const { variant = 'default', accent = 'none', href, class: className, ...rest } = Astro.props;
 const Tag = href ? 'a' : 'div';
 
 const variants: Record<string, string> = {
   default: 'border-warm-800/60 bg-surface-card',
   interactive: 'border-warm-800/60 bg-surface-card hover:bg-surface-raised hover:border-warm-600/40 transition-all duration-200',
+};
+
+const accentColors: Record<string, string> = {
+  'none': '',
+  'rating-0': 'border-l-warm-600/40',
+  'rating-1': 'border-l-flame-400/70',
+  'rating-2': 'border-l-gold-400/70',
+  'rating-3': 'border-l-jade-400/70',
+};
+
+const accentBg: Record<string, string> = {
+  'none': '',
+  'rating-0': '',
+  'rating-1': 'bg-flame-400/[0.02]',
+  'rating-2': 'bg-gold-400/[0.02]',
+  'rating-3': 'bg-jade-400/[0.03]',
 };
 ---
 
@@ -19,8 +36,11 @@ const variants: Record<string, string> = {
   href={href}
   class:list={[
     'rounded-xl border overflow-hidden',
+    accent !== 'none' && 'border-l-[3px]',
     variant === 'interactive' && 'group',
     variants[variant],
+    accentColors[accent],
+    accentBg[accent],
     className,
   ]}
   {...rest}
