@@ -24,37 +24,104 @@ function saveCache() {
   writeFileSync(CACHE_FILE, JSON.stringify(cache, null, 2));
 }
 
+const COUNTRY_NAMES: Record<string, string> = {
+  sg: 'Singapore',
+  my: 'Malaysia',
+  jp: 'Japan',
+  th: 'Thailand',
+  hk: 'Hong Kong',
+  cn: 'China',
+  id: 'Indonesia',
+};
+
+/**
+ * Clean Singapore-style addresses for better Nominatim matches:
+ * - Strip unit numbers like #01-28, #02-48/49
+ * - Strip "Blk" prefix
+ * - Extract postal code for standalone search
+ */
+function cleanAddress(address: string): string {
+  return address
+    .replace(/#\d{1,2}-\d{1,4}(?:\/\d+)?\s*,?\s*/g, '') // Remove unit numbers
+    .replace(/\bBlk\s*/gi, '')                             // Remove "Blk"
+    .replace(/\s{2,}/g, ' ')                               // Collapse whitespace
+    .trim()
+    .replace(/^,\s*/, '')                                   // Leading comma
+    .replace(/,\s*,/g, ',');                                // Double commas
+}
+
+/** Extract Singapore postal code (6 digits) */
+function extractPostalCode(address: string, country: string): string | null {
+  if (country.toLowerCase() !== 'sg') return null;
+  const match = address.match(/\b(\d{6})\b/);
+  return match ? match[1] : null;
+}
+
+/** Extract the main street/road name from an address */
+function extractStreetName(address: string): string | null {
+  // Match common SG road patterns: "123 Jurong East St 24" -> "Jurong East St 24"
+  const match = address.match(/\d+\s+(.+?)(?:,|\s+#|\s+Singapore|\s+SG\s)/i);
+  return match ? match[1].trim() : null;
+}
+
+async function nominatimSearch(query: string, countryCode: string): Promise<{ lat: number; lng: number } | null> {
+  try {
+    const cc = countryCode === 'hk' ? 'cn' : countryCode;
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1&countrycodes=${cc}`;
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'sg-food-guide-geocoder/1.0' },
+    });
+    const data = await res.json();
+
+    if (data.length > 0) {
+      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+    }
+  } catch (err) {
+    console.error(`  Error querying Nominatim:`, err);
+  }
+  return null;
+}
+
 async function geocode(name: string, address: string, country: string): Promise<{ lat: number; lng: number } | null> {
   const cacheKey = `${name}|${address}`;
   if (cache[cacheKey]) return cache[cacheKey];
 
-  // Build query — use address first, fall back to name + country
   const countryCode = country.toLowerCase();
-  const queries = [
-    `${name} ${address}`,
-    address,
-    `${name}, ${countryCode === 'sg' ? 'Singapore' : countryCode === 'my' ? 'Malaysia' : countryCode === 'jp' ? 'Japan' : countryCode === 'th' ? 'Thailand' : countryCode === 'hk' ? 'Hong Kong' : countryCode === 'cn' ? 'China' : countryCode === 'id' ? 'Indonesia' : ''}`,
-  ];
+  const countryName = COUNTRY_NAMES[countryCode] || '';
+  const cleaned = cleanAddress(address);
+  const postalCode = extractPostalCode(address, country);
+  const streetName = extractStreetName(address);
+
+  // Build a prioritized list of search queries
+  const queries: string[] = [];
+
+  // 1. Cleaned address (no unit numbers)
+  queries.push(cleaned);
+
+  // 2. Name + cleaned address
+  queries.push(`${name}, ${cleaned}`);
+
+  // 3. Singapore postal code search (most reliable for SG)
+  if (postalCode) {
+    queries.push(`Singapore ${postalCode}`);
+  }
+
+  // 4. Street name + country
+  if (streetName) {
+    queries.push(`${streetName}, ${countryName}`);
+  }
+
+  // 5. Just name + country (last resort)
+  queries.push(`${name}, ${countryName}`);
 
   for (const q of queries) {
-    try {
-      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1&countrycodes=${countryCode === 'hk' ? 'cn' : countryCode}`;
-      const res = await fetch(url, {
-        headers: { 'User-Agent': 'sg-food-guide-geocoder/1.0' },
-      });
-      const data = await res.json();
-
-      if (data.length > 0) {
-        const result = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
-        cache[cacheKey] = result;
-        saveCache();
-        return result;
-      }
-    } catch (err) {
-      console.error(`  Error geocoding "${q}":`, err);
+    const result = await nominatimSearch(q, countryCode);
+    if (result) {
+      cache[cacheKey] = result;
+      saveCache();
+      return result;
     }
-
-    // Rate limit
+    // Rate limit: 1 req/sec
     await new Promise((r) => setTimeout(r, 1100));
   }
 

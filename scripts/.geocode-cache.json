@@ -250,5 +250,289 @@
   "Raja Wonton Noodle|10320 Sutthisan Winitchai Rd, Huai Khwang, Bangkok 10310 Thailand": {
     "lat": 13.7895679,
     "lng": 100.577465
+  },
+  "Tsim Chai Kee Noodle|Shop B, G/F, 98 Wellington St, Central, HK": {
+    "lat": 22.3036284,
+    "lng": 114.1698146
+  },
+  "Mak Man Kee (Jordan)|G/F, 51 Parkes St, Jordan, HK": {
+    "lat": 22.3046844,
+    "lng": 114.1705344
+  },
+  "A Noodle Story|7 Maxwell Rd, #01-39, Singapore 069111": {
+    "lat": 1.2791052,
+    "lng": 103.8465162
+  },
+  "88 Hong Kong Roast Meat Specialist|308 Lavender St., Singapore 338814": {
+    "lat": 1.3153833,
+    "lng": 103.8592289
+  },
+  "Wanton Fu|380 Jln Besar, #01-13, Singapore 209000": {
+    "lat": 1.3132871,
+    "lng": 103.8604765
+  },
+  "Macpherson Minced Meat Noodle|47 Tai Thong Cres, Singapore 347867": {
+    "lat": 1.3284226,
+    "lng": 103.870019
+  },
+  "Famous Eunos Bak Chor Mee|7 Eunos Cres, Singapore 400007": {
+    "lat": 1.3206766,
+    "lng": 103.9045319
+  },
+  "Lau Lim Mee Pok Kway Teow Mee|248 Tanjong Katong Rd, Singapore 437036": {
+    "lat": 1.3063335,
+    "lng": 103.895694
+  },
+  "Seng Kee Mushroom Minced Pork Noodles|5023 Ang Mo Kio Ind Park 2, Singapore 569526": {
+    "lat": 1.3711201,
+    "lng": 103.863409
+  },
+  "24 Hrs Ming Fa Fishball Noodles|246B Upper Thomson Rd, Singapore 574370": {
+    "lat": 1.3536708,
+    "lng": 103.8343805
+  },
+  "Jin Xi Lai (Mui Siong) Minced Meat Noodle|638 Veerasamy Rd, Singapore 200638": {
+    "lat": 1.3072413,
+    "lng": 103.8553465
+  },
+  "Old Chai Chee Minced Meat Noodle|58 New Upper Changi Rd, Singapore 461058": {
+    "lat": 1.3241799,
+    "lng": 103.9411475
+  },
+  "Brothers Ramen|10 Anson Rd #01-20 International Plaza SG 079903": {
+    "lat": 1.2758872,
+    "lng": 103.8459817
+  },
+  "Hokkaido Ramen Santouka|6 Eu Tong Sen St #02-76 The CENTRAL SG 059817": {
+    "lat": 1.2888904,
+    "lng": 103.8465562
+  },
+  "Enishi|10 Anson Rd #02-85A International Plaza SG 079903": {
+    "lat": 1.2758872,
+    "lng": 103.8459817
+  },
+  "Zhi Wei Xian Zion Road Big Prawn Noodle|70 Zion Rd, #01-04, Singapore 247792": {
+    "lat": 1.2924449,
+    "lng": 103.8312121
+  },
+  "545 Whampoa Prawn Noodles|10 Sinaran Dr, Level 4, Singapore 307506": {
+    "lat": 1.3208159,
+    "lng": 103.8441375
+  },
+  "Joo Siah Bak Koot Teh|349 Jurong East Ave 1, #01-1215, Singapore 600349": {
+    "lat": 1.3444073,
+    "lng": 103.7314345
+  },
+  "Bak Gong Bak Kut Teh Restaurant 伯公肉骨茶|39 Persiaran Medan Bercham 3, Taman Bercham Baru, 31400 Ipoh, Perak, Malaysia": {
+    "lat": 4.6382543,
+    "lng": 101.1339327
+  },
+  "Tuan Yuan Pork Ribs Soup|127 Kim Tian Rd, #01-01, Singapore 160127": {
+    "lat": 1.2818195,
+    "lng": 103.8293286
+  },
+  "Hong Ji Herbs Bak Kut Teh|19 Marsiling Ln, #01-329, Singapore 730019": {
+    "lat": 1.4432798,
+    "lng": 103.7772964
+  },
+  "NG AH SIO Bak Kut Teh (Rangoon Road)|208 Rangoon Rd, Hong Building, Singapore 218453": {
+    "lat": 1.2899175,
+    "lng": 103.8519072
+  },
+  "Guang Fa|22A Havelock Rd #01-08 SG 161022": {
+    "lat": 1.2880146,
+    "lng": 103.8296217
+  },
+  "Depot Road Zhen Shan Mei|120 Bukit Merah Lane 1 #01-75 Alexandra Village Food Centre SG 151120": {
+    "lat": 1.2863771,
+    "lng": 103.80453
+  },
+  "Janggut Laksa|50 E Coast Rd #01-64 Roxy Square SG 428769": {
+    "lat": 1.3036846,
+    "lng": 103.9044251
+  },
+  "Lao Fu Zi Fried Kway Teow|51 Old Airport Rd #01-12 SG 390051": {
+    "lat": 1.3083107,
+    "lng": 103.8858647
+  },
+  "No. 18 Zion Road Fried Kway Teow|70 Zion Rd #01-17 Zion Riverside Food Centre SG 247792": {
+    "lat": 1.2924746,
+    "lng": 103.8312214
+  },
+  "Meng Kee Fried Kway Teow|22A Havelock Rd #01-07 SG 161022": {
+    "lat": 1.2880146,
+    "lng": 103.8296217
+  },
+  "Ang Mo Kio Fried Kway Teow|724 Ang Mo Kio Ave 6 #01-22 SG 560724": {
+    "lat": 1.3720588,
+    "lng": 103.8464825
+  },
+  "Hill Street Fried Kway Teow (Chinatown)|335 Smith St #02-32 SG 050335": {
+    "lat": 1.2824168,
+    "lng": 103.8431524
+  },
+  "Hill Street Fried Kway Teow (Bedok)|16 Bedok S Rd #01-41 SG 460016": {
+    "lat": 1.3204932,
+    "lng": 103.9354848
+  },
+  "Hai Yan Fried Kway Teow|36 Telok Blangah Rise #01-38 SG 090036": {
+    "lat": 1.2725607,
+    "lng": 103.8220906
+  },
+  "Hai Kee Teochew Cha Kuay Teow|11 Telok Blangah Cres #01-102 SG 090011": {
+    "lat": 1.2773844,
+    "lng": 103.8186815
+  },
+  "Lai Heng Fried Kuay Teow|320 Shunfu Rd #02-20 SG 570320": {
+    "lat": 1.3519977,
+    "lng": 103.836956
+  },
+  "Outram Park Fried Kway Teow Mee|531A Upper Cross St #02-17 SG 051531": {
+    "lat": 1.2854371,
+    "lng": 103.845882
+  },
+  "Guan Kee Fried Kway Teow|20 Ghim Moh Rd #01-19 SG 270020": {
+    "lat": 1.3109753,
+    "lng": 103.7882462
+  },
+  "Pak Mandor|645 Yishun Street 61 #01-320 SG 760645": {
+    "lat": 1.4183329,
+    "lng": 103.8386534
+  },
+  "Spicy Wife|7 Maxwell Rd Amoy St Food Centre 02-119 SG 069111": {
+    "lat": 1.2793848,
+    "lng": 103.8466657
+  },
+  "Nurul Delights|HDB Bukit Batok #01-208 413 Bukit Batok West Ave 4 SG 650413": {
+    "lat": 1.3637781,
+    "lng": 103.7467272
+  },
+  "Ri Ri Hong Mala Xiang Guo|32 New Market Rd, #01-1036, Singapore 050032": {
+    "lat": 1.2849001,
+    "lng": 103.8424964
+  },
+  "A Hot Hideout|369 Sembawang Rd, #01-04, Singapore 758382": {
+    "lat": 1.4269571,
+    "lng": 103.8260848
+  },
+  "Sichuan Tianfu Restaurant 天府川菜 (Clementi)|3151 Commonwealth Ave W, #01-17/18 Grantral Mall @ Clementi, Singapore 129581": {
+    "lat": 1.3143247,
+    "lng": 103.7651838
+  },
+  "Sichuan Dou Hua Restaurant|80 Raffles Place #60-01, #1 UOB Plaza, 048624": {
+    "lat": 1.2854387,
+    "lng": 103.850635
+  },
+  "Ba Shu Sichuan Restaurant|219 Bedok Central, #01-122, Singapore 460219": {
+    "lat": 1.3249188,
+    "lng": 103.9329989
+  },
+  "Fei Fei Roasted Noodle|254 Jurong East St 24, #01-28, Singapore 600254": {
+    "lat": 1.3434368,
+    "lng": 103.7377568
+  },
+  "Lai Fa Ba|Laifaba, 02-02 Bukit Batok Cres, Prestige Centre, 71, 658071": {
+    "lat": 1.3383057,
+    "lng": 103.7559701
+  },
+  "Joo Chiat Ah Huat Wanton Noodle|271 Onan Rd, #01-04, Singapore 424768": {
+    "lat": 1.3094205,
+    "lng": 103.9018327
+  },
+  "DengWenJi - East Village|430 Upper Changi Rd, #01-09 East Village, Singapore 487048": {
+    "lat": 1.3317708,
+    "lng": 103.9462823
+  },
+  "Weng Kee Original Taste Ipoh Hor Fun|2 Changi Village Rd, #01-19, Singapore 500002": {
+    "lat": 1.3890699,
+    "lng": 103.988457
+  },
+  "Dunman Road Char Siew Wanton Mee|271 Onan Rd, #02-19 Dunman Food Centre, Singapore 424768": {
+    "lat": 1.3093736,
+    "lng": 103.9018221
+  },
+  "Zhong Yu Yuan Wei Wanton Noodle|30 Seng Poh Rd, #02-30, Singapore 168898": {
+    "lat": 1.2851366,
+    "lng": 103.8321271
+  },
+  "Yong Chun Wan Ton Noodle|115 Bukit Merah View, #01-56, Singapore 151115": {
+    "lat": 1.285544,
+    "lng": 103.821922
+  },
+  "Legend Wanton Mee|1002 Jalan Bukit Merah, #01-3752, Singapore 159456": {
+    "lat": 1.2841691,
+    "lng": 103.8126153
+  },
+  "One Mouth Noodle|51 Yishun Ave 11, #01-12, Singapore 768867": {
+    "lat": 1.4249633,
+    "lng": 103.8447787
+  },
+  "Sawang Noodle|264 Si Phraya Rd, Maha Phruttharam, Bang Rak, Bangkok 10500 Thailand": {
+    "lat": 13.7300469,
+    "lng": 100.5148752
+  },
+  "Ho Hung Kee Congee & Noodle|12F Hysan Place, 500 Hennessy Rd, Causeway Bay, HK": {
+    "lat": 22.2779393,
+    "lng": 114.1769713
+  },
+  "Ji Ji Wanton Noodle Specialist|531A Upper Cross St, #02-48/49 Hong Lim Market & Food Centre, Singapore 051531": {
+    "lat": 1.2852925,
+    "lng": 103.8459233
+  },
+  "Cantonese Delights|531A Upper Cross St, #02-03, Singapore 051531": {
+    "lat": 1.2854371,
+    "lng": 103.845882
+  },
+  "Kok Kee (Foch Road)|30 Foch Rd, #01-02, Singapore 209276": {
+    "lat": 1.3123764,
+    "lng": 103.8602833
+  },
+  "58 Minced Meat Noodle|3 Yung Sheng Rd, #03-150, Singapore 618499": {
+    "lat": 1.3346189,
+    "lng": 103.7216744
+  },
+  "Fan Ji Speciality Noodle|501 W Coast Dr, Yi Jia Coffee Shop, Singapore 120501": {
+    "lat": 1.3115782,
+    "lng": 103.7585722
+  },
+  "Ru Ji Kitchen 如记小厨|44 Holland Dr, #02-28/29, Singapore 270044": {
+    "lat": 1.3081683,
+    "lng": 103.7927962
+  },
+  "Da Sheng Minced Pork Noodle|Ubi Rd 1, Blk 3014, Singapore 408702": {
+    "lat": 1.3305231,
+    "lng": 103.8940396
+  },
+  "Rong Fa (Mui Siong) Minced Meat Noodles|1002 Jalan Bukit Merah, #01-3752, Singapore 159456": {
+    "lat": 1.2841691,
+    "lng": 103.8126153
+  },
+  "No. 25 Minced Meat Noodle|Bukit Merah Central, #01-3749, Singapore 150161": {
+    "lat": 1.2841151,
+    "lng": 103.8163091
+  },
+  "Yam Mee Teochew Fishball Mee|209 Hougang St 21, #01-35, Singapore 530209": {
+    "lat": 1.3589714,
+    "lng": 103.8861271
+  },
+  "Hock Lai Seng 福来成|1 Kadayanallur St, #01-26, Singapore 069184": {
+    "lat": 1.280495,
+    "lng": 103.8447984
+  },
+  "Ah Ter Teochew Fishball Noodles|7 Maxwell Rd, #01-14, Singapore 069112": {
+    "lat": 1.2797018,
+    "lng": 103.8468847
+  },
+  "Xing Ji Rou Cuo Mian|85 Bedok North Rd, #01-07, Singapore 460085": {
+    "lat": 1.3318338,
+    "lng": 103.9388842
+  },
+  "Orchard Bak Chor Mee|150 Orchard Rd, #04-17, Singapore 238841": {
+    "lat": 1.3011495,
+    "lng": 103.8411131
+  },
+  "Hill Street Tai Hwa Pork Noodle|466 Crawford Ln, #01-12, Singapore 190466": {
+    "lat": 1.3053962,
+    "lng": 103.8621544
   }
 }
