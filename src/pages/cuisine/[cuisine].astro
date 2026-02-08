@@ -4,7 +4,7 @@ import StallCard from '../../components/StallCard.astro';
 import FilterBar from '../../components/FilterBar.astro';
 import RoutePlanner from '../../components/RoutePlanner.astro';
 import Badge from '../../components/ui/Badge.astro';
-import { stalls, getCuisines, getStallsByCuisine, getAreas, getAllTimeCategories, getRatingLabel, getCountries } from '../../data/stalls';
+import { getCuisines, getStallsByCuisine, getAreas, getCountries } from '../../data/stalls';
 
 export function getStaticPaths() {
   const cuisines = getCuisines();

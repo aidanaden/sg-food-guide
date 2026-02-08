@@ -13,6 +13,9 @@ yarn-error.log*
 pnpm-debug.log*
 
 
+# geocode cache
+scripts/.geocode-cache.json
+
 # environment variables
 .env
 .env.production
