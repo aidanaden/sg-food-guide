@@ -20,6 +20,8 @@ jobs:
 
       - run: bun install --frozen-lockfile
 
+      - run: bun run check
+
       - run: bun run build
 
       - uses: cloudflare/wrangler-action@v3

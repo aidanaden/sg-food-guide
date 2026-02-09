@@ -1,20 +1,126 @@
 ---
 /**
  * Route Planner — client-side only (Leaflet + vanilla JS).
- * Renders a toggleable panel with a Leaflet map, nearest-neighbor route optimizer,
- * transport mode selector, and Google Maps directions link.
+ * Renders a toggleable in-page planning dock with Leaflet map,
+ * nearest-neighbor route optimizer, transport mode selector,
+ * and Google Maps directions link.
  */
 ---
 
-<!-- Toggle Button -->
-<button
-  id="route-toggle"
-  type="button"
-  class="inline-flex items-center gap-2 rounded-lg border border-warm-700/50 bg-surface-raised px-4 py-2.5 text-sm font-medium text-ink hover:border-flame-500/40 hover:text-flame-400 transition-colors cursor-pointer"
+<section
+  id="route-planner"
+  class="fixed inset-x-3 bottom-3 z-40 sm:static sm:inset-auto sm:bottom-auto sm:z-auto"
 >
-  <span class="i-ph-path text-base" />
-  <span>Plan Route</span>
-</button>
+  <div class="rounded-2xl bg-surface/95 shadow-xl shadow-black/30 ring-1 ring-warm-800/60 backdrop-blur-md sm:bg-surface/70 sm:shadow-none sm:ring-0 sm:backdrop-blur-sm">
+  <div class="flex flex-wrap items-center gap-2 px-3 py-3 sm:px-4">
+    <button
+      id="route-toggle"
+      type="button"
+      aria-expanded="false"
+      class="inline-flex w-full min-h-11 items-center justify-center gap-2 rounded-lg border border-warm-700/60 bg-surface-raised px-4 py-2.5 text-sm font-medium text-ink transition-colors cursor-pointer hover:border-flame-500/40 hover:text-flame-400 sm:w-auto sm:justify-start"
+    >
+      <span class="i-ph-path text-base" />
+      <span id="route-toggle-label">Start route mode</span>
+    </button>
+    <p id="route-hint" class="text-xs text-ink-faint">Pick stalls directly from cards to build a route.</p>
+    <span id="route-loading-state" class="hidden items-center gap-1 text-xs text-ink-faint">
+      <span class="i-ph-spinner-gap animate-spin text-sm"></span>
+      Updating route...
+    </span>
+    <span
+      id="route-toolbar-count"
+      class="ml-auto inline-flex items-center rounded-full border border-flame-500/30 bg-flame-500/10 px-2.5 py-1 text-xs font-medium text-flame-300"
+    >
+      0 selected
+    </span>
+  </div>
+
+  <div id="route-panel-shell" class="hidden border-t border-warm-800/60">
+    <div
+      id="route-panel"
+      class="flex min-h-[22rem] max-h-[68vh] flex-col opacity-0 translate-y-2 transition-all duration-200 ease-out sm:min-h-[min(30rem,80vh)] sm:max-h-[80vh]"
+    >
+    <!-- Panel Header -->
+    <div class="flex flex-wrap items-center gap-2 border-b border-warm-800/60 px-3 py-3 sm:px-4 shrink-0">
+      <div class="flex items-center gap-2 mr-auto">
+        <span class="i-ph-path text-flame-400" />
+        <h3 class="font-display font-700 text-sm">Route Steps</h3>
+        <span id="route-count" class="text-ink-faint text-xs">(0 selected)</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <!-- Transport mode selector -->
+        <div id="transport-modes" class="flex items-center border border-warm-700/50 rounded-lg overflow-hidden">
+          <button type="button" data-mode="walking" class="transport-btn active min-w-11 min-h-11 sm:min-w-0 sm:min-h-0 px-2.5 py-2 text-xs flex items-center justify-center gap-1 transition-colors cursor-pointer" title="Walking">
+            <span class="i-ph-person-simple-walk text-base sm:text-sm" />
+          </button>
+          <button type="button" data-mode="bus" class="transport-btn min-w-11 min-h-11 sm:min-w-0 sm:min-h-0 px-2.5 py-2 text-xs flex items-center justify-center gap-1 border-l border-warm-700/50 transition-colors cursor-pointer" title="Bus Routes">
+            <span class="i-ph-bus text-base sm:text-sm" />
+          </button>
+          <button type="button" data-mode="train" class="transport-btn min-w-11 min-h-11 sm:min-w-0 sm:min-h-0 px-2.5 py-2 text-xs flex items-center justify-center gap-1 border-l border-warm-700/50 transition-colors cursor-pointer" title="Train Routes">
+            <span class="i-ph-train text-base sm:text-sm" />
+          </button>
+          <button type="button" data-mode="driving" class="transport-btn min-w-11 min-h-11 sm:min-w-0 sm:min-h-0 px-2.5 py-2 text-xs flex items-center justify-center gap-1 border-l border-warm-700/50 transition-colors cursor-pointer" title="Driving">
+            <span class="i-ph-car text-base sm:text-sm" />
+          </button>
+        </div>
+        <button id="route-clear" type="button" class="text-xs text-ink-faint hover:text-ink transition-colors cursor-pointer px-2 py-2 min-h-11 flex items-center">
+          Clear
+        </button>
+        <button id="route-close" type="button" class="text-ink-faint hover:text-ink transition-colors cursor-pointer p-2 min-h-11 min-w-11 flex items-center justify-center">
+          <span class="i-ph-x text-lg" />
+        </button>
+        <button
+          id="route-mobile-expand"
+          type="button"
+          aria-pressed="false"
+          title="Expand route panel"
+          class="sm:hidden text-ink-faint hover:text-ink transition-colors cursor-pointer p-2 min-h-11 min-w-11 flex items-center justify-center"
+        >
+          <span id="route-mobile-expand-icon" class="i-ph-arrows-out-line-vertical text-lg" />
+        </button>
+      </div>
+    </div>
+
+    <!-- Panel Body -->
+    <div class="flex flex-col md:flex-row flex-1 overflow-hidden">
+      <!-- Map -->
+      <div id="route-map" class="w-full md:w-2/3 h-48 sm:h-64 md:h-auto min-h-50"></div>
+
+      <!-- Route List -->
+      <div class="w-full md:w-1/3 overflow-y-auto p-4 border-t md:border-t-0 md:border-l border-warm-800/40">
+        <div id="route-empty" class="text-center py-8">
+          <span class="i-ph-map-pin-plus text-3xl text-ink-faint" />
+          <p class="text-ink-muted text-sm mt-2">Click stall cards to add them to your route</p>
+          <p class="text-ink-faint text-xs mt-1">Stalls without location data cannot be added</p>
+        </div>
+        <ol id="route-list" class="space-y-3 hidden"></ol>
+        <div id="route-summary" class="hidden mt-4 pt-3 border-t border-warm-800/40 space-y-2">
+          <div class="flex items-center justify-between text-sm">
+            <span class="text-ink-muted">Total distance</span>
+            <span id="route-distance" class="font-mono font-semibold text-flame-400">0 km</span>
+          </div>
+          <div class="flex items-center justify-between text-sm">
+            <span class="text-ink-muted">Est. travel time</span>
+            <span id="route-time" class="font-mono font-semibold text-ink">0 min</span>
+          </div>
+          <p id="route-mode-note" class="hidden text-xs text-ink-faint"></p>
+          <a
+            id="route-gmaps-link"
+            href="#"
+            target="_blank"
+            rel="noopener"
+            class="hidden mt-2 w-full inline-flex items-center justify-center gap-2 rounded-lg border border-flame-500/30 bg-flame-500/10 px-3 py-2 text-sm font-medium text-flame-400 hover:bg-flame-500/20 transition-colors"
+          >
+            <span class="i-ph-navigation-arrow text-xs" />
+            Open in Google Maps
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+  </div>
+</section>
 
 <!-- Toast notification for no-coords stalls -->
 <div
@@ -27,81 +133,9 @@
   </div>
 </div>
 
-<!-- Route Planner Panel (hidden by default) -->
-<div
-  id="route-panel"
-  class="hidden fixed inset-x-0 bottom-0 z-50 bg-surface border-t border-warm-700 shadow-2xl max-h-[50vh] sm:max-h-[70vh] flex flex-col"
->
-  <!-- Panel Header -->
-  <div class="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-warm-800/60 shrink-0">
-    <div class="flex items-center gap-2 mr-auto">
-      <span class="i-ph-path text-flame-400" />
-      <h3 class="font-display font-700 text-sm">Route Planner</h3>
-      <span id="route-count" class="text-ink-faint text-xs">(0 selected)</span>
-    </div>
-    <div class="flex items-center gap-2">
-      <!-- Transport mode selector -->
-      <div id="transport-modes" class="flex items-center border border-warm-700/50 rounded-lg overflow-hidden">
-        <button type="button" data-mode="walking" class="transport-btn active min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 px-2.5 py-2 text-xs flex items-center justify-center gap-1 transition-colors cursor-pointer" title="Walking">
-          <span class="i-ph-person-simple-walk text-base sm:text-sm" />
-        </button>
-        <button type="button" data-mode="transit" class="transport-btn min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 px-2.5 py-2 text-xs flex items-center justify-center gap-1 border-l border-warm-700/50 transition-colors cursor-pointer" title="Public Transit">
-          <span class="i-ph-train text-base sm:text-sm" />
-        </button>
-        <button type="button" data-mode="driving" class="transport-btn min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 px-2.5 py-2 text-xs flex items-center justify-center gap-1 border-l border-warm-700/50 transition-colors cursor-pointer" title="Driving">
-          <span class="i-ph-car text-base sm:text-sm" />
-        </button>
-      </div>
-      <button id="route-clear" type="button" class="text-xs text-ink-faint hover:text-ink transition-colors cursor-pointer px-2 py-2 min-h-[44px] flex items-center">
-        Clear
-      </button>
-      <button id="route-close" type="button" class="text-ink-faint hover:text-ink transition-colors cursor-pointer p-2 min-h-[44px] min-w-[44px] flex items-center justify-center">
-        <span class="i-ph-x text-lg" />
-      </button>
-    </div>
-  </div>
-
-  <!-- Panel Body -->
-  <div class="flex flex-col md:flex-row flex-1 overflow-hidden">
-    <!-- Map -->
-    <div id="route-map" class="w-full md:w-2/3 h-48 sm:h-64 md:h-auto min-h-[200px]"></div>
-
-    <!-- Route List -->
-    <div class="w-full md:w-1/3 overflow-y-auto p-4 border-t md:border-t-0 md:border-l border-warm-800/40">
-      <div id="route-empty" class="text-center py-8">
-        <span class="i-ph-map-pin-plus text-3xl text-ink-faint" />
-        <p class="text-ink-muted text-sm mt-2">Click stall cards to add them to your route</p>
-        <p class="text-ink-faint text-xs mt-1">Stalls without location data cannot be added</p>
-      </div>
-      <ol id="route-list" class="space-y-3 hidden"></ol>
-      <div id="route-summary" class="hidden mt-4 pt-3 border-t border-warm-800/40 space-y-2">
-        <div class="flex items-center justify-between text-sm">
-          <span class="text-ink-muted">Total distance</span>
-          <span id="route-distance" class="font-mono font-semibold text-flame-400">0 km</span>
-        </div>
-        <div class="flex items-center justify-between text-sm">
-          <span class="text-ink-muted">Est. travel time</span>
-          <span id="route-time" class="font-mono font-semibold text-ink">0 min</span>
-        </div>
-        <a
-          id="route-gmaps-link"
-          href="#"
-          target="_blank"
-          rel="noopener"
-          class="hidden mt-2 w-full inline-flex items-center justify-center gap-2 rounded-lg border border-flame-500/30 bg-flame-500/10 px-3 py-2 text-sm font-medium text-flame-400 hover:bg-flame-500/20 transition-colors"
-        >
-          <span class="i-ph-navigation-arrow text-xs" />
-          Open in Google Maps
-        </a>
-      </div>
-    </div>
-  </div>
-</div>
-
 <!-- Leaflet CSS — prefetch for when panel opens -->
 <link rel="prefetch" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" as="style" />
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" /></noscript>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
 <style>
   .transport-btn {
@@ -131,20 +165,98 @@
     price: string;
   }
 
-  type TransportMode = 'walking' | 'transit' | 'driving';
+  interface RouteLeg {
+    from: RouteStop;
+    to: RouteStop;
+    distanceKm: number;
+    durationMin: number;
+    steps: string[];
+    latlngs: [number, number][];
+    transit?: TransitMeta;
+    exact?: boolean;
+    warnings?: string[];
+  }
+
+  interface RoutedLegData {
+    distanceKm: number;
+    durationMin: number;
+    steps: string[];
+    latlngs: [number, number][];
+  }
+
+  interface TransitLive {
+    etaMinutes?: number;
+    sampledAtIso?: string;
+    confidence?: string;
+  }
+
+  interface TransitMeta {
+    kind: 'bus' | 'train';
+    serviceOrLine?: string;
+    boardStopOrStation?: string;
+    alightStopOrStation?: string;
+    numStops?: number;
+    headsignOrDirection?: string;
+    live?: TransitLive;
+  }
+
+  interface TransitApiLeg {
+    distanceKm?: number;
+    durationMin?: number;
+    steps?: string[];
+    latlngs?: [number, number][];
+    transit?: TransitMeta;
+    exact?: boolean;
+    warnings?: string[];
+  }
+
+  interface TransitApiResponse {
+    status?: 'ok' | 'partial' | 'fallback';
+    provider?: string;
+    legs?: TransitApiLeg[];
+    warnings?: string[];
+  }
+
+  interface BuiltRouteData {
+    polyline: [number, number][];
+    legs: RouteLeg[];
+    source: 'transit-api' | 'fallback';
+    status: 'ok' | 'partial' | 'fallback';
+    warnings: string[];
+  }
+
+  type TransportMode = 'walking' | 'bus' | 'train' | 'driving';
 
   // Average speeds in km/h for time estimation
   const SPEEDS: Record<TransportMode, number> = {
     walking: 5,
-    transit: 25,
+    bus: 20,
+    train: 32,
     driving: 35,
   };
 
-  // Google Maps direction mode names
-  const GMAPS_MODE: Record<TransportMode, string> = {
+  // Google Maps directions mode options
+  const GMAPS_OPTIONS: Record<TransportMode, { travelMode: 'walking' | 'transit' | 'driving'; transitMode?: 'bus' | 'rail' }> = {
+    walking: { travelMode: 'walking' },
+    bus: { travelMode: 'transit', transitMode: 'bus' },
+    train: { travelMode: 'transit', transitMode: 'rail' },
+    driving: { travelMode: 'driving' },
+  };
+
+  // Mode-specific map path configuration.
+  // Transit paths are approximated on the in-app map; Google Maps link remains authoritative.
+  const ROUTING_PROFILE: Record<TransportMode, 'direct' | 'walking' | 'driving'> = {
     walking: 'walking',
-    transit: 'transit',
+    bus: 'driving',
+    train: 'direct',
     driving: 'driving',
+  };
+
+  const ROUTE_LINE_STYLE: Record<TransportMode, L.PolylineOptions> = {
+    walking: { color: '#4ade80', weight: 3, opacity: 0.8, dashArray: '6 6' },
+    bus: { color: '#f59e0b', weight: 3, opacity: 0.8, dashArray: '12 6' },
+    train: { color: '#60a5fa', weight: 3, opacity: 0.85, dashArray: '2 8' },
+    driving: { color: '#ff6b35', weight: 3, opacity: 0.85 },
   };
 
   let selectedStops: RouteStop[] = [];
@@ -152,20 +264,34 @@
   let map: L.Map | null = null;
   let markers: L.Marker[] = [];
   let routeLine: L.Polyline | null = null;
+  let routeRenderToken = 0;
+  const routeLegCache = new Map<string, Promise<RoutedLegData | null>>();
   let isOpen = false;
+  let isRouteLoading = false;
+  let openingFrame: number | null = null;
+  let mobileExpanded = false;
   let toastTimeout: ReturnType<typeof setTimeout> | null = null;
 
   // ─── Elements ──────────────────────────────────────────
+  const plannerRoot = document.getElementById('route-planner')!;
   const toggle = document.getElementById('route-toggle')!;
+  const toggleLabel = document.getElementById('route-toggle-label')!;
+  const routeHint = document.getElementById('route-hint')!;
+  const loadingStateEl = document.getElementById('route-loading-state')!;
+  const toolbarCountEl = document.getElementById('route-toolbar-count')!;
+  const panelShell = document.getElementById('route-panel-shell')!;
   const panel = document.getElementById('route-panel')!;
-  const closeBtn = document.getElementById('route-close')!;
-  const clearBtn = document.getElementById('route-clear')!;
+  const clearBtn = document.getElementById('route-clear') as HTMLButtonElement;
+  const closeBtn = document.getElementById('route-close') as HTMLButtonElement;
+  const mobileExpandBtn = document.getElementById('route-mobile-expand') as HTMLButtonElement | null;
+  const mobileExpandIcon = document.getElementById('route-mobile-expand-icon');
   const countEl = document.getElementById('route-count')!;
   const listEl = document.getElementById('route-list')!;
   const emptyEl = document.getElementById('route-empty')!;
   const summaryEl = document.getElementById('route-summary')!;
   const distanceEl = document.getElementById('route-distance')!;
   const timeEl = document.getElementById('route-time')!;
+  const modeNoteEl = document.getElementById('route-mode-note')!;
   const gmapsLink = document.getElementById('route-gmaps-link') as HTMLAnchorElement;
   const mapContainer = document.getElementById('route-map')!;
   const toast = document.getElementById('route-toast')!;
@@ -180,13 +306,61 @@
     toastTimeout = setTimeout(() => toast.classList.add('hidden'), 3000);
   }
 
+  function setRouteLoading(loading: boolean) {
+    if (isRouteLoading === loading) return;
+    isRouteLoading = loading;
+
+    loadingStateEl.classList.toggle('hidden', !loading);
+    loadingStateEl.classList.toggle('inline-flex', loading);
+    plannerRoot.setAttribute('aria-busy', loading ? 'true' : 'false');
+
+    transportBtns.forEach((btn) => {
+      btn.disabled = loading;
+      btn.classList.toggle('opacity-60', loading);
+      btn.classList.toggle('cursor-wait', loading);
+    });
+    clearBtn.disabled = loading;
+    clearBtn.classList.toggle('opacity-60', loading);
+    clearBtn.classList.toggle('cursor-wait', loading);
+  }
+
+  function applyMobilePanelSizing() {
+    if (window.innerWidth >= 640) {
+      panel.style.minHeight = '';
+      panel.style.maxHeight = '';
+      mobileExpanded = false;
+      if (mobileExpandBtn) {
+        mobileExpandBtn.classList.add('hidden');
+        mobileExpandBtn.setAttribute('aria-pressed', 'false');
+        mobileExpandBtn.title = 'Expand route panel';
+      }
+      if (mobileExpandIcon) {
+        mobileExpandIcon.classList.remove('i-ph-arrows-in-line-vertical');
+        mobileExpandIcon.classList.add('i-ph-arrows-out-line-vertical');
+      }
+      return;
+    }
+
+    panel.style.minHeight = mobileExpanded ? '30rem' : '22rem';
+    panel.style.maxHeight = mobileExpanded ? '88vh' : '68vh';
+    if (mobileExpandBtn) {
+      mobileExpandBtn.classList.remove('hidden');
+      mobileExpandBtn.setAttribute('aria-pressed', mobileExpanded ? 'true' : 'false');
+      mobileExpandBtn.title = mobileExpanded ? 'Collapse route panel' : 'Expand route panel';
+    }
+    if (mobileExpandIcon) {
+      mobileExpandIcon.classList.remove('i-ph-arrows-out-line-vertical', 'i-ph-arrows-in-line-vertical');
+      mobileExpandIcon.classList.add(mobileExpanded ? 'i-ph-arrows-in-line-vertical' : 'i-ph-arrows-out-line-vertical');
+    }
+  }
+
   // ─── Transport mode ────────────────────────────────────
   transportBtns.forEach((btn) => {
     btn.addEventListener('click', () => {
       transportMode = btn.dataset.mode as TransportMode;
       transportBtns.forEach((b) => b.classList.remove('active'));
       btn.classList.add('active');
-      renderRoute();
+      void renderRoute();
     });
   });
 
@@ -197,11 +371,11 @@
       iconSize: [28, 28],
       iconAnchor: [14, 28],
       html: `<div style="
-        width:28px;height:28px;border-radius:50% 50% 50% 0;
+        width:1.75rem;height:1.75rem;border-radius:50% 50% 50% 0;
         background:${color};transform:rotate(-45deg);
         display:flex;align-items:center;justify-content:center;
-        border:2px solid rgba(0,0,0,0.3);box-shadow:0 2px 6px rgba(0,0,0,0.3);
-      "><span style="transform:rotate(45deg);font-size:11px;font-weight:700;color:white;">${label}</span></div>`,
+        border:0.125rem solid rgba(0,0,0,0.3);box-shadow:0 0.125rem 0.375rem rgba(0,0,0,0.3);
+      "><span style="transform:rotate(45deg);font-size:0.6875rem;font-weight:700;color:white;">${label}</span></div>`,
     });
   }
 
@@ -216,13 +390,227 @@
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   }
 
-  // ─── Time estimation ──────────────────────────────────
-  function estimateTime(distKm: number): string {
-    const mins = Math.round((distKm / SPEEDS[transportMode]) * 60);
+  function escapeHtml(text: string): string {
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function hasValidCoordinates(lat: number, lng: number): boolean {
+    return Number.isFinite(lat) && Number.isFinite(lng) && !(lat === 0 && lng === 0);
+  }
+
+  function getCardSlug(card: HTMLElement): string {
+    return card.dataset.slug || card.closest('a')?.getAttribute('href')?.split('/').pop() || '';
+  }
+
+  function syncCardHighlights() {
+    const selected = new Set(selectedStops.map((s) => s.slug));
+    document.querySelectorAll<HTMLElement>('.stall-card').forEach((card) => {
+      const isSelected = selected.has(getCardSlug(card));
+      card.classList.toggle('ring-2', isSelected);
+      card.classList.toggle('ring-flame-400/50', isSelected);
+    });
+  }
+
+  function modeLabel(mode: TransportMode): string {
+    if (mode === 'walking') return 'Walk';
+    if (mode === 'driving') return 'Drive';
+    if (mode === 'bus') return 'Bus';
+    return 'Train';
+  }
+
+  function formatDistance(distanceKm: number): string {
+    return distanceKm >= 1 ? `${distanceKm.toFixed(1)} km` : `${Math.max(50, Math.round(distanceKm * 1000 / 10) * 10)} m`;
+  }
+
+  function formatDuration(mins: number): string {
     if (mins < 60) return `${mins} min`;
     const hrs = Math.floor(mins / 60);
     const rem = mins % 60;
     return rem > 0 ? `${hrs}h ${rem}m` : `${hrs}h`;
+  }
+
+  function buildTransitSummaryStep(transit: TransitMeta | undefined): string {
+    if (!transit?.serviceOrLine || !transit?.boardStopOrStation || !transit?.alightStopOrStation) return '';
+
+    const stops = Number.isFinite(Number(transit.numStops))
+      ? ` (${Math.max(1, Math.round(Number(transit.numStops)))} stops)`
+      : '';
+    const direction = transit.headsignOrDirection ? ` toward ${transit.headsignOrDirection}` : '';
+
+    if (transit.kind === 'bus') {
+      return `Take bus ${transit.serviceOrLine}${direction} from ${transit.boardStopOrStation} to ${transit.alightStopOrStation}${stops}.`;
+    }
+
+    return `Take ${transit.serviceOrLine}${direction} from ${transit.boardStopOrStation} to ${transit.alightStopOrStation}${stops}.`;
+  }
+
+  function transitStepDetails(
+    mode: 'bus' | 'train',
+    from: RouteStop,
+    to: RouteStop,
+    distanceKm: number,
+    durationMin: number,
+    transit?: TransitMeta
+  ): string[] {
+    if (mode === 'bus') {
+      const summary = buildTransitSummaryStep(transit);
+      const board = transit?.boardStopOrStation;
+      const alight = transit?.alightStopOrStation;
+      return [
+        `Walk to ${board ? board : 'a nearby bus stop'} from ${from.name}.`,
+        summary || `Ride a bus toward ${to.name} (~${formatDuration(durationMin)}).`,
+        `Transfer buses at major interchanges if needed.`,
+        `Alight at ${alight ? alight : 'your stop'} and walk to ${to.name} (${formatDistance(distanceKm)} leg).`,
+      ];
+    }
+
+    const summary = buildTransitSummaryStep(transit);
+    const board = transit?.boardStopOrStation;
+    const alight = transit?.alightStopOrStation;
+    return [
+      `Walk to ${board ? board : 'the nearest MRT/LRT station'} from ${from.name}.`,
+      summary || `Take MRT/LRT toward ${to.name} (~${formatDuration(durationMin)}).`,
+      'Transfer lines at interchange stations if required.',
+      `Exit at ${alight ? alight : 'your station'} and walk to ${to.name} (${formatDistance(distanceKm)} leg).`,
+    ];
+  }
+
+  function dedupeWarnings(values: string[]): string[] {
+    const seen = new Set<string>();
+    return values
+      .map((v) => String(v || '').trim())
+      .filter((v) => {
+        if (!v || seen.has(v)) return false;
+        seen.add(v);
+        return true;
+      });
+  }
+
+  function normalizeLatLngs(value: unknown, from: RouteStop, to: RouteStop): [number, number][] {
+    if (!Array.isArray(value)) {
+      return [[from.lat, from.lng], [to.lat, to.lng]];
+    }
+
+    const out: [number, number][] = [];
+    value.forEach((pair) => {
+      if (!Array.isArray(pair) || pair.length < 2) return;
+      const lat = Number(pair[0]);
+      const lng = Number(pair[1]);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+      out.push([lat, lng]);
+    });
+
+    if (out.length < 2) {
+      return [[from.lat, from.lng], [to.lat, to.lng]];
+    }
+
+    return out;
+  }
+
+  function getTransitMetaMarkup(transit: TransitMeta | undefined): string {
+    if (!transit) return '';
+
+    const items: string[] = [];
+    if (transit.serviceOrLine) {
+      items.push(`${transit.kind === 'bus' ? 'Bus' : 'Line'} ${escapeHtml(transit.serviceOrLine)}`);
+    }
+    if (transit.boardStopOrStation && transit.alightStopOrStation) {
+      items.push(
+        `${escapeHtml(transit.boardStopOrStation)} -> ${escapeHtml(transit.alightStopOrStation)}`
+      );
+    }
+    if (transit.headsignOrDirection) {
+      items.push(`Toward ${escapeHtml(transit.headsignOrDirection)}`);
+    }
+    if (Number.isFinite(Number(transit.numStops))) {
+      items.push(`${Math.max(1, Math.round(Number(transit.numStops)))} stops`);
+    }
+    if (!items.length) return '';
+
+    return `<p class="mt-1 text-xs text-ink-faint/90">${items.join(' · ')}</p>`;
+  }
+
+  function getTransitLiveMarkup(transit: TransitMeta | undefined): string {
+    const eta = transit?.live?.etaMinutes;
+    if (!Number.isFinite(Number(eta))) return '';
+    const confidence = transit?.live?.confidence ? ` (${escapeHtml(transit.live.confidence)})` : '';
+    return `<p class="mt-1 text-xs text-jade-400">Live ETA: ${Math.max(0, Math.round(Number(eta)))} min${confidence}</p>`;
+  }
+
+  async function fetchTransitRouteFromApi(stops: RouteStop[], mode: 'bus' | 'train'): Promise<BuiltRouteData | null> {
+    const stopsParam = stops.map((stop) => `${stop.lat.toFixed(6)},${stop.lng.toFixed(6)}`).join('|');
+    const url = `/api/transit/plan?mode=${mode}&stops=${encodeURIComponent(stopsParam)}`;
+
+    try {
+      const res = await fetch(url, { headers: { accept: 'application/json' } });
+      if (!res.ok) return null;
+
+      const data = (await res.json()) as TransitApiResponse;
+      if (!Array.isArray(data.legs) || data.legs.length !== Math.max(0, stops.length - 1)) {
+        return null;
+      }
+
+      const legs: RouteLeg[] = data.legs.map((rawLeg, i) => {
+        const from = stops[i];
+        const to = stops[i + 1];
+        const fallbackDist = haversine(from.lat, from.lng, to.lat, to.lng);
+        const rawDist = Number(rawLeg.distanceKm);
+        const distanceKm = Number.isFinite(rawDist) && rawDist > 0 ? rawDist : Math.max(0.1, fallbackDist);
+        const rawMins = Number(rawLeg.durationMin);
+        const durationMin = Number.isFinite(rawMins) && rawMins > 0
+          ? Math.round(rawMins)
+          : estimateMinutes(distanceKm, mode);
+        const steps = Array.isArray(rawLeg.steps)
+          ? rawLeg.steps.map((step) => String(step || '').trim()).filter(Boolean).slice(0, 8)
+          : transitStepDetails(mode, from, to, distanceKm, durationMin, rawLeg.transit);
+
+        return {
+          from,
+          to,
+          distanceKm,
+          durationMin,
+          steps,
+          latlngs: normalizeLatLngs(rawLeg.latlngs, from, to),
+          transit: rawLeg.transit,
+          exact: rawLeg.exact === true,
+          warnings: Array.isArray(rawLeg.warnings)
+            ? rawLeg.warnings.map((warning) => String(warning || '').trim()).filter(Boolean)
+            : [],
+        };
+      });
+
+      const polyline: [number, number][] = [];
+      legs.forEach((leg, index) => {
+        const segment = [...leg.latlngs];
+        if (index > 0 && segment.length > 0) segment.shift();
+        polyline.push(...segment);
+      });
+
+      return {
+        polyline: polyline.length > 0 ? polyline : stops.map((s) => [s.lat, s.lng]),
+        legs,
+        source: 'transit-api',
+        status: data.status || 'partial',
+        warnings: dedupeWarnings([
+          ...(Array.isArray(data.warnings)
+            ? data.warnings.map((warning) => String(warning || '').trim()).filter(Boolean)
+            : []),
+          ...legs.flatMap((leg) => leg.warnings || []),
+        ]),
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  // ─── Time estimation ──────────────────────────────────
+  function estimateMinutes(distKm: number, mode: TransportMode): number {
+    return Math.max(1, Math.round((distKm / SPEEDS[mode]) * 60));
   }
 
   // ─── Google Maps directions URL ────────────────────────
@@ -231,27 +619,91 @@
     const origin = `${stops[0].lat},${stops[0].lng}`;
     const dest = `${stops[stops.length - 1].lat},${stops[stops.length - 1].lng}`;
     const waypoints = stops.slice(1, -1).map((s) => `${s.lat},${s.lng}`).join('|');
-    let url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}&travelmode=${GMAPS_MODE[transportMode]}`;
+    const routeMode = GMAPS_OPTIONS[transportMode];
+    let url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}&travelmode=${routeMode.travelMode}`;
+    if (routeMode.transitMode) url += `&transit_mode=${routeMode.transitMode}`;
     if (waypoints) url += `&waypoints=${waypoints}`;
     return url;
   }
 
   // ─── Nearest neighbor route optimization ───────────────
-  function optimizeRoute(stops: RouteStop[]): RouteStop[] {
-    if (stops.length <= 2) return [...stops];
+  function routeDistance(route: RouteStop[]): number {
+    let total = 0;
+    for (let i = 1; i < route.length; i++) {
+      total += haversine(route[i - 1].lat, route[i - 1].lng, route[i].lat, route[i].lng);
+    }
+    return total;
+  }
+
+  function nearestNeighborFromStart(stops: RouteStop[], startIndex: number): RouteStop[] {
     const remaining = [...stops];
-    const route: RouteStop[] = [remaining.shift()!];
+    const [start] = remaining.splice(startIndex, 1);
+    const route: RouteStop[] = [start];
+
     while (remaining.length > 0) {
       const last = route[route.length - 1];
       let nearest = 0;
       let minDist = Infinity;
       for (let i = 0; i < remaining.length; i++) {
         const d = haversine(last.lat, last.lng, remaining[i].lat, remaining[i].lng);
-        if (d < minDist) { minDist = d; nearest = i; }
+        if (d < minDist) {
+          minDist = d;
+          nearest = i;
+        }
       }
       route.push(remaining.splice(nearest, 1)[0]);
     }
+
     return route;
+  }
+
+  function twoOptSwap(route: RouteStop[], i: number, k: number): RouteStop[] {
+    return [...route.slice(0, i), ...route.slice(i, k + 1).reverse(), ...route.slice(k + 1)];
+  }
+
+  function twoOptImprove(route: RouteStop[]): RouteStop[] {
+    const TWO_OPT_LIMIT = 18;
+    if (route.length < 4 || route.length > TWO_OPT_LIMIT) return route;
+
+    let improved = true;
+    let bestRoute = [...route];
+    let bestDistance = routeDistance(bestRoute);
+
+    while (improved) {
+      improved = false;
+      for (let i = 1; i < bestRoute.length - 2; i++) {
+        for (let k = i + 1; k < bestRoute.length - 1; k++) {
+          const candidate = twoOptSwap(bestRoute, i, k);
+          const candidateDistance = routeDistance(candidate);
+          if (candidateDistance + 0.001 < bestDistance) {
+            bestRoute = candidate;
+            bestDistance = candidateDistance;
+            improved = true;
+          }
+        }
+      }
+    }
+
+    return bestRoute;
+  }
+
+  function optimizeRoute(stops: RouteStop[]): RouteStop[] {
+    if (stops.length <= 2) return [...stops];
+
+    let bestRoute = nearestNeighborFromStart(stops, 0);
+    bestRoute = twoOptImprove(bestRoute);
+    let bestDistance = routeDistance(bestRoute);
+
+    for (let startIndex = 1; startIndex < stops.length; startIndex++) {
+      const candidateRoute = twoOptImprove(nearestNeighborFromStart(stops, startIndex));
+      const candidateDistance = routeDistance(candidateRoute);
+      if (candidateDistance + 0.001 < bestDistance) {
+        bestRoute = candidateRoute;
+        bestDistance = candidateDistance;
+      }
+    }
+
+    return bestRoute;
   }
 
   function totalDistance(stops: RouteStop[]): number {
@@ -260,6 +712,157 @@
       d += haversine(stops[i - 1].lat, stops[i - 1].lng, stops[i].lat, stops[i].lng);
     }
     return d;
+  }
+
+  function toTitleCase(text: string): string {
+    return text.replace(/\b\w/g, (match) => match.toUpperCase());
+  }
+
+  function formatOsrmStep(step: { distance?: number; name?: string; maneuver?: { type?: string; modifier?: string } }): string {
+    const type = step.maneuver?.type ? toTitleCase(step.maneuver.type.replaceAll('_', ' ')) : 'Continue';
+    const modifier = step.maneuver?.modifier ? ` ${step.maneuver.modifier}` : '';
+    const road = step.name ? ` on ${step.name}` : '';
+    const distanceKm = (step.distance || 0) / 1000;
+    return `${type}${modifier}${road} (${formatDistance(distanceKm)})`;
+  }
+
+  async function fetchLegRoute(
+    from: RouteStop,
+    to: RouteStop,
+    profile: 'walking' | 'driving'
+  ): Promise<RoutedLegData | null> {
+    const cacheKey = `${profile}:${from.lat},${from.lng}->${to.lat},${to.lng}`;
+    const cached = routeLegCache.get(cacheKey);
+    if (cached) return cached;
+
+    const request = (async (): Promise<RoutedLegData | null> => {
+      const fromCoord = `${from.lng},${from.lat}`;
+      const toCoord = `${to.lng},${to.lat}`;
+      const url = `https://router.project-osrm.org/route/v1/${profile}/${fromCoord};${toCoord}?overview=full&steps=true&geometries=geojson`;
+
+      try {
+        const res = await fetch(url);
+        if (!res.ok) return null;
+        const data = await res.json();
+        const route = data?.routes?.[0];
+        const coords: [number, number][] | undefined = route?.geometry?.coordinates;
+        if (!coords || coords.length === 0) return null;
+
+        const rawSteps: Array<{ distance?: number; name?: string; maneuver?: { type?: string; modifier?: string } }> =
+          route?.legs?.[0]?.steps || [];
+        const steps = rawSteps.map((step) => formatOsrmStep(step)).filter(Boolean).slice(0, 6);
+
+        return {
+          distanceKm: Math.max(0.1, (route?.distance || 0) / 1000),
+          durationMin: Math.max(1, Math.round((route?.duration || 0) / 60)),
+          steps,
+          // OSRM coordinates are [lng, lat], Leaflet expects [lat, lng].
+          latlngs: coords.map(([lng, lat]) => [lat, lng]),
+        };
+      } catch {
+        return null;
+      }
+    })();
+
+    routeLegCache.set(cacheKey, request);
+    return request;
+  }
+
+  async function buildModeRoute(stops: RouteStop[], mode: TransportMode): Promise<BuiltRouteData> {
+    if (stops.length < 2) {
+      return {
+        polyline: stops.map((s) => [s.lat, s.lng]),
+        legs: [],
+        source: 'fallback',
+        status: 'fallback',
+        warnings: [],
+      };
+    }
+
+    if (mode === 'bus' || mode === 'train') {
+      const apiRoute = await fetchTransitRouteFromApi(stops, mode);
+      if (apiRoute) {
+        return apiRoute;
+      }
+    }
+
+    const profile = ROUTING_PROFILE[mode];
+    const legs: RouteLeg[] = [];
+
+    if (profile === 'direct') {
+      for (let i = 1; i < stops.length; i++) {
+        const from = stops[i - 1];
+        const to = stops[i];
+        const dist = haversine(from.lat, from.lng, to.lat, to.lng);
+        const mins = estimateMinutes(dist, mode);
+        legs.push({
+          from,
+          to,
+          distanceKm: dist,
+          durationMin: mins,
+          steps: mode === 'bus'
+            ? transitStepDetails('bus', from, to, dist, mins)
+            : transitStepDetails('train', from, to, dist, mins),
+          latlngs: [[from.lat, from.lng], [to.lat, to.lng]],
+          exact: false,
+          warnings: ['Exact transit details unavailable. Showing estimated route.'],
+        });
+      }
+    } else {
+      const routedLegs = await Promise.all(stops.slice(1).map((to, i) => fetchLegRoute(stops[i], to, profile)));
+      routedLegs.forEach((routeData, i) => {
+        const from = stops[i];
+        const to = stops[i + 1];
+        if (!routeData) {
+          const dist = haversine(from.lat, from.lng, to.lat, to.lng);
+          const mins = estimateMinutes(dist, mode);
+          legs.push({
+            from,
+            to,
+            distanceKm: dist,
+            durationMin: mins,
+            steps: mode === 'bus'
+              ? transitStepDetails('bus', from, to, dist, mins)
+              : [`${modeLabel(mode)} from ${from.name} to ${to.name}`],
+            latlngs: [[from.lat, from.lng], [to.lat, to.lng]],
+            exact: false,
+            warnings: ['Exact transit details unavailable. Showing estimated route.'],
+          });
+          return;
+        }
+        const steps = mode === 'bus'
+          ? transitStepDetails('bus', from, to, routeData.distanceKm, routeData.durationMin)
+          : routeData.steps.length
+            ? routeData.steps
+            : [`${modeLabel(mode)} from ${from.name} to ${to.name}`];
+        legs.push({
+          from,
+          to,
+          distanceKm: routeData.distanceKm,
+          durationMin: routeData.durationMin,
+          steps,
+          latlngs: routeData.latlngs,
+          exact: false,
+          warnings: ['Exact transit details unavailable. Showing estimated route.'],
+        });
+      });
+    }
+
+    // Stitch leg coordinates and remove duplicated joint points.
+    const polyline: [number, number][] = [];
+    legs.forEach((leg, index) => {
+      const segment = [...leg.latlngs];
+      if (index > 0 && segment.length > 0) segment.shift();
+      polyline.push(...segment);
+    });
+
+    return {
+      polyline: polyline.length > 0 ? polyline : stops.map((s) => [s.lat, s.lng]),
+      legs,
+      source: 'fallback',
+      status: 'fallback',
+      warnings: dedupeWarnings(legs.flatMap((leg) => leg.warnings || [])),
+    };
   }
 
   // ─── Map init ──────────────────────────────────────────
@@ -275,7 +878,7 @@
     document.querySelectorAll<HTMLElement>('.stall-card').forEach((card) => {
       const lat = parseFloat(card.dataset.lat || '0');
       const lng = parseFloat(card.dataset.lng || '0');
-      if (lat && lng) {
+      if (hasValidCoordinates(lat, lng)) {
         L.circleMarker([lat, lng], {
           radius: 5, fillColor: '#7a6e62', fillOpacity: 0.4,
           stroke: false,
@@ -285,92 +888,173 @@
   }
 
   // ─── Render route on map ───────────────────────────────
-  function renderRoute() {
+  async function renderRoute() {
     if (!map) return;
+    const renderPass = ++routeRenderToken;
+    const modeAtRenderStart = transportMode;
+    setRouteLoading(true);
 
-    // Clear previous
-    markers.forEach((m) => map!.removeLayer(m));
-    markers = [];
-    if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
+    try {
+      // Clear previous
+      markers.forEach((m) => map!.removeLayer(m));
+      markers = [];
+      if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
 
-    const optimized = optimizeRoute(selectedStops);
-    const colors: Record<number, string> = { 1: '#ff6b35', 2: '#fbbf24', 3: '#4ade80' };
+      const optimized = optimizeRoute(selectedStops);
+      const colors: Record<number, string> = { 1: '#ff6b35', 2: '#fbbf24', 3: '#4ade80' };
 
-    // Add numbered markers
-    optimized.forEach((stop, i) => {
-      const color = colors[stop.rating] || '#7a6e62';
-      const m = L.marker([stop.lat, stop.lng], {
-        icon: makeIcon(color, String(i + 1)),
-      }).addTo(map!).bindPopup(`<b>${i + 1}. ${stop.name}</b><br>$${stop.price}`);
-      markers.push(m);
-    });
+      // Add numbered markers
+      optimized.forEach((stop, i) => {
+        const color = colors[stop.rating] || '#7a6e62';
+        const popupName = escapeHtml(stop.name);
+        const popupPrice = escapeHtml(String(stop.price));
+        const m = L.marker([stop.lat, stop.lng], {
+          icon: makeIcon(color, String(i + 1)),
+        }).addTo(map!).bindPopup(`<b>${i + 1}. ${popupName}</b><br>$${popupPrice}`);
+        markers.push(m);
+      });
 
-    // Draw route line
-    if (optimized.length >= 2) {
-      const latlngs = optimized.map((s) => [s.lat, s.lng] as [number, number]);
-      routeLine = L.polyline(latlngs, {
-        color: '#ff6b35', weight: 3, opacity: 0.7, dashArray: '8 6',
-      }).addTo(map);
+      // Draw route line
+      let legs: RouteLeg[] = [];
+      let routeSource: BuiltRouteData['source'] = 'fallback';
+      let routeStatus: BuiltRouteData['status'] = 'fallback';
+      let routeWarnings: string[] = [];
+      if (optimized.length >= 2) {
+        const routeData = await buildModeRoute(optimized, modeAtRenderStart);
+
+        // If mode or selected stops changed while we were fetching, discard stale draw.
+        if (renderPass !== routeRenderToken || !map) return;
+
+        legs = routeData.legs;
+        routeSource = routeData.source;
+        routeStatus = routeData.status;
+        routeWarnings = routeData.warnings;
+        routeLine = L.polyline(routeData.polyline, ROUTE_LINE_STYLE[modeAtRenderStart]).addTo(map);
+      }
+
+      // Fit bounds
+      if (optimized.length > 0) {
+        const group = L.featureGroup(markers);
+        map.fitBounds(group.getBounds().pad(0.15));
+      }
+
+      // Update list
+      renderList(optimized, legs, modeAtRenderStart, routeSource, routeStatus, routeWarnings);
+    } finally {
+      if (renderPass === routeRenderToken) {
+        setRouteLoading(false);
+      }
     }
-
-    // Fit bounds
-    if (optimized.length > 0) {
-      const group = L.featureGroup(markers);
-      map.fitBounds(group.getBounds().pad(0.15));
-    }
-
-    // Update list
-    renderList(optimized);
   }
 
-  function renderList(optimized: RouteStop[]) {
+  function renderList(
+    optimized: RouteStop[],
+    legs: RouteLeg[],
+    mode: TransportMode,
+    routeSource: BuiltRouteData['source'],
+    routeStatus: BuiltRouteData['status'],
+    routeWarnings: string[]
+  ) {
     const hasStops = optimized.length > 0;
     emptyEl.classList.toggle('hidden', hasStops);
     listEl.classList.toggle('hidden', !hasStops);
     summaryEl.classList.toggle('hidden', !hasStops);
     countEl.textContent = `(${optimized.length} selected)`;
+    toolbarCountEl.textContent = `${optimized.length} selected`;
 
     if (!hasStops) {
       gmapsLink.classList.add('hidden');
+      modeNoteEl.classList.add('hidden');
       return;
     }
 
-    const modeIcon = transportMode === 'walking' ? '🚶' : transportMode === 'transit' ? '🚇' : '🚗';
-
     listEl.innerHTML = optimized.map((stop, i) => {
+      const safeName = escapeHtml(stop.name);
+      const safePrice = escapeHtml(String(stop.price));
       if (i === 0) {
         return `
           <li class="flex items-start gap-3">
             <span class="shrink-0 w-6 h-6 rounded-full bg-flame-500/20 text-flame-400 text-xs font-bold flex items-center justify-center mt-0.5">1</span>
             <div class="min-w-0 flex-1">
-              <p class="text-sm font-medium text-ink truncate">${stop.name}</p>
-              <p class="text-xs text-ink-faint">$${stop.price}</p>
+              <p class="text-sm font-medium text-ink truncate">${safeName}</p>
+              <p class="text-xs text-ink-faint">$${safePrice}</p>
             </div>
           </li>
         `;
       }
-      const dist = haversine(optimized[i-1].lat, optimized[i-1].lng, stop.lat, stop.lng);
-      const time = estimateTime(dist);
+      const leg = legs[i - 1];
+      const fromName = escapeHtml(optimized[i - 1]?.name || '');
+      const dist = leg?.distanceKm ?? haversine(optimized[i - 1].lat, optimized[i - 1].lng, stop.lat, stop.lng);
+      const minutes = leg?.durationMin ?? estimateMinutes(dist, mode);
+      const time = formatDuration(minutes);
+      const transitMeta = getTransitMetaMarkup(leg?.transit);
+      const transitLive = getTransitLiveMarkup(leg?.transit);
+      const transitSummary = buildTransitSummaryStep(leg?.transit);
+      const serviceOrLine = String(leg?.transit?.serviceOrLine || '').trim();
+      let stepsForRender = (leg?.steps || []).slice(0, 4);
+      if (transitSummary) {
+        const alreadyHasSummary = stepsForRender.some((step) => {
+          const text = String(step || '');
+          if (!text) return false;
+          if (serviceOrLine && !text.includes(serviceOrLine)) return false;
+          return /take/i.test(text);
+        });
+        if (!alreadyHasSummary) {
+          stepsForRender = [transitSummary, ...stepsForRender].slice(0, 4);
+        }
+      }
+      const stepDetails = stepsForRender
+        .map((step) => `<li class="flex items-start gap-2 text-xs text-ink-faint/90 leading-snug"><span class="mt-1 h-1 w-1 shrink-0 rounded-full bg-warm-500/80"></span><span>${escapeHtml(step)}</span></li>`)
+        .join('');
       return `
         <li>
           <div class="flex items-center gap-2 py-1 pl-2 text-ink-faint">
-            <span class="w-px h-4 bg-warm-700 ml-2.5"></span>
-            <span class="text-[10px] font-mono">${dist.toFixed(1)} km · ${time}</span>
+            <span class="h-4 border-l border-warm-700 ml-2.5"></span>
+            <span class="text-xs font-mono">${formatDistance(dist)} · ${time}</span>
           </div>
           <div class="flex items-start gap-3">
             <span class="shrink-0 w-6 h-6 rounded-full bg-flame-500/20 text-flame-400 text-xs font-bold flex items-center justify-center mt-0.5">${i + 1}</span>
             <div class="min-w-0 flex-1">
-              <p class="text-sm font-medium text-ink truncate">${stop.name}</p>
-              <p class="text-xs text-ink-faint">$${stop.price}</p>
+              <p class="text-sm font-medium text-ink truncate">${safeName}</p>
+              <p class="text-xs text-ink-faint">$${safePrice}</p>
+              <p class="mt-1 text-xs text-ink-faint/90">${fromName} -> ${safeName}</p>
+              ${transitMeta}
+              ${transitLive}
+              ${stepDetails ? `<ul class="mt-1 space-y-1">${stepDetails}</ul>` : ''}
             </div>
           </div>
         </li>
       `;
     }).join('');
 
-    const dist = totalDistance(optimized);
-    distanceEl.textContent = `${dist.toFixed(1)} km`;
-    timeEl.textContent = estimateTime(dist);
+    const dist = legs.length > 0 ? legs.reduce((sum, leg) => sum + leg.distanceKm, 0) : totalDistance(optimized);
+    const totalMins = legs.length > 0 ? legs.reduce((sum, leg) => sum + leg.durationMin, 0) : estimateMinutes(dist, mode);
+    distanceEl.textContent = formatDistance(dist);
+    timeEl.textContent = formatDuration(totalMins);
+
+    if (mode === 'bus') {
+      if (routeSource === 'transit-api' && routeStatus === 'ok') {
+        modeNoteEl.textContent = 'Bus details sourced from OneMap + LTA. Use Google Maps for alternates.';
+      } else if (routeSource === 'transit-api' && routeStatus === 'partial') {
+        const firstWarning = routeWarnings[0] ? ` ${routeWarnings[0]}` : '';
+        modeNoteEl.textContent = `Some bus legs are estimated.${firstWarning}`;
+      } else {
+        modeNoteEl.textContent = 'Exact bus details unavailable. Showing estimated legs in-app.';
+      }
+      modeNoteEl.classList.remove('hidden');
+    } else if (mode === 'train') {
+      if (routeSource === 'transit-api' && routeStatus === 'ok') {
+        modeNoteEl.textContent = 'Train details sourced from OneMap + LTA. Use Google Maps for alternates.';
+      } else if (routeSource === 'transit-api' && routeStatus === 'partial') {
+        const firstWarning = routeWarnings[0] ? ` ${routeWarnings[0]}` : '';
+        modeNoteEl.textContent = `Some train legs are estimated.${firstWarning}`;
+      } else {
+        modeNoteEl.textContent = 'Exact train details unavailable. Showing estimated legs in-app.';
+      }
+      modeNoteEl.classList.remove('hidden');
+    } else {
+      modeNoteEl.classList.add('hidden');
+    }
 
     // Google Maps directions link
     if (optimized.length >= 2) {
@@ -383,8 +1067,10 @@
 
   // ─── Toggle card selection ─────────────────────────────
   function toggleStall(card: HTMLElement) {
-    const slug = card.closest('a')?.getAttribute('href')?.split('/').pop() || '';
-    const name = card.dataset.name || '';
+    const slug = getCardSlug(card);
+    if (!slug) return;
+
+    const name = card.querySelector('h2')?.textContent?.trim() || card.dataset.name || 'Unknown stall';
     const lat = parseFloat(card.dataset.lat || '0');
     const lng = parseFloat(card.dataset.lng || '0');
     const ratingStr = card.dataset.rating || '0';
@@ -392,45 +1078,97 @@
     const price = card.dataset.price || '0';
 
     // Show toast for stalls without valid coordinates
-    if (!lat && !lng) {
-      // Capitalize the name properly for display
-      const displayName = card.querySelector('h2')?.textContent?.trim() || name;
-      showToast(`${displayName || 'This stall'} has no location data and can't be added to the route`);
+    if (!hasValidCoordinates(lat, lng)) {
+      showToast(`${name || 'This stall'} has no location data and can't be added to the route`);
       return;
     }
 
     const idx = selectedStops.findIndex((s) => s.slug === slug);
     if (idx >= 0) {
       selectedStops.splice(idx, 1);
-      card.classList.remove('ring-2', 'ring-flame-400/50');
     } else {
       selectedStops.push({ slug, name, lat, lng, rating, price });
-      card.classList.add('ring-2', 'ring-flame-400/50');
     }
-    renderRoute();
+    syncCardHighlights();
+    void renderRoute();
   }
 
   // ─── Event handlers ────────────────────────────────────
+  function openPlanner() {
+    if (isOpen) return;
+    isOpen = true;
+    toggle.setAttribute('aria-expanded', 'true');
+    toggle.classList.add('border-flame-500/50', 'text-flame-400', 'bg-flame-500/10');
+    toggleLabel.textContent = 'Exit route mode';
+    routeHint.textContent = 'Route mode is active. Click any stall card to add or remove it.';
+
+    panelShell.classList.remove('hidden');
+    if (openingFrame) cancelAnimationFrame(openingFrame);
+    openingFrame = requestAnimationFrame(() => {
+      panel.classList.remove('opacity-0', 'translate-y-2');
+      panel.classList.add('opacity-100', 'translate-y-0');
+      openingFrame = null;
+    });
+    applyMobilePanelSizing();
+
+    initMap();
+    setTimeout(() => map?.invalidateSize(), 100);
+
+    // In route mode, intercept card clicks
+    document.querySelectorAll<HTMLElement>('.stall-card').forEach((card) => {
+      card.addEventListener('click', routeClickHandler);
+    });
+    syncCardHighlights();
+    void renderRoute();
+  }
+
+  function closePlanner() {
+    if (!isOpen) return;
+    isOpen = false;
+    mobileExpanded = false;
+    applyMobilePanelSizing();
+    routeRenderToken += 1;
+    setRouteLoading(false);
+    toggle.setAttribute('aria-expanded', 'false');
+    toggle.classList.remove('border-flame-500/50', 'text-flame-400', 'bg-flame-500/10');
+    toggleLabel.textContent = 'Start route mode';
+    routeHint.textContent = 'Pick stalls directly from cards to build a route.';
+    panel.classList.remove('opacity-100', 'translate-y-0');
+    panel.classList.add('opacity-0', 'translate-y-2');
+
+    window.setTimeout(() => {
+      if (!isOpen) panelShell.classList.add('hidden');
+    }, 200);
+
+    document.querySelectorAll<HTMLElement>('.stall-card').forEach((card) => {
+      card.removeEventListener('click', routeClickHandler);
+      card.classList.remove('ring-2', 'ring-flame-400/50');
+    });
+  }
+
   toggle.addEventListener('click', () => {
-    isOpen = !isOpen;
-    panel.classList.toggle('hidden', !isOpen);
-    toggle.classList.toggle('border-flame-500/50', isOpen);
-    toggle.classList.toggle('text-flame-400', isOpen);
+    if (isOpen) closePlanner();
+    else openPlanner();
+  });
 
-    if (isOpen) {
-      initMap();
-      setTimeout(() => map?.invalidateSize(), 100);
+  closeBtn.addEventListener('click', closePlanner);
 
-      // In route mode, intercept card clicks
-      document.querySelectorAll<HTMLElement>('.stall-card').forEach((card) => {
-        card.addEventListener('click', routeClickHandler);
-      });
-    } else {
-      document.querySelectorAll<HTMLElement>('.stall-card').forEach((card) => {
-        card.removeEventListener('click', routeClickHandler);
-        card.classList.remove('ring-2', 'ring-flame-400/50');
-      });
-    }
+  mobileExpandBtn?.addEventListener('click', () => {
+    if (!isOpen) return;
+    mobileExpanded = !mobileExpanded;
+    applyMobilePanelSizing();
+    setTimeout(() => map?.invalidateSize(), 80);
+  });
+
+  plannerRoot.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    closePlanner();
+  });
+
+  window.addEventListener('resize', () => {
+    if (!isOpen) return;
+    applyMobilePanelSizing();
+    setTimeout(() => map?.invalidateSize(), 80);
   });
 
   function routeClickHandler(e: Event) {
@@ -440,21 +1178,9 @@
     toggleStall(e.currentTarget as HTMLElement);
   }
 
-  closeBtn.addEventListener('click', () => {
-    isOpen = false;
-    panel.classList.add('hidden');
-    toggle.classList.remove('border-flame-500/50', 'text-flame-400');
-    document.querySelectorAll<HTMLElement>('.stall-card').forEach((card) => {
-      card.removeEventListener('click', routeClickHandler);
-      card.classList.remove('ring-2', 'ring-flame-400/50');
-    });
-  });
-
   clearBtn.addEventListener('click', () => {
     selectedStops = [];
-    document.querySelectorAll<HTMLElement>('.stall-card').forEach((card) => {
-      card.classList.remove('ring-2', 'ring-flame-400/50');
-    });
-    renderRoute();
+    syncCardHighlights();
+    void renderRoute();
   });
 </script>

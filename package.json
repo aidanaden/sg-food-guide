@@ -5,6 +5,10 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
+    "check:ratings": "node scripts/validate-ratings.mjs",
+    "check:astro": "astro check",
+    "check": "bun run check:ratings && bun run check:astro",
+    "ci": "bun run check && bun run build",
     "preview": "astro preview",
     "deploy": "astro build && wrangler pages deploy ./dist --project-name=sg-food-guide",
     "astro": "astro"
@@ -16,12 +20,15 @@
     "astro": "^5.17.1"
   },
   "devDependencies": {
+    "@astrojs/check": "^0.9.4",
     "@egoist/tailwindcss-icons": "^1.9.2",
     "@iconify-json/ph": "^1.2.2",
     "@tailwindcss/vite": "^4.1.18",
     "@types/leaflet": "^1.9.21",
+    "@types/node": "^24.3.0",
     "leaflet": "^1.9.4",
     "tailwindcss": "^4.1.18",
+    "typescript": "^5.9.3",
     "wrangler": "^4.63.0"
   }
 }

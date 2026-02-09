@@ -1,7 +1,7 @@
 ---
 interface Props {
   variant: 'rating-0' | 'rating-1' | 'rating-2' | 'rating-3' | 'award' | 'cuisine' | 'area' | 'time';
-  size?: 'sm' | 'md';
+  size?: 'xs' | 'sm' | 'md';
   class?: string;
 }
 
@@ -19,6 +19,7 @@ const variants: Record<string, string> = {
 };
 
 const sizes: Record<string, string> = {
+  xs: 'px-2 py-0.5 text-[11px]',
   sm: 'px-2.5 py-1 text-xs',
   md: 'px-3 py-1.5 text-sm',
 };

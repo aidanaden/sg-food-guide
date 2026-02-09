@@ -17,10 +17,10 @@ const variants: Record<string, string> = {
 
 const accentColors: Record<string, string> = {
   'none': '',
-  'rating-0': 'border-l-warm-600/40',
-  'rating-1': 'border-l-flame-400/70',
-  'rating-2': 'border-l-gold-400/70',
-  'rating-3': 'border-l-jade-400/70',
+  'rating-0': 'border-warm-700/70',
+  'rating-1': 'border-flame-400/35',
+  'rating-2': 'border-gold-400/35',
+  'rating-3': 'border-jade-400/35',
 };
 
 const accentBg: Record<string, string> = {
@@ -36,7 +36,6 @@ const accentBg: Record<string, string> = {
   href={href}
   class:list={[
     'rounded-xl border overflow-hidden',
-    accent !== 'none' && 'border-l-[3px]',
     variant === 'interactive' && 'group',
     variants[variant],
     accentColors[accent],

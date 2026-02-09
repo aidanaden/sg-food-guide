@@ -2,7 +2,18 @@
 import Layout from '../../layouts/Layout.astro';
 import Badge from '../../components/ui/Badge.astro';
 import Button from '../../components/ui/Button.astro';
-import { stalls, getRatingLabel, getRatingVariant, getGoogleMapsUrl, getYouTubeSearchUrl, getStallArea, timeCategoryLabels, timeCategoryIcons } from '../../data/stalls';
+import {
+  stalls,
+  getRatingLabel,
+  getRatingVariant,
+  getGoogleMapsUrl,
+  getYouTubeSearchUrl,
+  getYouTubeEmbedUrl,
+  normalizeYouTubeVideoId,
+  getStallArea,
+  timeCategoryLabels,
+  timeCategoryIcons,
+} from '../../data/stalls';
 
 export function getStaticPaths() {
   return stalls.map((stall) => ({
@@ -14,22 +25,24 @@ export function getStaticPaths() {
 const { stall } = Astro.props;
 const area = getStallArea(stall);
 const mapsUrl = getGoogleMapsUrl(stall.googleMapsName, stall.address);
-const youtubeUrl = stall.youtubeTitle ? getYouTubeSearchUrl(stall.youtubeTitle) : null;
-const ratingLabel = getRatingLabel(stall.ratingModerated);
-const ratingVariant = getRatingVariant(stall.ratingModerated);
+const youtubeQuery = stall.youtubeTitle || `${stall.name} review`;
+const youtubeUrl = getYouTubeSearchUrl(youtubeQuery);
+const youtubeVideoId = normalizeYouTubeVideoId(stall.youtubeVideoId);
+const youtubeEmbedUrl = youtubeVideoId ? getYouTubeEmbedUrl(youtubeVideoId) : null;
+const hasYouTubeSection = Boolean(stall.youtubeTitle || stall.youtubeVideoId);
+const normalizedRating = stall.ratingModerated === null ? null : Math.min(Math.max(stall.ratingModerated, 0), 3);
+const normalizedOriginalRating = stall.ratingOriginal === null ? null : Math.min(Math.max(stall.ratingOriginal, 0), 3);
+const ratingLabel = getRatingLabel(normalizedRating);
+const ratingVariant = getRatingVariant(normalizedRating);
 
-// Google Maps embed URL (place mode, no API key needed for basic embed)
+// Google Maps embed URL (search mode, no API key needed)
 const mapsEmbedQuery = encodeURIComponent(`${stall.googleMapsName} ${stall.address}`);
-const mapsEmbedUrl = `https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${mapsEmbedQuery}`;
-// Fallback: use the Maps search embed which doesn't need an API key
 const mapsSearchEmbedUrl = `https://maps.google.com/maps?q=${mapsEmbedQuery}&output=embed`;
 
-// YouTube search embed - we'll use client-side to find and embed the actual video
-const youtubeSearchQuery = stall.youtubeTitle ? encodeURIComponent(stall.youtubeTitle) : '';
 ---
 
-<Layout title={`${stall.name} — SG Food Guide`} description={`${stall.name} review: ${stall.dishName} at $${stall.price}.${stall.ratingModerated !== null ? ` Rated ${stall.ratingModerated}/3 (${ratingLabel}).` : ''} ${area}.`} ogType="article" canonicalPath={`/stall/${stall.slug}`}>
-  <script type="application/ld+json" set:html={JSON.stringify({
+<Layout title={`${stall.name} — SG Food Guide`} description={`${stall.name} review: ${stall.dishName} at $${stall.price}.${normalizedRating !== null ? ` Rated ${normalizedRating}/3 (${ratingLabel}).` : ''} ${area}.`} ogType="article" canonicalPath={`/stall/${stall.slug}`}>
+  <script type="application/ld+json" is:inline set:html={JSON.stringify({
     "@context": "https://schema.org",
     "@type": "Restaurant",
     "name": stall.name,
@@ -47,10 +60,10 @@ const youtubeSearchQuery = stall.youtubeTitle ? encodeURIComponent(stall.youtube
       }
     } : {}),
     "priceRange": `$${stall.price.toFixed(0)}`,
-    ...(stall.ratingModerated !== null ? {
+    ...(normalizedRating !== null ? {
       "aggregateRating": {
         "@type": "AggregateRating",
-        "ratingValue": stall.ratingModerated,
+        "ratingValue": normalizedRating,
         "bestRating": 3,
         "worstRating": 1,
         "ratingCount": 1,
@@ -94,7 +107,7 @@ const youtubeSearchQuery = stall.youtubeTitle ? encodeURIComponent(stall.youtube
           type="button"
           id="detail-fav-btn"
           data-slug={stall.slug}
-          class="shrink-0 p-2 rounded-lg border border-warm-700/50 bg-surface-raised hover:border-flame-500/40 transition-colors cursor-pointer"
+          class="shrink-0 inline-flex h-11 w-11 aspect-square p-0 items-center justify-center rounded-lg border border-warm-700/50 bg-surface-raised hover:border-flame-500/40 transition-colors cursor-pointer"
           aria-label="Toggle favorite"
         >
           <span id="detail-fav-outline" class="i-ph-heart text-xl text-ink-faint" />
@@ -105,7 +118,7 @@ const youtubeSearchQuery = stall.youtubeTitle ? encodeURIComponent(stall.youtube
       <!-- Meta row -->
       <div class="flex flex-wrap items-center gap-x-4 gap-y-2 mt-4">
         <Badge variant={ratingVariant} size="md">
-          <span class="font-mono font-bold text-lg">{stall.ratingModerated}/3</span>
+          <span class="font-mono font-bold text-lg">{normalizedRating !== null ? `${normalizedRating}/3` : '—'}</span>
           <span class="text-sm font-medium">{ratingLabel}</span>
         </Badge>
         <span class="font-mono text-2xl font-bold text-flame-400">${stall.price.toFixed(stall.price % 1 ? 1 : 0)}</span>
@@ -196,12 +209,12 @@ const youtubeSearchQuery = stall.youtubeTitle ? encodeURIComponent(stall.youtube
         )}
       </div>
 
-      {stall.ratingOriginal !== stall.ratingModerated && (
+      {normalizedOriginalRating !== normalizedRating && (
         <div class="rounded-xl border border-warm-800/50 bg-surface-card p-4 mt-4">
           <p class="text-xs text-ink-faint">
-            <span class="font-medium text-ink-muted">Rating at time of shoot:</span> {stall.ratingOriginal}/3
+            <span class="font-medium text-ink-muted">Rating at time of shoot:</span> {normalizedOriginalRating !== null ? `${normalizedOriginalRating}/3` : 'Unrated'}
             <span class="mx-2 text-ink-faint/50">&rarr;</span>
-            <span class="font-medium text-ink-muted">Moderated:</span> {stall.ratingModerated}/3
+            <span class="font-medium text-ink-muted">Moderated:</span> {normalizedRating !== null ? `${normalizedRating}/3` : 'Unrated'}
           </p>
         </div>
       )}
@@ -224,7 +237,7 @@ const youtubeSearchQuery = stall.youtubeTitle ? encodeURIComponent(stall.youtube
           ></iframe>
         </div>
         <div class="mt-2">
-          <Button variant="outline" href={mapsUrl} target="_blank" rel="noopener">
+          <Button variant="outline" href={mapsUrl} target="_blank" rel="noopener" class="w-full sm:w-auto">
             <span class="i-ph-arrow-square-out text-xs" />
             Open in Google Maps
           </Button>
@@ -232,31 +245,41 @@ const youtubeSearchQuery = stall.youtubeTitle ? encodeURIComponent(stall.youtube
       </div>
 
       <!-- YouTube Embed -->
-      {stall.youtubeTitle && (
+      {hasYouTubeSection && (
         <div class="mt-8">
           <div class="flex items-center gap-2 mb-3">
             <span class="i-ph-youtube-logo-fill text-flame-400" />
             <h3 class="font-display font-700 text-sm">Video Review</h3>
           </div>
-          <div
-            id="youtube-container"
-            class="rounded-xl overflow-hidden border border-warm-800/50 aspect-video bg-surface-card flex items-center justify-center"
-            data-query={youtubeSearchQuery}
-          >
-            <div id="youtube-loading" class="text-center">
-              <span class="i-ph-circle-notch text-2xl text-ink-faint animate-spin" />
-              <p class="text-ink-faint text-xs mt-2">Loading video...</p>
+          {youtubeEmbedUrl ? (
+            <div class="rounded-xl overflow-hidden border border-warm-800/50 aspect-video bg-surface-card">
+              <iframe
+                src={`${youtubeEmbedUrl}?rel=0`}
+                width="100%"
+                style="border:0"
+                loading="lazy"
+                title={`YouTube review for ${stall.name}`}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowfullscreen
+                class="w-full h-full"
+              ></iframe>
             </div>
-          </div>
-          <p class="text-ink-faint text-xs mt-2 italic">{stall.youtubeTitle}</p>
-          {youtubeUrl && (
-            <div class="mt-2">
-              <Button variant="outline" href={youtubeUrl} target="_blank" rel="noopener">
-                <span class="i-ph-arrow-square-out text-xs" />
-                Search on YouTube
-              </Button>
+          ) : (
+            <div class="rounded-xl overflow-hidden border border-warm-800/50 aspect-video bg-surface-card flex items-center justify-center p-6">
+              <div class="text-center max-w-sm">
+                <span class="i-ph-youtube-logo text-2xl text-ink-faint" />
+                <p class="text-ink-muted text-sm mt-2">In-app preview unavailable for this stall.</p>
+                <p class="text-ink-faint text-xs mt-1">Use the button below to open the video search.</p>
+              </div>
             </div>
           )}
+          {stall.youtubeTitle && <p class="text-ink-faint text-xs mt-2 italic">{stall.youtubeTitle}</p>}
+          <div class="mt-2">
+            <Button variant="outline" href={youtubeUrl} target="_blank" rel="noopener" class="w-full sm:w-auto">
+              <span class="i-ph-arrow-square-out text-xs" />
+              Open on YouTube
+            </Button>
+          </div>
         </div>
       )}
     </main>
@@ -290,29 +313,5 @@ const youtubeSearchQuery = stall.youtubeTitle ? encodeURIComponent(stall.youtube
       if (outline) outline.classList.toggle('hidden', newState);
       if (filled) filled.classList.toggle('hidden', !newState);
     });
-  }
-</script>
-
-<script>
-  // YouTube embed: use YouTube's search to find the video and embed it
-  const container = document.getElementById('youtube-container');
-  if (container) {
-    const query = container.dataset.query;
-    if (query) {
-      // Use YouTube's search page in an iframe-friendly way
-      // Since we can't use the Data API without a key, we'll use the search embed approach
-      const searchUrl = `https://www.youtube.com/embed?listType=search&list=${query}`;
-      const iframe = document.createElement('iframe');
-      iframe.src = searchUrl;
-      iframe.width = '100%';
-      iframe.height = '100%';
-      iframe.style.border = 'none';
-      iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
-      iframe.allowFullscreen = true;
-      iframe.title = 'YouTube video review';
-      iframe.loading = 'lazy';
-      container.innerHTML = '';
-      container.appendChild(iframe);
-    }
   }
 </script>

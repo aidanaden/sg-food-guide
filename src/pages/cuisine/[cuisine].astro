@@ -3,7 +3,6 @@ import Layout from '../../layouts/Layout.astro';
 import StallCard from '../../components/StallCard.astro';
 import FilterBar from '../../components/FilterBar.astro';
 import RoutePlanner from '../../components/RoutePlanner.astro';
-import Badge from '../../components/ui/Badge.astro';
 import { getCuisines, getStallsByCuisine, getAreas, getCountries } from '../../data/stalls';
 
 export function getStaticPaths() {
@@ -19,7 +18,7 @@ const cuisineStalls = getStallsByCuisine(cuisineId);
 const areas = getAreas(cuisineStalls);
 const timeCategories = [...new Set(cuisineStalls.flatMap((s) => s.timeCategories))];
 const countries = getCountries(cuisineStalls);
-const mustTryCount = cuisineStalls.filter((s) => s.ratingModerated === 3).length;
+const mustTryCount = cuisineStalls.filter((s) => (s.ratingModerated ?? 0) >= 3).length;
 const awardCount = cuisineStalls.filter((s) => s.awards.length > 0).length;
 ---
 
@@ -87,7 +86,7 @@ const awardCount = cuisineStalls.filter((s) => s.awards.length > 0).length;
   <main class="mx-auto max-w-6xl px-4 py-8">
     <div id="stall-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
       {cuisineStalls.map((stall) => (
-        <StallCard stall={stall} />
+        <StallCard stall={stall} minimal={true} />
       ))}
     </div>
 
@@ -95,7 +94,7 @@ const awardCount = cuisineStalls.filter((s) => s.awards.length > 0).length;
       <span class="i-ph-magnifying-glass text-5xl text-ink-faint"></span>
       <p class="text-ink-muted mt-4 text-lg font-display">No stalls match your filters</p>
       <p class="text-ink-faint text-sm mt-1">Try adjusting your search or filters</p>
-      <button id="clear-filters" class="mt-4 rounded-lg bg-flame-500/20 text-flame-400 px-4 py-3 text-sm font-medium hover:bg-flame-500/30 transition-colors cursor-pointer min-h-[44px]">
+      <button id="clear-filters" class="mt-4 rounded-lg bg-flame-500/20 text-flame-400 px-4 py-3 text-sm font-medium hover:bg-flame-500/30 transition-colors cursor-pointer min-h-11">
         Clear all filters
       </button>
     </div>

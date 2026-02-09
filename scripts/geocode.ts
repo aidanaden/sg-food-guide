@@ -6,11 +6,13 @@
  * Results are written back to the source .ts files in-place.
  */
 
-import { readFileSync, writeFileSync, readdirSync } from 'fs';
-import { join } from 'path';
+import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const DATA_DIR = join(import.meta.dir, '..', 'src', 'data');
-const CACHE_FILE = join(import.meta.dir, '.geocode-cache.json');
+const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
+const DATA_DIR = join(SCRIPT_DIR, '..', 'src', 'data');
+const CACHE_FILE = join(SCRIPT_DIR, '.geocode-cache.json');
 
 // Load cache
 let cache: Record<string, { lat: number; lng: number }> = {};
@@ -174,7 +176,9 @@ async function main() {
 
   // Process cuisine files
   const cuisineDir = join(DATA_DIR, 'cuisines');
-  const cuisineFiles = readdirSync(cuisineDir).filter(f => f.endsWith('.ts')).map(f => join(cuisineDir, f));
+  const cuisineFiles = readdirSync(cuisineDir)
+    .filter((f: string) => f.endsWith('.ts'))
+    .map((f: string) => join(cuisineDir, f));
   for (const file of cuisineFiles) {
     console.log(`\nProcessing ${file.split('/').pop()}...`);
     await processFile(file);

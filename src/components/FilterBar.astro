@@ -1,6 +1,7 @@
 ---
 import Input from './ui/Input.astro';
 import Select from './ui/Select.astro';
+import Checkbox from './ui/Checkbox.astro';
 import { type TimeCategory, timeCategoryLabels, type Country, countryLabels } from '../data/stalls';
 
 interface Props {
@@ -72,23 +73,30 @@ const sortOptions = [
       </div>
     </div>
 
-    <!-- Active filter chips -->
-    <div id="active-filters" class="hidden overflow-x-auto sm:flex-wrap gap-2 mt-2"></div>
+    <!-- Active filter summary -->
+    <div id="active-filters" class="hidden items-center gap-2 mt-2 text-xs text-ink-faint">
+      <span id="active-filters-summary" class="inline-flex items-center rounded-full bg-warm-800/60 px-2.5 py-1"></span>
+      <button
+        id="active-filters-clear"
+        type="button"
+        class="inline-flex items-center rounded-full border border-warm-700/60 px-2.5 py-1 text-ink-muted hover:text-ink transition-colors"
+      >
+        Clear
+      </button>
+    </div>
 
     <!-- Quick toggles -->
-    <div class="flex items-center gap-3 mt-2">
-      <label class="inline-flex items-center gap-1.5 text-xs text-ink-muted cursor-pointer select-none">
-        <input type="checkbox" id="filter-favorites" class="accent-flame-500 w-3.5 h-3.5" />
-        <span class="i-ph-heart-fill text-flame-400 text-xs" />
-        Favorites only
-      </label>
-      <label class="inline-flex items-center gap-1.5 text-xs text-ink-muted cursor-pointer select-none">
-        <input type="checkbox" id="filter-hide-visited" class="accent-flame-500 w-3.5 h-3.5" />
-        <span class="i-ph-eye-slash text-ink-faint text-xs" />
-        Hide visited
-      </label>
+    <div class="flex items-center flex-nowrap gap-3 mt-2 overflow-x-auto">
+      <Checkbox id="filter-favorites" class="shrink-0 whitespace-nowrap">
+        <span class="i-ph-heart-fill text-xs text-flame-400" aria-hidden="true" />
+        <span class="whitespace-nowrap">Favourites only</span>
+      </Checkbox>
+      <Checkbox id="filter-hide-visited" class="shrink-0 whitespace-nowrap">
+        <span class="i-ph-eye-slash text-xs text-ink-faint" aria-hidden="true" />
+        <span class="whitespace-nowrap">Hide visited</span>
+      </Checkbox>
       <!-- Result count -->
-      <p id="result-count" class="text-ink-faint text-xs ml-auto">
+      <p id="result-count" class="text-ink-faint text-xs ml-auto shrink-0 whitespace-nowrap">
         Showing {totalCount} stalls
       </p>
     </div>

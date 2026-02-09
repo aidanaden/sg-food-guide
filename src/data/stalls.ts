@@ -22,11 +22,14 @@ export interface Stall {
   timeCategories: TimeCategory[];
   dishName: string;
   price: number;
+  // Canonical rating contract: integer 0..3 or null.
+  // 0/1 = Skip, 2 = Worth Trying, 3 = Must Try, null = Unrated.
   ratingOriginal: number | null;
   ratingModerated: number | null;
   hits: string[];
   misses: string[];
   youtubeTitle: string;
+  youtubeVideoId?: string;
   googleMapsName: string;
   awards: string[];
   lat: number;
@@ -75,6 +78,50 @@ export function getGoogleMapsUrl(name: string, address: string): string {
 
 export function getYouTubeSearchUrl(title: string): string {
   return `https://www.youtube.com/results?search_query=${encodeURIComponent(title)}`;
+}
+
+const YOUTUBE_VIDEO_ID_RE = /^[A-Za-z0-9_-]{11}$/;
+
+export function normalizeYouTubeVideoId(value: string | null | undefined): string | null {
+  const input = value?.trim();
+  if (!input) return null;
+
+  if (YOUTUBE_VIDEO_ID_RE.test(input)) return input;
+
+  try {
+    const url = new URL(input);
+    const hostname = url.hostname.replace(/^www\./, '');
+    let candidate = '';
+
+    if (hostname === 'youtu.be') {
+      candidate = url.pathname.split('/').filter(Boolean)[0] || '';
+    } else if (
+      hostname.endsWith('youtube.com') ||
+      hostname.endsWith('youtube-nocookie.com')
+    ) {
+      candidate = url.searchParams.get('v') || '';
+      if (!candidate) {
+        const segments = url.pathname.split('/').filter(Boolean);
+        if (segments[0] === 'embed' || segments[0] === 'shorts' || segments[0] === 'live') {
+          candidate = segments[1] || '';
+        }
+      }
+    }
+
+    if (candidate && YOUTUBE_VIDEO_ID_RE.test(candidate)) {
+      return candidate;
+    }
+  } catch {
+    // Ignore invalid URL values and return null.
+  }
+
+  return null;
+}
+
+export function getYouTubeEmbedUrl(videoId: string): string {
+  const normalized = normalizeYouTubeVideoId(videoId);
+  if (!normalized) return '';
+  return `https://www.youtube-nocookie.com/embed/${normalized}`;
 }
 
 export function slugify(name: string): string {

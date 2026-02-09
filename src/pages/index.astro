@@ -3,7 +3,6 @@ import Layout from '../layouts/Layout.astro';
 import StallCard from '../components/StallCard.astro';
 import FilterBar from '../components/FilterBar.astro';
 import RoutePlanner from '../components/RoutePlanner.astro';
-import Button from '../components/ui/Button.astro';
 import Badge from '../components/ui/Badge.astro';
 import { stalls, getAreas, getAllTimeCategories, getCuisines, getCountries } from '../data/stalls';
 
@@ -11,6 +10,7 @@ const areas = getAreas();
 const timeCategories = getAllTimeCategories();
 const cuisines = getCuisines();
 const countries = getCountries();
+const mustTryCount = stalls.filter((s) => (s.ratingModerated ?? 0) >= 3).length;
 ---
 
 <Layout title="SG Food Guide — Best Hawker Food in Singapore" description={`The definitive guide to Singapore's best hawker food — ${stalls.length} stalls ranked, mapped, and reviewed across ${cuisines.length} cuisines.`} canonicalPath="/">
@@ -43,7 +43,7 @@ const countries = getCountries();
         </div>
         <div class="flex items-center gap-2">
           <span class="i-ph-star-fill text-jade-400"></span>
-          <span class="text-ink-muted"><strong class="text-ink font-semibold">{stalls.filter(s => s.ratingModerated === 3).length}</strong> must-try</span>
+          <span class="text-ink-muted"><strong class="text-ink font-semibold">{mustTryCount}</strong> must-try</span>
         </div>
         <div class="flex items-center gap-2">
           <span class="i-ph-currency-dollar text-warm-400"></span>
@@ -87,7 +87,7 @@ const countries = getCountries();
   <main class="mx-auto max-w-6xl px-4 py-8">
     <div id="stall-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
       {stalls.map((stall) => (
-        <StallCard stall={stall} showCuisine={cuisines.length > 1} />
+        <StallCard stall={stall} showCuisine={cuisines.length > 1} minimal={true} />
       ))}
     </div>
 
@@ -96,7 +96,7 @@ const countries = getCountries();
       <span class="i-ph-magnifying-glass text-5xl text-ink-faint"></span>
       <p class="text-ink-muted mt-4 text-lg font-display">No stalls match your filters</p>
       <p class="text-ink-faint text-sm mt-1">Try adjusting your search or filters</p>
-      <button id="clear-filters" class="mt-4 rounded-lg bg-flame-500/20 text-flame-400 px-4 py-3 text-sm font-medium hover:bg-flame-500/30 transition-colors cursor-pointer min-h-[44px]">
+      <button id="clear-filters" class="mt-4 rounded-lg bg-flame-500/20 text-flame-400 px-4 py-3 text-sm font-medium hover:bg-flame-500/30 transition-colors cursor-pointer min-h-11">
         Clear all filters
       </button>
     </div>

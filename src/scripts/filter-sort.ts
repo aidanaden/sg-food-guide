@@ -26,7 +26,9 @@ interface FilterElements {
   resultCount: HTMLElement;
   emptyState: HTMLElement;
   activeFiltersContainer: HTMLElement;
-  clearFiltersBtn: HTMLButtonElement;
+  activeFiltersSummary: HTMLElement;
+  activeFiltersClearBtn: HTMLButtonElement | null;
+  emptyStateClearBtn: HTMLButtonElement | null;
 }
 
 function getElements(): FilterElements {
@@ -44,7 +46,9 @@ function getElements(): FilterElements {
     resultCount: document.getElementById('result-count') as HTMLElement,
     emptyState: document.getElementById('empty-state') as HTMLElement,
     activeFiltersContainer: document.getElementById('active-filters') as HTMLElement,
-    clearFiltersBtn: document.getElementById('clear-filters') as HTMLButtonElement,
+    activeFiltersSummary: document.getElementById('active-filters-summary') as HTMLElement,
+    activeFiltersClearBtn: document.getElementById('active-filters-clear') as HTMLButtonElement | null,
+    emptyStateClearBtn: document.getElementById('clear-filters') as HTMLButtonElement | null,
   };
 }
 
@@ -67,6 +71,15 @@ function buildCache(grid: HTMLElement): CardCache[] {
   });
 }
 
+function matchesRatingFilter(selectedRating: string, cardRating: string): boolean {
+  if (!selectedRating) return true;
+  if (selectedRating === '1') {
+    // "Skip" should include explicit 0/3 and 1/3 ratings.
+    return cardRating === '0' || cardRating === '1';
+  }
+  return cardRating === selectedRating;
+}
+
 function applyFilters(els: FilterElements, cache: CardCache[]): void {
   const query = els.searchInput.value.toLowerCase().trim();
   const rating = els.ratingFilter.value;
@@ -74,6 +87,7 @@ function applyFilters(els: FilterElements, cache: CardCache[]): void {
   const time = els.timeFilter.value;
   const cuisine = els.cuisineFilter?.value || '';
   const country = els.countryFilter?.value || '';
+  const defaultCountry = els.countryFilter?.dataset.default || '';
   const onlyFavs = els.favoritesFilter?.checked || false;
   const hideVisited = els.hideVisitedFilter?.checked || false;
   let visible = 0;
@@ -92,7 +106,7 @@ function applyFilters(els: FilterElements, cache: CardCache[]): void {
 
     const show =
       fuzzyMatch(query, [name, dish, address]) &&
-      (!rating || cardRating === rating) &&
+      matchesRatingFilter(rating, cardRating) &&
       (!area || cardArea === area) &&
       (!time || cardTime.split(',').includes(time)) &&
       (!cuisine || cardCuisine === cuisine) &&
@@ -112,24 +126,25 @@ function applyFilters(els: FilterElements, cache: CardCache[]): void {
   els.emptyState.classList.toggle('hidden', visible > 0);
   els.grid.classList.toggle('hidden', visible === 0);
 
-  // Active filter chips
-  const chips: string[] = [];
-  if (query) chips.push(`Search: "${query}"`);
-  if (rating) chips.push(`Rating: ${rating === 'unrated' ? 'Unrated' : rating + '/3'}`);
-  if (area) chips.push(`Area: ${area}`);
-  if (time) chips.push(`Hours: ${time}`);
-  if (cuisine) chips.push(`Cuisine: ${cuisine}`);
-  if (country) chips.push(`Country: ${country}`);
+  // Active filter summary
+  let activeFilterCount = 0;
+  if (query) activeFilterCount++;
+  if (rating) activeFilterCount++;
+  if (area) activeFilterCount++;
+  if (time) activeFilterCount++;
+  if (cuisine) activeFilterCount++;
+  if (country && country !== defaultCountry) activeFilterCount++;
+  if (onlyFavs) activeFilterCount++;
+  if (hideVisited) activeFilterCount++;
 
-  if (chips.length) {
+  if (activeFilterCount > 0) {
     els.activeFiltersContainer.classList.remove('hidden');
     els.activeFiltersContainer.classList.add('flex');
-    els.activeFiltersContainer.innerHTML = chips
-      .map((c) => `<span class="inline-flex items-center gap-1 rounded-full bg-warm-800/60 px-2.5 py-1 text-xs text-ink-muted">${c}</span>`)
-      .join('');
+    els.activeFiltersSummary.textContent = `${activeFilterCount} filter${activeFilterCount === 1 ? '' : 's'} active`;
   } else {
     els.activeFiltersContainer.classList.add('hidden');
     els.activeFiltersContainer.classList.remove('flex');
+    els.activeFiltersSummary.textContent = '';
   }
 }
 
@@ -172,7 +187,11 @@ function clearFilters(els: FilterElements, cache: CardCache[]): void {
   els.areaFilter.value = '';
   els.timeFilter.value = '';
   if (els.cuisineFilter) els.cuisineFilter.value = '';
-  if (els.countryFilter) els.countryFilter.value = '';
+  if (els.countryFilter) {
+    els.countryFilter.value = els.countryFilter.dataset.default || '';
+  }
+  if (els.favoritesFilter) els.favoritesFilter.checked = false;
+  if (els.hideVisitedFilter) els.hideVisitedFilter.checked = false;
   els.sortBy.value = 'rating-desc';
   applyFilters(els, cache);
   applySorting(els);
@@ -203,7 +222,8 @@ export function initFilterSort(): void {
   els.favoritesFilter?.addEventListener('change', () => applyFilters(els, cache));
   els.hideVisitedFilter?.addEventListener('change', () => applyFilters(els, cache));
   els.sortBy.addEventListener('change', () => applySorting(els));
-  els.clearFiltersBtn.addEventListener('click', () => clearFilters(els, cache));
+  els.activeFiltersClearBtn?.addEventListener('click', () => clearFilters(els, cache));
+  els.emptyStateClearBtn?.addEventListener('click', () => clearFilters(els, cache));
 
   // Initial render
   applyFilters(els, cache);

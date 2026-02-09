@@ -38,6 +38,36 @@ All commands are run from the root of the project, from a terminal:
 | `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
 | `npm run astro -- --help` | Get help using the Astro CLI                     |
 
+## ✅ Quality Gates
+
+Run static/data checks before building:
+
+```sh
+bun run check
+```
+
+Run the full CI gate locally:
+
+```sh
+bun run ci
+```
+
+## Transit API (Route Mode)
+
+Route mode now supports server-backed transit details via Cloudflare Pages Functions:
+
+- Endpoint: `GET /api/transit/plan`
+- Supported modes: `bus`, `train`
+- Response includes per-leg transit metadata and warnings (`ok` / `partial` / `fallback`).
+
+Set the following secrets for production:
+
+- `ONEMAP_EMAIL`
+- `ONEMAP_PASSWORD`
+- `LTA_ACCOUNT_KEY`
+
+If these are missing or upstream services fail, the UI automatically falls back to approximate in-app routing.
+
 ## 👀 Want to learn more?
 
 Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
