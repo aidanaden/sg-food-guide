@@ -103,16 +103,30 @@ const mapsSearchEmbedUrl = `https://maps.google.com/maps?q=${mapsEmbedQuery}&out
         <h1 class="font-display text-3xl sm:text-4xl font-800 tracking-tight leading-tight flex-1">
           {stall.name}
         </h1>
-        <button
-          type="button"
-          id="detail-fav-btn"
-          data-slug={stall.slug}
-          class="shrink-0 inline-flex h-11 w-11 aspect-square p-0 items-center justify-center rounded-lg border border-warm-700/50 bg-surface-raised hover:border-flame-500/40 transition-colors cursor-pointer"
-          aria-label="Toggle favorite"
-        >
-          <span id="detail-fav-outline" class="i-ph-heart text-xl text-ink-faint" />
-          <span id="detail-fav-filled" class="i-ph-heart-fill text-xl text-flame-400 hidden" />
-        </button>
+        <div class="shrink-0 flex items-center gap-2">
+          <button
+            type="button"
+            id="detail-visited-btn"
+            data-slug={stall.slug}
+            class="inline-flex h-11 w-11 aspect-square p-0 items-center justify-center rounded-lg border border-warm-700/50 bg-surface-raised hover:border-flame-500/40 transition-colors cursor-pointer"
+            aria-label="Toggle visited"
+            aria-pressed="true"
+          >
+            <span id="detail-visited-outline" class="i-ph-eye text-xl text-ink-faint hidden" />
+            <span id="detail-visited-filled" class="i-ph-check-circle-fill text-xl text-jade-400" />
+          </button>
+          <button
+            type="button"
+            id="detail-fav-btn"
+            data-slug={stall.slug}
+            class="inline-flex h-11 w-11 aspect-square p-0 items-center justify-center rounded-lg border border-warm-700/50 bg-surface-raised hover:border-flame-500/40 transition-colors cursor-pointer"
+            aria-label="Toggle favorite"
+            aria-pressed="false"
+          >
+            <span id="detail-fav-outline" class="i-ph-heart text-xl text-ink-faint" />
+            <span id="detail-fav-filled" class="i-ph-heart-fill text-xl text-flame-400 hidden" />
+          </button>
+        </div>
       </div>
 
       <!-- Meta row -->
@@ -293,25 +307,46 @@ const mapsSearchEmbedUrl = `https://maps.google.com/maps?q=${mapsEmbedQuery}&out
 </Layout>
 
 <script>
-  import { markVisited, isFavorite, toggleFavorite } from '../../scripts/preferences';
+  import { markVisited, isVisited, toggleVisited, isFavorite, toggleFavorite } from '../../scripts/preferences';
 
-  // Mark stall as visited
+  // Mark stall as visited by default on detail open.
   const favBtn = document.getElementById('detail-fav-btn') as HTMLButtonElement;
+  const visitedBtn = document.getElementById('detail-visited-btn') as HTMLButtonElement;
   const slug = favBtn?.dataset.slug;
   if (slug) {
     markVisited(slug);
 
-    // Initialize favorite state
+    const syncVisitedUi = (visited: boolean) => {
+      const outline = document.getElementById('detail-visited-outline');
+      const filled = document.getElementById('detail-visited-filled');
+      if (outline) outline.classList.toggle('hidden', visited);
+      if (filled) filled.classList.toggle('hidden', !visited);
+      if (visitedBtn) {
+        visitedBtn.setAttribute('aria-pressed', visited ? 'true' : 'false');
+        visitedBtn.setAttribute('aria-label', visited ? 'Mark as not visited' : 'Mark as visited');
+      }
+    };
+
+    syncVisitedUi(isVisited(slug));
+
+    visitedBtn?.addEventListener('click', () => {
+      const newVisitedState = toggleVisited(slug);
+      syncVisitedUi(newVisitedState);
+    });
+
+    // Initialize favorite state.
     const outline = document.getElementById('detail-fav-outline');
     const filled = document.getElementById('detail-fav-filled');
     const fav = isFavorite(slug);
     if (outline) outline.classList.toggle('hidden', fav);
     if (filled) filled.classList.toggle('hidden', !fav);
+    if (favBtn) favBtn.setAttribute('aria-pressed', fav ? 'true' : 'false');
 
     favBtn.addEventListener('click', () => {
       const newState = toggleFavorite(slug);
       if (outline) outline.classList.toggle('hidden', newState);
       if (filled) filled.classList.toggle('hidden', !newState);
+      if (favBtn) favBtn.setAttribute('aria-pressed', newState ? 'true' : 'false');
     });
   }
 </script>

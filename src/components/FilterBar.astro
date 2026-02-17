@@ -13,9 +13,24 @@ interface Props {
   showCuisineFilter?: boolean;
   showCountryFilter?: boolean;
   defaultCountry?: string;
+  showLocationFilter?: boolean;
+  locationRadiusOptionsKm?: number[];
+  locationDefaultRadiusKm?: number;
 }
 
-const { areas, timeCategories, cuisines = [], countries = [], totalCount, showCuisineFilter = false, showCountryFilter = false, defaultCountry = '' } = Astro.props;
+const {
+  areas,
+  timeCategories,
+  cuisines = [],
+  countries = [],
+  totalCount,
+  showCuisineFilter = false,
+  showCountryFilter = false,
+  defaultCountry = '',
+  showLocationFilter = true,
+  locationRadiusOptionsKm = [1, 3, 5, 10],
+  locationDefaultRadiusKm = 3,
+} = Astro.props;
 
 const ratingOptions = [
   { value: '3', label: 'Must Try (3)' },
@@ -45,6 +60,11 @@ const sortOptions = [
   { value: 'price-desc', label: 'Priciest First' },
   { value: 'episode-asc', label: 'Episode Order' },
 ];
+
+const locationRadiusOptions = locationRadiusOptionsKm.map((km) => ({
+  value: String(km),
+  label: `${km} km`,
+}));
 ---
 
 <section class="sticky top-0 z-30 border-b border-warm-800/60 bg-surface/90 backdrop-blur-xl">
@@ -100,5 +120,42 @@ const sortOptions = [
         Showing {totalCount} stalls
       </p>
     </div>
+
+    {showLocationFilter && (
+      <div class="mt-2 flex flex-wrap items-center gap-2">
+        <button
+          id="filter-nearby-toggle"
+          type="button"
+          data-default-radius={locationDefaultRadiusKm}
+          class="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-warm-700/60 bg-surface-raised px-3 py-2 text-xs font-medium text-ink-muted transition-colors hover:border-flame-500/40 hover:text-flame-400"
+        >
+          <span class="i-ph-navigation-arrow text-xs" />
+          Near me
+        </button>
+
+        <div id="filter-location-controls" class="hidden items-center gap-2">
+          <Select
+            id="filter-location-radius"
+            options={locationRadiusOptions}
+            class="min-w-28"
+            data-default={locationDefaultRadiusKm}
+            aria-label="Nearby radius"
+          />
+        </div>
+
+        <label id="filter-location-query-wrap" class="hidden items-center gap-2">
+          <span class="sr-only">Fallback location input</span>
+          <input
+            id="filter-location-query"
+            type="text"
+            placeholder="Enter area (e.g. Woodlands)"
+            class="w-56 sm:w-64 min-h-11 rounded-lg border border-warm-700/50 bg-surface-raised px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-flame-500/50 focus:outline-none focus:ring-1 focus:ring-flame-500/30 transition-colors"
+            aria-label="Fallback location"
+          />
+        </label>
+
+        <p id="filter-location-status" class="hidden text-xs text-ink-faint" aria-live="polite"></p>
+      </div>
+    )}
   </div>
 </section>

@@ -1,73 +1,101 @@
-# Astro Starter Kit: Minimal
+# SG Food Guide
 
-```sh
-npm create astro@latest -- --template minimal
+A production Astro site that curates and ranks hawker and street-food stalls from the SG Food Guide dataset, with filterable listings, stall detail pages, and route-planning utilities.
+
+## Stack
+
+- Astro 5
+- Tailwind CSS 4
+- Leaflet (route map UI)
+- Cloudflare Pages + Pages Functions
+- TypeScript
+- Bun (scripts/package manager)
+
+## Core Features
+
+- Listing pages for all stalls and per-cuisine views
+- Shared filter/sort/search system
+- Favorites + visited state persisted in browser storage
+- Stall detail pages with:
+  - hits/misses
+  - opening hours and pricing
+  - Google Maps embed/link
+  - YouTube review embed/search fallback
+- Route planner with walking/driving/transit modes
+- Server-backed transit API fallback logic (`/api/transit/plan`)
+- Near-me radius filter with geolocation + manual geocode fallback (`/api/geocode/search`)
+
+## Data Source
+
+Primary content is sourced from the SG Food Guide spreadsheet:
+
+- https://docs.google.com/spreadsheets/d/1UMOZE2SM3_y5oUHafwJFEB9RrPDMqBbWjWnMGkO4gGg/edit?gid=1935025317
+
+Stall records live in:
+
+- `src/data/stalls.ts`
+- `src/data/cuisines/*.ts`
+
+## Local Development
+
+1. Install dependencies:
+
+```bash
+bun install
 ```
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+2. Start dev server:
 
-## 🚀 Project Structure
-
-Inside of your Astro project, you'll see the following folders and files:
-
-```text
-/
-├── public/
-├── src/
-│   └── pages/
-│       └── index.astro
-└── package.json
+```bash
+bun run dev
 ```
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+3. Open:
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
+- `http://localhost:4321`
 
-Any static assets, like images, can be placed in the `public/` directory.
+## Quality Gates
 
-## 🧞 Commands
+Run data + Astro static checks:
 
-All commands are run from the root of the project, from a terminal:
-
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
-
-## ✅ Quality Gates
-
-Run static/data checks before building:
-
-```sh
+```bash
 bun run check
 ```
 
-Run the full CI gate locally:
+Run full local CI gate:
 
-```sh
+```bash
 bun run ci
 ```
 
-## Transit API (Route Mode)
+## Scripts
 
-Route mode now supports server-backed transit details via Cloudflare Pages Functions:
+- `bun run dev` - Start Astro dev server
+- `bun run build` - Production build to `dist/`
+- `bun run preview` - Preview built output
+- `bun run check` - Ratings validation + `astro check`
+- `bun run ci` - `check` + `build`
+- `bun run deploy` - Build and deploy static output via Wrangler Pages
 
-- Endpoint: `GET /api/transit/plan`
-- Supported modes: `bus`, `train`
-- Response includes per-leg transit metadata and warnings (`ok` / `partial` / `fallback`).
+## Deployment (Cloudflare Pages)
 
-Set the following secrets for production:
+This repository is configured for Cloudflare deployment:
+
+- `wrangler.jsonc` project name: `sg-food-guide`
+- static assets directory: `./dist`
+
+Deploy command:
+
+```bash
+bun run deploy
+```
+
+## Runtime Secrets (Transit Enhancements)
+
+Transit enrichment in `/api/transit/plan` supports these optional secrets:
 
 - `ONEMAP_EMAIL`
 - `ONEMAP_PASSWORD`
 - `LTA_ACCOUNT_KEY`
 
-If these are missing or upstream services fail, the UI automatically falls back to approximate in-app routing.
-
-## 👀 Want to learn more?
-
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+When absent or unavailable, route mode degrades gracefully to approximate in-app routing.
