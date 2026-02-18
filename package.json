@@ -1,27 +1,84 @@
 {
-  "name": "users-aidan-projects-sg-food-guide",
+  "name": "sg-food-guide",
   "private": true,
-  "type": "module",
-  "version": "0.0.1",
   "packageManager": "bun@1.3.3",
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
+  "workspaces": {
+    "packages": [
+      "apps/*",
+      "libs/*",
+      "configs/*"
+    ],
+    "catalogs": {
+      "ui": {
+        "react": "19.2.0",
+        "react-dom": "19.2.0",
+        "@types/react": "19.2.2",
+        "@types/react-dom": "19.2.2",
+        "tailwindcss": "4.1.18",
+        "@tailwindcss/vite": "4.1.18",
+        "clsx": "2.1.1",
+        "tailwind-merge": "3.4.0",
+        "lucide-react": "0.545.0"
+      },
+      "tanstack": {
+        "@tanstack/react-devtools": "0.7.0",
+        "@tanstack/react-query": "5.84.2",
+        "@tanstack/react-query-devtools": "5.84.2",
+        "@tanstack/react-router": "1.132.0",
+        "@tanstack/react-router-devtools": "1.132.0",
+        "@tanstack/react-router-ssr-query": "1.131.7",
+        "@tanstack/react-start": "1.132.0",
+        "@tanstack/router-plugin": "1.132.0",
+        "@tanstack/router-generator": "1.132.0",
+        "@tanstack/devtools-vite": "0.3.11"
+      },
+      "api": {
+        "@cloudflare/vite-plugin": "1.13.8",
+        "wrangler": "4.63.0"
+      },
+      "toolkit": {
+        "zod": "4.3.6",
+        "better-result": "2.7.0"
+      },
+      "dev": {
+        "@types/node": "22.10.2",
+        "typescript": "5.9.3",
+        "vite": "6.4.1",
+        "@vitejs/plugin-react": "5.0.4",
+        "vite-tsconfig-paths": "5.1.4",
+        "vitest": "3.0.5",
+        "oxfmt": "0.28.0",
+        "oxlint": "1.43.0",
+        "oxlint-tsgolint": "0.12.2",
+        "turbo": "2.8.3"
+      }
+    }
+  },
   "scripts": {
     "dev": "turbo run dev --filter=@sg-food-guide/web",
-    "build": "turbo run build --filter=@sg-food-guide/web",
-    "check:ratings": "turbo run check:ratings --filter=@sg-food-guide/web",
-    "check:astro": "turbo run check:astro --filter=@sg-food-guide/web",
-    "check": "turbo run check --filter=@sg-food-guide/web",
-    "ci": "turbo run ci --filter=@sg-food-guide/web",
-    "track:sheet": "turbo run track:sheet --filter=@sg-food-guide/web",
-    "populate:youtube-ids": "turbo run populate:youtube-ids --filter=@sg-food-guide/web",
-    "preview": "turbo run preview --filter=@sg-food-guide/web",
-    "deploy": "turbo run deploy --filter=@sg-food-guide/web",
-    "astro": "turbo run astro --filter=@sg-food-guide/web --"
+    "dev:local": "bun --filter @sg-food-guide/web dev -- --port 4330",
+    "dev:tunnel": "bun ./scripts/dev-tunnel.ts",
+    "dev:expose": "bun run dev:tunnel",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "lint:check": "turbo run lint:check",
+    "lint:fix": "turbo run lint:fix",
+    "format:check": "oxfmt --check .",
+    "format:fix": "oxfmt .",
+    "test": "turbo run test",
+    "check": "turbo run check",
+    "ci": "turbo run ci",
+    "track:sheet": "bun --filter @sg-food-guide/web track:sheet",
+    "populate:youtube-ids": "bun --filter @sg-food-guide/web populate:youtube-ids",
+    "preview": "bun --filter @sg-food-guide/web preview",
+    "deploy": "bun --filter @sg-food-guide/web deploy"
   },
   "devDependencies": {
-    "turbo": "^2.6.3"
+    "oxfmt": "catalog:dev",
+    "oxlint": "catalog:dev",
+    "oxlint-tsgolint": "catalog:dev",
+    "turbo": "catalog:dev",
+    "typescript": "catalog:dev",
+    "wrangler": "catalog:api"
   }
 }

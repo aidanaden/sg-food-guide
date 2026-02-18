@@ -76,7 +76,7 @@ Example response:
 
 ```
 I found a skill that might help! The "vercel-react-best-practices" skill provides
-React and Next.js performance optimization guidelines from Vercel Engineering.
+React performance optimization guidelines from Vercel Engineering.
 
 To install it:
 npx skills add vercel-labs/agent-skills@vercel-react-best-practices

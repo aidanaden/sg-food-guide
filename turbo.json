@@ -1,40 +1,48 @@
 {
-  "$schema": "https://turbo.build/schema.json",
+  "$schema": "https://turborepo.dev/schema.v2.json",
   "tasks": {
+    "transit": {
+      "dependsOn": ["^transit"]
+    },
     "dev": {
       "cache": false,
       "persistent": true
     },
     "build": {
-      "dependsOn": [
-        "^build"
-      ],
-      "outputs": [
-        "dist/**",
-        ".astro/**"
-      ]
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", ".output/**", ".next/**"],
+      "inputs": ["$TURBO_DEFAULT$", "!**/*.test.{ts,tsx}", "!**/*.md"],
+      "env": ["VITE_*"]
     },
-    "check:ratings": {
+    "typecheck": {
+      "dependsOn": ["transit"],
       "outputs": []
     },
-    "check:astro": {
+    "lint:check": {
+      "dependsOn": ["transit"],
+      "inputs": ["$TURBO_DEFAULT$", "!**/*.test.{ts,tsx}", "!**/*.md"],
       "outputs": []
+    },
+    "lint:fix": {
+      "dependsOn": ["transit"],
+      "cache": false
+    },
+    "test": {
+      "dependsOn": ["transit"]
     },
     "check": {
+      "dependsOn": ["transit"],
       "outputs": []
     },
     "ci": {
+      "dependsOn": ["transit"],
       "outputs": []
     },
     "track:sheet": {
-      "outputs": [
-        "data/source/**"
-      ]
+      "outputs": ["apps/web/data/source/**"]
     },
     "populate:youtube-ids": {
-      "outputs": [
-        "src/data/**"
-      ]
+      "outputs": ["apps/web/src/data/**"]
     },
     "preview": {
       "cache": false,
@@ -43,8 +51,8 @@
     "deploy": {
       "cache": false
     },
-    "astro": {
-      "cache": false
+    "routes:gen": {
+      "outputs": []
     }
   }
 }

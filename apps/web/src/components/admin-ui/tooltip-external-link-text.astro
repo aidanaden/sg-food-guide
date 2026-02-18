@@ -1,0 +1,21 @@
+---
+import type { HTMLAttributes } from "astro/types";
+import ExternalLink from "./external-link.astro";
+import { cn } from "./utils";
+
+interface Props extends HTMLAttributes<"a"> {
+  tooltip: string;
+  href: string;
+}
+
+const { tooltip, href, class: className, ...attrs } = Astro.props;
+---
+
+<ExternalLink
+  href={href}
+  title={tooltip}
+  class={cn("decoration-foreground-faint underline decoration-dotted underline-offset-2", className)}
+  {...attrs}
+>
+  <slot />
+</ExternalLink>

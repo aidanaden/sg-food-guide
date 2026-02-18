@@ -1,0 +1,6 @@
+---
+import type { HTMLAttributes } from "astro/types";
+import { cn } from "./utils";
+const { class: className, ...attrs } = Astro.props as HTMLAttributes<"span">;
+---
+<span data-slot="table-empty-state-icon" class={cn("iconify text-foreground-muted/50 mb-3 size-8", className)} aria-hidden="true" {...attrs} />

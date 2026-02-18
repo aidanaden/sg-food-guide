@@ -2,7 +2,10 @@
  * Shared filter, sort, and search logic for stall listing pages.
  * Used by both index.astro and cuisine/[cuisine].astro.
  */
+import { Result } from 'better-result';
+import * as z from 'zod/mini';
 import { fuzzyMatch, highlightText } from './search';
+import { lookupSgArea, normalizeAreaLikeQuery } from '../data/sg-areas';
 
 const FILTER_STATE_KEY = 'sgfg-filter-state-v2';
 
@@ -75,6 +78,49 @@ interface FilterElements {
   activeFiltersSummary: HTMLElement;
   activeFiltersClearBtn: HTMLButtonElement | null;
   emptyStateClearBtn: HTMLButtonElement | null;
+}
+
+const persistedFilterStateSchema = z.object({
+  q: z.optional(z.string()),
+  rating: z.optional(z.string()),
+  area: z.optional(z.string()),
+  time: z.optional(z.string()),
+  cuisine: z.optional(z.string()),
+  country: z.optional(z.string()),
+  fav: z.optional(z.string()),
+  hideVisited: z.optional(z.string()),
+  sort: z.optional(z.string()),
+  near: z.optional(z.string()),
+  radius: z.optional(z.string()),
+  locq: z.optional(z.string()),
+});
+const geocodeSuccessSchema = z.object({
+  status: z.literal('ok'),
+  source: z.enum(['onemap', 'nominatim']),
+  lat: z.union([z.number(), z.string()]),
+  lng: z.union([z.number(), z.string()]),
+  label: z.optional(z.string()),
+});
+
+function coercePersistedState(value: unknown): PersistedFilterState {
+  const parsed = persistedFilterStateSchema.safeParse(value);
+  if (!parsed.success) return {};
+
+  const data = parsed.data;
+  return {
+    q: data.q,
+    rating: data.rating,
+    area: data.area,
+    time: data.time,
+    cuisine: data.cuisine,
+    country: data.country,
+    fav: data.fav === '1' || data.fav === '0' ? data.fav : undefined,
+    hideVisited: data.hideVisited === '1' || data.hideVisited === '0' ? data.hideVisited : undefined,
+    sort: data.sort,
+    near: data.near === '1' || data.near === '0' ? data.near : undefined,
+    radius: data.radius,
+    locq: data.locq,
+  };
 }
 
 function getElements(): FilterElements {
@@ -356,12 +402,7 @@ function collectState(els: FilterElements, locationState: LocationState): Persis
 
 function persistState(els: FilterElements, locationState: LocationState): void {
   const state = collectState(els, locationState);
-
-  try {
-    sessionStorage.setItem(FILTER_STATE_KEY, JSON.stringify(state));
-  } catch {
-    // Ignore private mode / storage failures.
-  }
+  Result.try(() => sessionStorage.setItem(FILTER_STATE_KEY, JSON.stringify(state)));
 
   const params = new URLSearchParams();
   Object.entries(state).forEach(([key, value]) => {
@@ -375,20 +416,18 @@ function persistState(els: FilterElements, locationState: LocationState): void {
 }
 
 function readPersistedState(): PersistedFilterState {
-  let sessionState: PersistedFilterState = {};
-  try {
-    const raw = sessionStorage.getItem(FILTER_STATE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === 'object') {
-        sessionState = parsed as PersistedFilterState;
-      }
-    }
-  } catch {
-    sessionState = {};
-  }
+  const sessionGetResult = Result.try(() => sessionStorage.getItem(FILTER_STATE_KEY));
+  const sessionRaw = Result.isOk(sessionGetResult) ? sessionGetResult.value : null;
+  const sessionParseResult = sessionRaw
+    ? Result.try(() => JSON.parse(sessionRaw))
+    : null;
+  const sessionState = sessionParseResult && Result.isOk(sessionParseResult)
+    ? coercePersistedState(sessionParseResult.value)
+    : {};
 
-  const fromUrl = Object.fromEntries(new URLSearchParams(window.location.search).entries()) as PersistedFilterState;
+  const fromUrl = coercePersistedState(
+    Object.fromEntries(new URLSearchParams(window.location.search).entries())
+  );
   return { ...sessionState, ...fromUrl };
 }
 
@@ -405,7 +444,8 @@ function clearFilters(els: FilterElements, cache: CardCache[], locationState: Lo
   if (els.hideVisitedFilter) els.hideVisitedFilter.checked = false;
   els.sortBy.value = 'rating-desc';
 
-  if (locationState.debounceTimer) {
+  locationState.requestSeq += 1;
+  if (locationState.debounceTimer !== null) {
     window.clearTimeout(locationState.debounceTimer);
     locationState.debounceTimer = null;
   }
@@ -429,26 +469,49 @@ function getCountryBias(els: FilterElements): string {
 }
 
 async function geocodeLocation(query: string, country: string): Promise<GeocodeSuccessPayload | null> {
+  const normalizedQuery = normalizeAreaLikeQuery(query);
+  if (country === 'SG') {
+    const sgArea = lookupSgArea(normalizedQuery);
+    if (sgArea) {
+      return {
+        status: 'ok',
+        source: 'nominatim',
+        lat: sgArea.lat,
+        lng: sgArea.lng,
+        label: sgArea.label,
+      };
+    }
+  }
+
   const params = new URLSearchParams({
-    q: query,
+    q: normalizedQuery,
     country,
   });
-  const res = await fetch(`/api/geocode/search?${params.toString()}`, {
-    headers: { accept: 'application/json' },
-  });
-  if (!res.ok) return null;
 
-  const data = (await res.json()) as Partial<GeocodeSuccessPayload> & { status?: string };
-  if (data.status !== 'ok') return null;
-  if (!Number.isFinite(Number(data.lat)) || !Number.isFinite(Number(data.lng))) return null;
-  if (data.source !== 'onemap' && data.source !== 'nominatim') return null;
+  const responseResult = await Result.tryPromise(() => fetch(`/api/geocode/search?${params.toString()}`, {
+    headers: { accept: 'application/json' },
+  }));
+  if (Result.isError(responseResult)) return null;
+
+  const response = responseResult.value;
+  if (!response.ok) return null;
+
+  const payloadResult = await Result.tryPromise(() => response.json());
+  if (Result.isError(payloadResult)) return null;
+
+  const payload = geocodeSuccessSchema.safeParse(payloadResult.value);
+  if (!payload.success) return null;
+
+  const lat = Number(payload.data.lat);
+  const lng = Number(payload.data.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
 
   return {
     status: 'ok',
-    source: data.source,
-    lat: Number(data.lat),
-    lng: Number(data.lng),
-    label: String(data.label || query).trim() || query,
+    source: payload.data.source,
+    lat,
+    lng,
+    label: String(payload.data.label || query).trim() || query,
   };
 }
 
@@ -485,17 +548,21 @@ export function initFilterSort(): void {
     if (!hydrating) persistState(els, locationState);
   };
 
+  const invalidateLocationRequests = (): void => {
+    locationState.requestSeq += 1;
+    if (locationState.debounceTimer !== null) {
+      window.clearTimeout(locationState.debounceTimer);
+      locationState.debounceTimer = null;
+    }
+  };
+
   const runManualGeocode = (): void => {
     const raw = els.locationQueryInput?.value.trim() || '';
     locationState.query = raw;
     locationState.mode = 'manual-query';
     locationState.enabled = true;
     syncLocationUi(els, locationState);
-
-    if (locationState.debounceTimer) {
-      window.clearTimeout(locationState.debounceTimer);
-      locationState.debounceTimer = null;
-    }
+    invalidateLocationRequests();
 
     if (raw.length < 2) {
       locationState.center = null;
@@ -505,10 +572,16 @@ export function initFilterSort(): void {
     }
 
     setLocationStatus(els, 'Searching location...');
-    const seq = ++locationState.requestSeq;
+    const seq = locationState.requestSeq;
     locationState.debounceTimer = window.setTimeout(async () => {
       const result = await geocodeLocation(raw, getCountryBias(els));
-      if (seq !== locationState.requestSeq) return;
+      if (
+        seq !== locationState.requestSeq ||
+        !locationState.enabled ||
+        locationState.mode !== 'manual-query'
+      ) {
+        return;
+      }
 
       if (!result) {
         locationState.center = null;
@@ -527,6 +600,7 @@ export function initFilterSort(): void {
   const startNearMe = (): void => {
     if (!els.nearbyToggle) return;
 
+    invalidateLocationRequests();
     locationState.enabled = true;
     locationState.query = '';
     if (els.locationQueryInput) els.locationQueryInput.value = '';
@@ -545,9 +619,17 @@ export function initFilterSort(): void {
     syncLocationUi(els, locationState);
     setLocationStatus(els, 'Locating...');
     render();
+    const seq = locationState.requestSeq;
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        if (
+          seq !== locationState.requestSeq ||
+          !locationState.enabled ||
+          locationState.mode !== 'locating'
+        ) {
+          return;
+        }
         locationState.mode = 'geolocation';
         locationState.center = {
           lat: pos.coords.latitude,
@@ -558,6 +640,13 @@ export function initFilterSort(): void {
         render();
       },
       () => {
+        if (
+          seq !== locationState.requestSeq ||
+          !locationState.enabled ||
+          locationState.mode !== 'locating'
+        ) {
+          return;
+        }
         locationState.mode = 'manual-query';
         locationState.center = null;
         syncLocationUi(els, locationState);
@@ -573,10 +662,7 @@ export function initFilterSort(): void {
   };
 
   const stopNearMe = (): void => {
-    if (locationState.debounceTimer) {
-      window.clearTimeout(locationState.debounceTimer);
-      locationState.debounceTimer = null;
-    }
+    invalidateLocationRequests();
     locationState.enabled = false;
     locationState.mode = 'off';
     locationState.center = null;

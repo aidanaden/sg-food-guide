@@ -1,0 +1,28 @@
+---
+import type { HTMLAttributes } from "astro/types";
+import { cn } from "../utils";
+
+interface Props extends HTMLAttributes<"span"> {
+  size?: "xs" | "sm" | "md" | "lg";
+}
+
+const { size = "md", class: className, ...attrs } = Astro.props;
+
+const sizeClasses = {
+  xs: "size-3.5",
+  sm: "size-4",
+  md: "size-6",
+  lg: "size-8",
+} as const;
+---
+
+<span
+  data-slot="spinner"
+  aria-hidden="true"
+  class={cn(
+    "inline-block rounded-full border-2 border-current border-r-transparent text-foreground-muted animate-spin",
+    sizeClasses[size],
+    className,
+  )}
+  {...attrs}
+/>

@@ -1,0 +1,19 @@
+---
+import type { HTMLAttributes } from "astro/types";
+import { cn } from "../utils";
+
+interface Props extends HTMLAttributes<"input"> {}
+
+const { class: className, value, ...attrs } = Astro.props;
+---
+
+<input
+  type="time"
+  data-slot="time-input"
+  class={cn(
+    "border-border-input bg-transparent text-sm rounded-lg border px-2.5 py-1 h-8 outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
+    className,
+  )}
+  value={value}
+  {...attrs}
+/>

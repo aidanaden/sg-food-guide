@@ -1,0 +1,61 @@
+---
+import { cn } from "../../utils";
+
+interface Props {
+  id?: string;
+  type?: "success" | "error" | "info" | "loading";
+  title: string;
+  description?: string;
+  class?: string;
+  [key: string]: any;
+}
+
+const {
+  id,
+  type = "info",
+  title,
+  description,
+  class: className,
+  ...attrs
+} = Astro.props as Props;
+
+const iconClassMap = {
+  success: "ph--check-circle-fill text-success-text",
+  error: "ph--x-circle-fill text-destructive-text",
+  info: "ph--info-fill text-primary",
+  loading: "ph--spinner-bold animate-spin text-foreground-muted",
+} as const;
+---
+
+<div
+  data-slot="toast-root"
+  data-toast-id={id}
+  data-toast-type={type}
+  class={cn(
+    "bg-surface text-foreground ring-border pointer-events-auto flex w-full items-start gap-2 rounded-lg p-3 text-sm shadow ring-1",
+    className,
+  )}
+  {...attrs}
+>
+  <span data-slot="toast-icon" aria-hidden="true" class={cn("iconify mt-0.5 size-4 shrink-0", iconClassMap[type])} />
+
+  <div data-slot="toast-content" class="min-w-0 flex-1">
+    <div data-slot="toast-title" class="text-sm font-medium">{title}</div>
+    {description != null && description.length > 0 && (
+      <div data-slot="toast-description" class="text-foreground-muted mt-0.5 text-sm">{description}</div>
+    )}
+    <slot />
+  </div>
+
+  {type !== "loading" && (
+    <button
+      type="button"
+      data-slot="toast-close"
+      data-toast-close
+      aria-label="Close"
+      class="hover:bg-muted ml-auto inline-flex size-6 shrink-0 items-center justify-center rounded-full"
+    >
+      <span aria-hidden="true" class="iconify ph--x-bold text-foreground-muted size-3" />
+    </button>
+  )}
+</div>

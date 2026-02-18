@@ -1,0 +1,9 @@
+---
+import type { HTMLAttributes } from "astro/types";
+import { cn } from "../utils";
+const { class: className, ...attrs } = Astro.props as HTMLAttributes<"div">;
+---
+
+<div data-slot="field" class={cn("group/field grid gap-2", className)} {...attrs}>
+  <slot />
+</div>

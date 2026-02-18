@@ -1,8 +1,17 @@
 {
-  "extends": "astro/tsconfigs/strict",
+  "extends": "@sg-food-guide/tsconfig",
   "compilerOptions": {
-    "types": ["node"]
+    "noEmit": true,
+    "jsx": "preserve",
+    "module": "ESNext",
+    "types": ["vite/client", "node"]
   },
-  "include": [".astro/types.d.ts", "**/*"],
-  "exclude": ["dist"]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "scripts/generate-route-tree.ts"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/components/admin-ui/**",
+    "src/pages/**",
+    "src/scripts/**"
+  ]
 }

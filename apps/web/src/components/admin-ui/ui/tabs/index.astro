@@ -1,0 +1,139 @@
+---
+import { cn } from "../../utils";
+
+interface TabOption {
+  value: string;
+  label: string;
+}
+
+interface Props {
+  options?: TabOption[];
+  value?: string;
+  orientation?: "horizontal" | "vertical";
+  variant?: "default" | "line";
+  class?: string;
+  listClass?: string;
+  [key: string]: any;
+}
+
+const {
+  options = [],
+  value,
+  orientation = "horizontal",
+  variant = "default",
+  class: className,
+  listClass,
+  ...attrs
+} = Astro.props as Props;
+
+const id = `admin-tabs-${Math.random().toString(36).slice(2, 10)}`;
+---
+
+<div
+  id={id}
+  data-slot="tabs"
+  data-tabs-root
+  data-value={value ?? ""}
+  data-orientation={orientation}
+  data-variant={variant}
+  class={cn("flex gap-2", orientation === "horizontal" ? "flex-col" : "flex-row", className)}
+  {...attrs}
+>
+  <div
+    data-slot="tabs-list"
+    class={cn(
+      "inline-flex w-fit items-center rounded-lg p-0.5",
+      variant === "default" ? "bg-muted" : "bg-transparent",
+      orientation === "horizontal" ? "h-8" : "flex-col",
+      listClass,
+    )}
+  >
+    {options.map((option) => (
+      <button
+        type="button"
+        data-slot="tabs-trigger"
+        data-tabs-trigger
+        data-value={option.value}
+        aria-selected={option.value === (value ?? options[0]?.value ?? "") ? "true" : "false"}
+        data-active={option.value === (value ?? options[0]?.value ?? "") ? "true" : "false"}
+        class={cn(
+          "inline-flex items-center justify-center rounded-md border border-transparent px-2 py-1 text-sm font-medium transition-colors",
+          "text-foreground-muted hover:text-foreground",
+        )}
+      >
+        {option.label}
+      </button>
+    ))}
+
+    <slot name="triggers" />
+  </div>
+
+  <div data-slot="tabs-content" class="text-sm">
+    <slot />
+  </div>
+</div>
+
+<script is:inline>
+  const roots = document.querySelectorAll("[data-tabs-root]");
+
+  roots.forEach((root) => {
+    if (root.__adminTabsInit) {
+      return;
+    }
+    root.__adminTabsInit = true;
+
+    const triggers = Array.from(root.querySelectorAll("[data-tabs-trigger]"));
+    const panels = Array.from(root.querySelectorAll("[data-tabs-content][data-value]"));
+
+    const fallbackValue =
+      root.dataset.value || triggers[0]?.getAttribute("data-value") || panels[0]?.getAttribute("data-value") || "";
+
+    const setActive = (nextValue, emit = true) => {
+      if (nextValue == null || nextValue.length === 0) {
+        return;
+      }
+
+      root.dataset.value = nextValue;
+      const isLineVariant = root.dataset.variant === "line";
+
+      triggers.forEach((trigger) => {
+        const isActive = trigger.getAttribute("data-value") === nextValue;
+        trigger.setAttribute("data-active", isActive ? "true" : "false");
+        trigger.setAttribute("aria-selected", isActive ? "true" : "false");
+
+        trigger.classList.toggle("bg-background", isActive);
+        trigger.classList.toggle("text-foreground", isActive);
+        trigger.classList.toggle("text-foreground-muted", !isActive);
+        trigger.classList.toggle("shadow-sm", isActive && !isLineVariant);
+        trigger.classList.toggle("border-border", isActive && isLineVariant);
+      });
+
+      panels.forEach((panel) => {
+        const isActive = panel.getAttribute("data-value") === nextValue;
+        panel.hidden = !isActive;
+      });
+
+      if (emit) {
+        root.dispatchEvent(
+          new CustomEvent("tabs:change", {
+            bubbles: true,
+            detail: { value: nextValue },
+          }),
+        );
+      }
+    };
+
+    setActive(fallbackValue, false);
+
+    triggers.forEach((trigger) => {
+      trigger.addEventListener("click", () => {
+        setActive(trigger.getAttribute("data-value") || "");
+      });
+    });
+
+    root.addEventListener("tabs:set", (event) => {
+      const detail = event.detail ?? {};
+      setActive(detail.value);
+    });
+  });
+</script>

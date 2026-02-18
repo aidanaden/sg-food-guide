@@ -1,0 +1,31 @@
+---
+import type { HTMLAttributes } from "astro/types";
+import { cn } from "./utils";
+
+interface Props extends HTMLAttributes<"div"> {
+  icon?: string;
+  title: string;
+  description?: string;
+}
+
+const { icon, title, description, class: className, ...attrs } = Astro.props;
+---
+
+<div
+  data-slot="empty-state"
+  class={cn("flex flex-col items-center justify-center gap-3 py-12 text-center", className)}
+  {...attrs}
+>
+  {icon != null && icon.length > 0 && (
+    <span class={cn("iconify text-foreground-muted/50 size-12", icon)} aria-hidden="true" />
+  )}
+  <div class="flex flex-col gap-1">
+    <p class="text-foreground text-sm font-medium">{title}</p>
+    {description != null && description.length > 0 && (
+      <p class="text-foreground-muted text-sm">{description}</p>
+    )}
+  </div>
+  <div class="mt-2">
+    <slot name="action" />
+  </div>
+</div>

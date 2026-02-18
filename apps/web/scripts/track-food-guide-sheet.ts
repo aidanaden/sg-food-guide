@@ -9,9 +9,11 @@
  *   FOOD_GUIDE_SHEET_GID
  */
 
+import { Result } from 'better-result';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import * as z from 'zod/mini';
 
 interface FoodPlace {
   sourceRow: number;
@@ -45,6 +47,9 @@ const OUTPUT_DIR = join(ROOT, 'data', 'source');
 const CSV_OUTPUT_FILE = join(OUTPUT_DIR, 'food-guide-sheet.csv');
 const META_OUTPUT_FILE = join(OUTPUT_DIR, 'food-guide-sheet.meta.json');
 const PLACES_OUTPUT_FILE = join(OUTPUT_DIR, 'food-places.json');
+const sheetMetaSchema = z.object({
+  contentSha256: z.optional(z.string()),
+});
 
 function readEnv(name: string, fallback: string): string {
   const value = process.env[name]?.trim();
@@ -220,12 +225,14 @@ function hashText(value: string): string {
 function readPreviousHash(): string | null {
   if (!existsSync(META_OUTPUT_FILE)) return null;
 
-  try {
-    const meta = JSON.parse(readFileSync(META_OUTPUT_FILE, 'utf-8')) as Partial<SheetMeta>;
-    return typeof meta.contentSha256 === 'string' ? meta.contentSha256 : null;
-  } catch {
-    return null;
-  }
+  const fileResult = Result.try(() => readFileSync(META_OUTPUT_FILE, 'utf-8'));
+  if (Result.isError(fileResult)) return null;
+
+  const parsedResult = Result.try(() => JSON.parse(fileResult.value));
+  if (Result.isError(parsedResult)) return null;
+
+  const parsedMeta = sheetMetaSchema.safeParse(parsedResult.value);
+  return parsedMeta.success ? parsedMeta.data.contentSha256 ?? null : null;
 }
 
 function writeJson(path: string, value: unknown) {
@@ -297,8 +304,9 @@ async function main() {
   console.log(`Tracked ${foodPlaces.length} food places.`);
 }
 
-main().catch((error: unknown) => {
-  const message = error instanceof Error ? error.message : String(error);
+const mainResult = await Result.tryPromise(() => main());
+if (Result.isError(mainResult)) {
+  const message = mainResult.error instanceof Error ? mainResult.error.message : String(mainResult.error);
   console.error(`track:sheet failed - ${message}`);
   process.exitCode = 1;
-});
+}

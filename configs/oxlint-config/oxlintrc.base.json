@@ -1,0 +1,13 @@
+{
+  "plugins": ["unicorn", "typescript", "oxc", "import"],
+  "rules": {
+    "no-await-in-loop": "warn",
+    "oxc/no-accumulating-spread": "error",
+    "unicorn/prefer-set-has": "error",
+    "unicorn/prefer-array-find": "error",
+    "typescript/no-floating-promises": "error",
+    "typescript/no-unnecessary-template-expression": "warn",
+    "typescript/switch-exhaustiveness-check": "error",
+    "typescript/use-unknown-in-catch-callback-variable": "error"
+  }
+}

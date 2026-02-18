@@ -1,0 +1,48 @@
+---
+import { cn } from "../utils";
+
+interface Option {
+  value: string;
+  label?: string;
+}
+
+interface Props {
+  options?: Option[];
+  listId?: string;
+  placeholder?: string;
+  class?: string;
+  value?: string;
+  [key: string]: any;
+}
+
+const {
+  options = [],
+  listId,
+  placeholder,
+  class: className,
+  value,
+  ...attrs
+} = Astro.props as Props;
+
+const generatedListId = listId ?? `admin-combobox-${Math.random().toString(36).slice(2, 10)}`;
+---
+
+<div data-slot="combobox" class="relative w-full">
+  <input
+    data-slot="combobox-input"
+    list={generatedListId}
+    value={value}
+    placeholder={placeholder}
+    class={cn(
+      "border-border-input bg-background text-foreground h-8 w-full rounded-lg border px-2.5 py-1 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
+      className,
+    )}
+    {...attrs}
+  />
+  <datalist id={generatedListId}>
+    {options.map((option) => (
+      <option value={option.value} label={option.label ?? option.value} />
+    ))}
+    <slot />
+  </datalist>
+</div>

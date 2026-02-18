@@ -153,7 +153,9 @@
 </style>
 
 <script>
+  import { Result } from 'better-result';
   import L from 'leaflet';
+  import * as z from 'zod/mini';
 
   // ─── State ─────────────────────────────────────────────
   interface RouteStop {
@@ -200,23 +202,6 @@
     live?: TransitLive;
   }
 
-  interface TransitApiLeg {
-    distanceKm?: number;
-    durationMin?: number;
-    steps?: string[];
-    latlngs?: [number, number][];
-    transit?: TransitMeta;
-    exact?: boolean;
-    warnings?: string[];
-  }
-
-  interface TransitApiResponse {
-    status?: 'ok' | 'partial' | 'fallback';
-    provider?: string;
-    legs?: TransitApiLeg[];
-    warnings?: string[];
-  }
-
   interface BuiltRouteData {
     polyline: [number, number][];
     legs: RouteLeg[];
@@ -226,6 +211,56 @@
   }
 
   type TransportMode = 'walking' | 'bus' | 'train' | 'driving';
+  const transitLiveSchema = z.object({
+    etaMinutes: z.optional(z.number()),
+    sampledAtIso: z.optional(z.string()),
+    confidence: z.optional(z.string()),
+  });
+  const transitMetaSchema = z.object({
+    kind: z.enum(['bus', 'train']),
+    serviceOrLine: z.optional(z.string()),
+    boardStopOrStation: z.optional(z.string()),
+    alightStopOrStation: z.optional(z.string()),
+    numStops: z.optional(z.number()),
+    headsignOrDirection: z.optional(z.string()),
+    live: z.optional(transitLiveSchema),
+  });
+  const transitApiLegSchema = z.object({
+    distanceKm: z.optional(z.number()),
+    durationMin: z.optional(z.number()),
+    steps: z.optional(z.array(z.string())),
+    latlngs: z.optional(z.array(z.array(z.number()))),
+    transit: z.optional(transitMetaSchema),
+    exact: z.optional(z.boolean()),
+    warnings: z.optional(z.array(z.string())),
+  });
+  const transitApiResponseSchema = z.object({
+    status: z.optional(z.enum(['ok', 'partial', 'fallback'])),
+    provider: z.optional(z.string()),
+    legs: z.optional(z.array(transitApiLegSchema)),
+    warnings: z.optional(z.array(z.string())),
+  });
+  const osrmStepSchema = z.object({
+    distance: z.optional(z.number()),
+    name: z.optional(z.string()),
+    maneuver: z.optional(z.object({
+      type: z.optional(z.string()),
+      modifier: z.optional(z.string()),
+    })),
+  });
+  const osrmRouteSchema = z.object({
+    distance: z.optional(z.number()),
+    duration: z.optional(z.number()),
+    geometry: z.optional(z.object({
+      coordinates: z.optional(z.array(z.array(z.number()))),
+    })),
+    legs: z.optional(z.array(z.object({
+      steps: z.optional(z.array(osrmStepSchema)),
+    }))),
+  });
+  const osrmResponseSchema = z.object({
+    routes: z.optional(z.array(osrmRouteSchema)),
+  });
 
   // Average speeds in km/h for time estimation
   const SPEEDS: Record<TransportMode, number> = {
@@ -404,7 +439,10 @@
   }
 
   function getCardSlug(card: HTMLElement): string {
-    return card.dataset.slug || card.closest('a')?.getAttribute('href')?.split('/').pop() || '';
+    if (card.dataset.slug) return card.dataset.slug;
+    const href = card.closest('a')?.getAttribute('href') || '';
+    const normalizedHref = href.replace(/\/+$/, '');
+    return normalizedHref.split('/').pop() || '';
   }
 
   function syncCardHighlights() {
@@ -546,66 +584,73 @@
     const stopsParam = stops.map((stop) => `${stop.lat.toFixed(6)},${stop.lng.toFixed(6)}`).join('|');
     const url = `/api/transit/plan?mode=${mode}&stops=${encodeURIComponent(stopsParam)}`;
 
-    try {
-      const res = await fetch(url, { headers: { accept: 'application/json' } });
-      if (!res.ok) return null;
+    const responseResult = await Result.tryPromise(() => fetch(url, {
+      headers: { accept: 'application/json' },
+    }));
+    if (Result.isError(responseResult)) return null;
 
-      const data = (await res.json()) as TransitApiResponse;
-      if (!Array.isArray(data.legs) || data.legs.length !== Math.max(0, stops.length - 1)) {
-        return null;
-      }
+    const response = responseResult.value;
+    if (!response.ok) return null;
 
-      const legs: RouteLeg[] = data.legs.map((rawLeg, i) => {
-        const from = stops[i];
-        const to = stops[i + 1];
-        const fallbackDist = haversine(from.lat, from.lng, to.lat, to.lng);
-        const rawDist = Number(rawLeg.distanceKm);
-        const distanceKm = Number.isFinite(rawDist) && rawDist > 0 ? rawDist : Math.max(0.1, fallbackDist);
-        const rawMins = Number(rawLeg.durationMin);
-        const durationMin = Number.isFinite(rawMins) && rawMins > 0
-          ? Math.round(rawMins)
-          : estimateMinutes(distanceKm, mode);
-        const steps = Array.isArray(rawLeg.steps)
-          ? rawLeg.steps.map((step) => String(step || '').trim()).filter(Boolean).slice(0, 8)
-          : transitStepDetails(mode, from, to, distanceKm, durationMin, rawLeg.transit);
+    const payloadResult = await Result.tryPromise(() => response.json());
+    if (Result.isError(payloadResult)) return null;
 
-        return {
-          from,
-          to,
-          distanceKm,
-          durationMin,
-          steps,
-          latlngs: normalizeLatLngs(rawLeg.latlngs, from, to),
-          transit: rawLeg.transit,
-          exact: rawLeg.exact === true,
-          warnings: Array.isArray(rawLeg.warnings)
-            ? rawLeg.warnings.map((warning) => String(warning || '').trim()).filter(Boolean)
-            : [],
-        };
-      });
+    const parsed = transitApiResponseSchema.safeParse(payloadResult.value);
+    if (!parsed.success) return null;
 
-      const polyline: [number, number][] = [];
-      legs.forEach((leg, index) => {
-        const segment = [...leg.latlngs];
-        if (index > 0 && segment.length > 0) segment.shift();
-        polyline.push(...segment);
-      });
-
-      return {
-        polyline: polyline.length > 0 ? polyline : stops.map((s) => [s.lat, s.lng]),
-        legs,
-        source: 'transit-api',
-        status: data.status || 'partial',
-        warnings: dedupeWarnings([
-          ...(Array.isArray(data.warnings)
-            ? data.warnings.map((warning) => String(warning || '').trim()).filter(Boolean)
-            : []),
-          ...legs.flatMap((leg) => leg.warnings || []),
-        ]),
-      };
-    } catch {
+    const data = parsed.data;
+    if (!Array.isArray(data.legs) || data.legs.length !== Math.max(0, stops.length - 1)) {
       return null;
     }
+    const responseLegs = data.legs;
+    const legs: RouteLeg[] = responseLegs.map((rawLeg, i) => {
+      const from = stops[i];
+      const to = stops[i + 1];
+      const fallbackDist = haversine(from.lat, from.lng, to.lat, to.lng);
+      const rawDist = Number(rawLeg.distanceKm);
+      const distanceKm = Number.isFinite(rawDist) && rawDist > 0 ? rawDist : Math.max(0.1, fallbackDist);
+      const rawMins = Number(rawLeg.durationMin);
+      const durationMin = Number.isFinite(rawMins) && rawMins > 0
+        ? Math.round(rawMins)
+        : estimateMinutes(distanceKm, mode);
+      const steps = Array.isArray(rawLeg.steps)
+        ? rawLeg.steps.map((step) => String(step || '').trim()).filter(Boolean).slice(0, 8)
+        : transitStepDetails(mode, from, to, distanceKm, durationMin, rawLeg.transit);
+
+      return {
+        from,
+        to,
+        distanceKm,
+        durationMin,
+        steps,
+        latlngs: normalizeLatLngs(rawLeg.latlngs, from, to),
+        transit: rawLeg.transit,
+        exact: rawLeg.exact === true,
+        warnings: Array.isArray(rawLeg.warnings)
+          ? rawLeg.warnings.map((warning) => String(warning || '').trim()).filter(Boolean)
+          : [],
+      };
+    });
+
+    const polyline: [number, number][] = [];
+    legs.forEach((leg, index) => {
+      const segment = [...leg.latlngs];
+      if (index > 0 && segment.length > 0) segment.shift();
+      polyline.push(...segment);
+    });
+
+    return {
+      polyline: polyline.length > 0 ? polyline : stops.map((s) => [s.lat, s.lng]),
+      legs,
+      source: 'transit-api',
+      status: data.status || 'partial',
+      warnings: dedupeWarnings([
+        ...(Array.isArray(data.warnings)
+          ? data.warnings.map((warning) => String(warning || '').trim()).filter(Boolean)
+          : []),
+        ...legs.flatMap((leg) => leg.warnings || []),
+      ]),
+    };
   }
 
   // ─── Time estimation ──────────────────────────────────
@@ -740,29 +785,50 @@
       const toCoord = `${to.lng},${to.lat}`;
       const url = `https://router.project-osrm.org/route/v1/${profile}/${fromCoord};${toCoord}?overview=full&steps=true&geometries=geojson`;
 
-      try {
-        const res = await fetch(url);
-        if (!res.ok) return null;
-        const data = await res.json();
-        const route = data?.routes?.[0];
-        const coords: [number, number][] | undefined = route?.geometry?.coordinates;
-        if (!coords || coords.length === 0) return null;
+      const responseResult = await Result.tryPromise(() => fetch(url));
+      if (Result.isError(responseResult)) return null;
 
-        const rawSteps: Array<{ distance?: number; name?: string; maneuver?: { type?: string; modifier?: string } }> =
-          route?.legs?.[0]?.steps || [];
-        const steps = rawSteps.map((step) => formatOsrmStep(step)).filter(Boolean).slice(0, 6);
+      const response = responseResult.value;
+      if (!response.ok) return null;
 
-        return {
-          distanceKm: Math.max(0.1, (route?.distance || 0) / 1000),
-          durationMin: Math.max(1, Math.round((route?.duration || 0) / 60)),
-          steps,
-          // OSRM coordinates are [lng, lat], Leaflet expects [lat, lng].
-          latlngs: coords.map(([lng, lat]) => [lat, lng]),
-        };
-      } catch {
-        return null;
-      }
-    })();
+      const payloadResult = await Result.tryPromise(() => response.json());
+      if (Result.isError(payloadResult)) return null;
+
+      const parsed = osrmResponseSchema.safeParse(payloadResult.value);
+      const route = parsed.success ? parsed.data.routes?.[0] : null;
+      const coords = route?.geometry?.coordinates;
+      if (!coords || coords.length === 0) return null;
+
+      // OSRM coordinates are [lng, lat], Leaflet expects [lat, lng].
+      const latlngs: [number, number][] = [];
+      coords.forEach((pair) => {
+        if (!Array.isArray(pair) || pair.length < 2) return;
+        const lng = Number(pair[0]);
+        const lat = Number(pair[1]);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+        latlngs.push([lat, lng]);
+      });
+      if (latlngs.length === 0) return null;
+
+      const rawSteps = route?.legs?.[0]?.steps || [];
+      const steps = rawSteps.map((step) => formatOsrmStep(step)).filter(Boolean).slice(0, 6);
+
+      return {
+        distanceKm: Math.max(0.1, (route?.distance || 0) / 1000),
+        durationMin: Math.max(1, Math.round((route?.duration || 0) / 60)),
+        steps,
+        latlngs,
+      };
+    })()
+      .then((result) => {
+        // Keep only successful responses cached so transient failures can retry.
+        if (!result) routeLegCache.delete(cacheKey);
+        return result;
+      })
+      .catch((error) => {
+        routeLegCache.delete(cacheKey);
+        throw error;
+      });
 
     routeLegCache.set(cacheKey, request);
     return request;
@@ -890,15 +956,16 @@
   // ─── Render route on map ───────────────────────────────
   async function renderRoute() {
     if (!map) return;
+    const activeMap = map;
     const renderPass = ++routeRenderToken;
     const modeAtRenderStart = transportMode;
     setRouteLoading(true);
 
-    try {
+    const renderResult = await Result.tryPromise(async () => {
       // Clear previous
-      markers.forEach((m) => map!.removeLayer(m));
+      markers.forEach((m) => activeMap.removeLayer(m));
       markers = [];
-      if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
+      if (routeLine) { activeMap.removeLayer(routeLine); routeLine = null; }
 
       const optimized = optimizeRoute(selectedStops);
       const colors: Record<number, string> = { 1: '#ff6b35', 2: '#fbbf24', 3: '#4ade80' };
@@ -910,7 +977,7 @@
         const popupPrice = escapeHtml(String(stop.price));
         const m = L.marker([stop.lat, stop.lng], {
           icon: makeIcon(color, String(i + 1)),
-        }).addTo(map!).bindPopup(`<b>${i + 1}. ${popupName}</b><br>$${popupPrice}`);
+        }).addTo(activeMap).bindPopup(`<b>${i + 1}. ${popupName}</b><br>$${popupPrice}`);
         markers.push(m);
       });
 
@@ -923,27 +990,31 @@
         const routeData = await buildModeRoute(optimized, modeAtRenderStart);
 
         // If mode or selected stops changed while we were fetching, discard stale draw.
-        if (renderPass !== routeRenderToken || !map) return;
+        if (renderPass !== routeRenderToken) return;
 
         legs = routeData.legs;
         routeSource = routeData.source;
         routeStatus = routeData.status;
         routeWarnings = routeData.warnings;
-        routeLine = L.polyline(routeData.polyline, ROUTE_LINE_STYLE[modeAtRenderStart]).addTo(map);
+        routeLine = L.polyline(routeData.polyline, ROUTE_LINE_STYLE[modeAtRenderStart]).addTo(activeMap);
       }
 
       // Fit bounds
       if (optimized.length > 0) {
         const group = L.featureGroup(markers);
-        map.fitBounds(group.getBounds().pad(0.15));
+        activeMap.fitBounds(group.getBounds().pad(0.15));
       }
 
       // Update list
       renderList(optimized, legs, modeAtRenderStart, routeSource, routeStatus, routeWarnings);
-    } finally {
-      if (renderPass === routeRenderToken) {
-        setRouteLoading(false);
-      }
+    });
+
+    if (Result.isError(renderResult)) {
+      console.error('[route-planner] Failed to render route.', renderResult.error);
+    }
+
+    if (renderPass === routeRenderToken) {
+      setRouteLoading(false);
     }
   }
 

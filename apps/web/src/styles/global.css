@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@config "../../tailwind.config.mjs";
+@plugin "@egoist/tailwindcss-icons";
 
 @theme {
   --font-sans: "DM Sans Variable", ui-sans-serif, system-ui, sans-serif;

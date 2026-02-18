@@ -1,0 +1,11 @@
+{
+  "extends": ["oxlintrc.base.json"],
+  "plugins": ["react"],
+  "rules": {
+    "react/self-closing-comp": "error",
+    "react/no-array-index-key": "warn",
+    "react/rules-of-hooks": "error",
+    "react/jsx-key": "error",
+    "react/exhaustive-deps": "warn"
+  }
+}

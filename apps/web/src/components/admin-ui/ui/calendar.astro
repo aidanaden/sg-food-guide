@@ -1,0 +1,26 @@
+---
+import { cn } from "../utils";
+
+interface Props {
+  class?: string;
+  value?: string;
+  min?: string;
+  max?: string;
+  [key: string]: any;
+}
+
+const { class: className, value, min, max, ...attrs } = Astro.props as Props;
+---
+
+<input
+  type="date"
+  data-slot="calendar"
+  class={cn(
+    "border-border-input bg-background text-foreground h-8 rounded-lg border px-2.5 py-1 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
+    className,
+  )}
+  value={value}
+  min={min}
+  max={max}
+  {...attrs}
+/>

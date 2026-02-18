@@ -1,0 +1,64 @@
+---
+import type { HTMLAttributes } from "astro/types";
+import { cn } from "./utils";
+
+interface Props extends HTMLAttributes<"button"> {
+  ariaLabel?: string;
+}
+
+const { ariaLabel = "Paste address from clipboard", class: className, ...attrs } = Astro.props;
+---
+
+<button
+  type="button"
+  data-slot="paste-address-button"
+  class={cn(
+    "text-foreground-muted hover:text-foreground hover:bg-muted flex size-7 items-center justify-center rounded-md border-0 bg-transparent transition-colors disabled:pointer-events-none disabled:opacity-50",
+    className,
+  )}
+  aria-label={ariaLabel}
+  data-paste-address-button
+  {...attrs}
+>
+  <span class="iconify ph--clipboard size-3.5" aria-hidden="true" />
+</button>
+
+<script>
+  const buttons = document.querySelectorAll("[data-paste-address-button]");
+
+  buttons.forEach((button) => {
+    if (!(button instanceof HTMLButtonElement)) {
+      return;
+    }
+
+    if ((button as HTMLButtonElement & { __pasteInit?: boolean }).__pasteInit) {
+      return;
+    }
+
+    (button as HTMLButtonElement & { __pasteInit?: boolean }).__pasteInit = true;
+
+    button.addEventListener("click", async () => {
+      if (typeof navigator?.clipboard?.readText !== "function") {
+        button.dispatchEvent(new CustomEvent("paste-address:error", { bubbles: true }));
+        return;
+      }
+
+      try {
+        const text = await navigator.clipboard.readText();
+        button.dispatchEvent(
+          new CustomEvent("paste-address:success", {
+            bubbles: true,
+            detail: { value: text },
+          }),
+        );
+      } catch (error) {
+        button.dispatchEvent(
+          new CustomEvent("paste-address:error", {
+            bubbles: true,
+            detail: { error },
+          }),
+        );
+      }
+    });
+  });
+</script>

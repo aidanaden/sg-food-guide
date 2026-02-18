@@ -1,21 +1,31 @@
 /**
  * User preferences — favorites and visited stalls stored in localStorage.
  */
+import { Result } from 'better-result';
+import * as z from 'zod/mini';
 
 const FAVORITES_KEY = 'sgfg-favorites';
 const VISITED_KEY = 'sgfg-visited';
+const stringSetSchema = z.array(z.string());
 
 function getSet(key: string): Set<string> {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? new Set(JSON.parse(raw)) : new Set();
-  } catch {
-    return new Set();
-  }
+  const storedResult = Result.try(() => localStorage.getItem(key));
+  if (Result.isError(storedResult)) return new Set();
+
+  const stored = storedResult.value;
+  if (!stored) return new Set();
+
+  const parsedResult = Result.try(() => JSON.parse(stored));
+  if (Result.isError(parsedResult)) return new Set();
+
+  const parsedSet = stringSetSchema.safeParse(parsedResult.value);
+  if (!parsedSet.success) return new Set();
+
+  return new Set(parsedSet.data);
 }
 
 function saveSet(key: string, set: Set<string>): void {
-  localStorage.setItem(key, JSON.stringify([...set]));
+  Result.try(() => localStorage.setItem(key, JSON.stringify([...set])));
 }
 
 // ─── Favorites ─────────────────────────────────────────

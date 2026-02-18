@@ -1,0 +1,27 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "experimentalSortImports": {
+    "groups": [
+      ["type-import", "value-builtin", "value-external"],
+      ["type-internal", "value-internal"],
+      [
+        "type-parent",
+        "type-sibling",
+        "type-index",
+        "value-parent",
+        "value-sibling",
+        "value-index",
+        "side-effect"
+      ],
+      "unknown"
+    ],
+    "internalPattern": ["@sg-food-guide/"],
+    "newlinesBetween": true,
+    "ignoreCase": true,
+    "order": "asc"
+  },
+  "experimentalTailwindcss": {
+    "functions": ["cn", "cva", "clsx"]
+  },
+  "ignorePatterns": ["**/routeTree.gen.ts", ".agents/**"]
+}

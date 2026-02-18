@@ -1,0 +1,35 @@
+---
+import { cn } from "../utils";
+
+interface Props {
+  open?: boolean;
+  class?: string;
+  triggerClass?: string;
+  contentClass?: string;
+  [key: string]: any;
+}
+
+const {
+  open = false,
+  class: className,
+  triggerClass,
+  contentClass,
+  ...attrs
+} = Astro.props as Props;
+---
+
+<details data-slot="accordion-item" open={open} class={cn("border-b border-border", className)} {...attrs}>
+  <summary
+    data-slot="accordion-trigger"
+    class={cn(
+      "group flex cursor-pointer list-none items-center justify-between py-2.5 text-left text-sm font-medium",
+      triggerClass,
+    )}
+  >
+    <span><slot name="trigger">Details</slot></span>
+    <span class="iconify ph--caret-down text-foreground-muted transition-transform group-open:rotate-180" aria-hidden="true" />
+  </summary>
+  <div data-slot="accordion-content" class={cn("pb-2.5 text-sm", contentClass)}>
+    <slot />
+  </div>
+</details>

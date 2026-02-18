@@ -1,0 +1,25 @@
+---
+import type { HTMLAttributes } from "astro/types";
+import { cn } from "./utils";
+import Spinner from "./ui/spinner.astro";
+
+interface Props extends HTMLAttributes<"div"> {
+  minHeight?: number;
+}
+
+const { minHeight = 256, class: className, ...attrs } = Astro.props;
+const minHeightStyle = typeof minHeight === "number" ? `${minHeight / 16}rem` : "16rem";
+const styleAttr = `min-height: ${minHeightStyle};`;
+---
+
+<div
+  data-slot="loading-placeholder"
+  class={cn("text-foreground-muted flex flex-1 items-center justify-center gap-2", className)}
+  role="status"
+  aria-live="polite"
+  style={styleAttr}
+  {...attrs}
+>
+  <Spinner size="sm" />
+  <span><slot>Loading...</slot></span>
+</div>

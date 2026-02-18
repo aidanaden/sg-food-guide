@@ -1,0 +1,6 @@
+---
+import type { HTMLAttributes } from "astro/types";
+import { cn } from "./utils";
+const { class: className, ...attrs } = Astro.props as HTMLAttributes<"h1">;
+---
+<h1 data-slot="error-page-title" class={cn("text-foreground text-xl font-bold", className)} {...attrs}><slot /></h1>

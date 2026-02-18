@@ -1,0 +1,39 @@
+{
+  "name": "@sg-food-guide/ui",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "global.css",
+    "src"
+  ],
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
+    },
+    "./global.css": "./global.css"
+  },
+  "scripts": {
+    "transit": "echo transit",
+    "typecheck": "tsc --noEmit",
+    "lint:check": "oxlint ./src -c ../../configs/oxlint-config/oxlintrc.react.json --quiet --type-aware",
+    "lint:fix": "oxlint ./src -c ../../configs/oxlint-config/oxlintrc.react.json --fix --type-aware"
+  },
+  "dependencies": {
+    "clsx": "catalog:ui",
+    "tailwind-merge": "catalog:ui"
+  },
+  "devDependencies": {
+    "@sg-food-guide/tsconfig": "workspace:*",
+    "@types/react": "catalog:ui",
+    "@types/react-dom": "catalog:ui",
+    "react": "catalog:ui",
+    "react-dom": "catalog:ui"
+  },
+  "peerDependencies": {
+    "react": "catalog:ui",
+    "react-dom": "catalog:ui"
+  }
+}

@@ -1,0 +1,44 @@
+---
+import { cn } from "../utils";
+
+interface Props {
+  open?: boolean;
+  class?: string;
+  [key: string]: any;
+}
+
+const { open = false, class: className, ...attrs } = Astro.props as Props;
+const id = `admin-collapsible-${Math.random().toString(36).slice(2, 10)}`;
+---
+
+<div
+  id={id}
+  data-slot="collapsible"
+  data-collapsible
+  data-open={open ? "true" : "false"}
+  hidden={!open}
+  aria-hidden={open ? "false" : "true"}
+  class={cn("overflow-hidden transition-all duration-200", className)}
+  {...attrs}
+>
+  <slot />
+</div>
+
+<script is:inline define:vars={{ id }}>
+  const root = document.getElementById(id);
+  if (root != null) {
+    const syncVisibility = () => {
+      const isOpen = root.dataset.open === "true";
+      root.hidden = !isOpen;
+      root.setAttribute("aria-hidden", isOpen ? "false" : "true");
+    };
+
+    syncVisibility();
+
+    root.addEventListener("collapsible:set", (event) => {
+      const detail = event.detail ?? {};
+      root.dataset.open = detail.open === true ? "true" : "false";
+      syncVisibility();
+    });
+  }
+</script>

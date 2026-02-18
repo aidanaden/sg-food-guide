@@ -1,0 +1,113 @@
+---
+import { cn } from "../../utils";
+
+interface Props {
+  labels?: string[];
+  values?: number[];
+  type?: "line" | "bar";
+  class?: string;
+  heightRem?: number;
+  color?: string;
+  [key: string]: any;
+}
+
+const {
+  labels = [],
+  values = [],
+  type = "line",
+  class: className,
+  heightRem = 16,
+  color = "var(--color-primary)",
+  ...attrs
+} = Astro.props as Props;
+
+const id = `chart-canvas-${Math.random().toString(36).slice(2, 10)}`;
+const safeValues = values.length > 0 ? values : [12, 24, 18, 30, 22, 28];
+const safeLabels =
+  labels.length > 0
+    ? labels
+    : safeValues.map((_, index) => `Point ${index + 1}`);
+---
+
+<div class={cn("w-full", className)} {...attrs}>
+  <canvas id={id} data-slot="chart-canvas" class="block w-full" style={`height: ${heightRem}rem;`} />
+  <div class="text-foreground-muted mt-2 flex flex-wrap gap-2 text-xs">
+    {safeLabels.map((label) => (
+      <span class="rounded bg-muted px-2 py-1">{label}</span>
+    ))}
+  </div>
+</div>
+
+<script is:inline define:vars={{ id, safeValues, type, color }}>
+  const canvas = document.getElementById(id);
+
+  if (canvas instanceof HTMLCanvasElement) {
+    const context = canvas.getContext("2d");
+
+    if (context != null) {
+      const draw = () => {
+        const rect = canvas.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+        canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+        context.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        const width = rect.width;
+        const height = rect.height;
+        const max = Math.max(...safeValues, 1);
+
+        context.clearRect(0, 0, width, height);
+
+        context.strokeStyle = "rgba(120, 120, 120, 0.35)";
+        context.lineWidth = 1;
+        context.beginPath();
+        context.moveTo(0, height - 1);
+        context.lineTo(width, height - 1);
+        context.stroke();
+
+        if (type === "bar") {
+          const gap = width / safeValues.length;
+          const barWidth = Math.max(2, gap * 0.65);
+
+          safeValues.forEach((value, index) => {
+            const normalized = value / max;
+            const barHeight = normalized * (height - 8);
+            const x = index * gap + (gap - barWidth) / 2;
+            const y = height - barHeight;
+            context.fillStyle = color;
+            context.globalAlpha = 0.7;
+            context.fillRect(x, y, barWidth, barHeight);
+            context.globalAlpha = 1;
+          });
+          return;
+        }
+
+        context.strokeStyle = color;
+        context.lineWidth = 2;
+        context.beginPath();
+        safeValues.forEach((value, index) => {
+          const x = safeValues.length === 1 ? width / 2 : (index / (safeValues.length - 1)) * width;
+          const y = height - (value / max) * (height - 8);
+          if (index === 0) {
+            context.moveTo(x, y);
+          } else {
+            context.lineTo(x, y);
+          }
+        });
+        context.stroke();
+
+        context.fillStyle = color;
+        safeValues.forEach((value, index) => {
+          const x = safeValues.length === 1 ? width / 2 : (index / (safeValues.length - 1)) * width;
+          const y = height - (value / max) * (height - 8);
+          context.beginPath();
+          context.arc(x, y, 2.5, 0, Math.PI * 2);
+          context.fill();
+        });
+      };
+
+      draw();
+      window.addEventListener("resize", draw);
+    }
+  }
+</script>

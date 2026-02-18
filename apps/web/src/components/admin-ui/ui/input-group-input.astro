@@ -1,0 +1,8 @@
+---
+import Input from "./input.astro";
+import { cn } from "../utils";
+
+const { class: className, ...attrs } = Astro.props;
+---
+
+<Input data-slot="input-group-control" class={cn("h-6 border-0 bg-transparent px-0 py-0", className)} {...attrs} />

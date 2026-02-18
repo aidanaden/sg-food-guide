@@ -1,0 +1,40 @@
+---
+import LoadingBar from "./loading-bar.astro";
+
+interface Props {
+  isLoading?: boolean;
+  class?: string;
+  [key: string]: any;
+}
+
+const { isLoading = false, class: className, ...attrs } = Astro.props as Props;
+const id = `admin-page-loading-${Math.random().toString(36).slice(2, 10)}`;
+---
+
+<div id={id} data-admin-page-loading data-is-loading={isLoading ? "true" : "false"} hidden></div>
+<LoadingBar class={className} {...attrs} />
+
+<script is:inline define:vars={{ id }}>
+  const root = document.getElementById(id);
+  if (root != null) {
+    const emit = (isLoading) => {
+      window.dispatchEvent(new Event(isLoading ? "admin-loading:start" : "admin-loading:end"));
+    };
+
+    let current = root.dataset.isLoading === "true";
+    emit(current);
+
+    const observer = new MutationObserver(() => {
+      const next = root.dataset.isLoading === "true";
+      if (next !== current) {
+        current = next;
+        emit(current);
+      }
+    });
+
+    observer.observe(root, {
+      attributes: true,
+      attributeFilter: ["data-is-loading"],
+    });
+  }
+</script>

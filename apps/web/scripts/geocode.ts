@@ -6,21 +6,35 @@
  * Results are written back to the source .ts files in-place.
  */
 
+import { Result } from 'better-result';
 import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import * as z from 'zod/mini';
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = join(SCRIPT_DIR, '..', 'src', 'data');
 const CACHE_FILE = join(SCRIPT_DIR, '.geocode-cache.json');
+const cacheSchema = z.record(z.string(), z.object({
+  lat: z.number(),
+  lng: z.number(),
+}));
+const nominatimResponseSchema = z.array(z.object({
+  lat: z.union([z.string(), z.number()]),
+  lon: z.union([z.string(), z.number()]),
+}));
 
-// Load cache
-let cache: Record<string, { lat: number; lng: number }> = {};
-try {
-  cache = JSON.parse(readFileSync(CACHE_FILE, 'utf-8'));
-} catch {
-  cache = {};
+function loadCache(): Record<string, { lat: number; lng: number }> {
+  const fileResult = Result.try(() => readFileSync(CACHE_FILE, 'utf-8'));
+  if (Result.isError(fileResult)) return {};
+
+  const parsedResult = Result.try(() => JSON.parse(fileResult.value));
+  if (Result.isError(parsedResult)) return {};
+
+  const parsedCache = cacheSchema.safeParse(parsedResult.value);
+  return parsedCache.success ? parsedCache.data : {};
 }
+let cache: Record<string, { lat: number; lng: number }> = loadCache();
 
 function saveCache() {
   writeFileSync(CACHE_FILE, JSON.stringify(cache, null, 2));
@@ -67,21 +81,30 @@ function extractStreetName(address: string): string | null {
 }
 
 async function nominatimSearch(query: string, countryCode: string): Promise<{ lat: number; lng: number } | null> {
-  try {
-    const cc = countryCode === 'hk' ? 'cn' : countryCode;
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1&countrycodes=${cc}`;
-    const res = await fetch(url, {
-      headers: { 'User-Agent': 'sg-food-guide-geocoder/1.0' },
-    });
-    const data = await res.json();
-
-    if (data.length > 0) {
-      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
-    }
-  } catch (err) {
-    console.error(`  Error querying Nominatim:`, err);
+  const cc = countryCode === 'hk' ? 'cn' : countryCode;
+  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1&countrycodes=${cc}`;
+  const responseResult = await Result.tryPromise(() => fetch(url, {
+    headers: { 'User-Agent': 'sg-food-guide-geocoder/1.0' },
+  }));
+  if (Result.isError(responseResult)) {
+    console.error(`  Error querying Nominatim:`, responseResult.error);
+    return null;
   }
-  return null;
+
+  const payloadResult = await Result.tryPromise(() => responseResult.value.json());
+  if (Result.isError(payloadResult)) {
+    console.error(`  Error parsing Nominatim response:`, payloadResult.error);
+    return null;
+  }
+
+  const payload = nominatimResponseSchema.safeParse(payloadResult.value);
+  if (!payload.success || payload.data.length === 0) return null;
+
+  const first = payload.data[0];
+  const lat = parseFloat(String(first.lat));
+  const lng = parseFloat(String(first.lon));
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return { lat, lng };
 }
 
 async function geocode(name: string, address: string, country: string): Promise<{ lat: number; lng: number } | null> {

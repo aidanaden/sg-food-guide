@@ -1,0 +1,29 @@
+---
+import type { HTMLAttributes } from "astro/types";
+import { cn } from "../utils";
+
+interface Props extends HTMLAttributes<"div"> {
+  align?: "inline-start" | "inline-end" | "block-start" | "block-end";
+}
+
+const { align = "inline-start", class: className, ...attrs } = Astro.props;
+
+const alignClasses = {
+  "inline-start": "order-first",
+  "inline-end": "order-last ml-auto",
+  "block-start": "order-first basis-full justify-start",
+  "block-end": "order-last basis-full justify-end",
+} as const;
+---
+
+<div
+  data-slot="input-group-addon"
+  class={cn(
+    "text-foreground-muted flex min-h-6 shrink-0 items-center gap-1 text-xs",
+    alignClasses[align],
+    className,
+  )}
+  {...attrs}
+>
+  <slot />
+</div>

@@ -1,0 +1,160 @@
+---
+import { cn } from "../utils";
+import Button from "./button.astro";
+
+interface Props {
+  id?: string;
+  side?: "left" | "right" | "bottom";
+  class?: string;
+  overlayClass?: string;
+  panelClass?: string;
+  closeOnOverlay?: boolean;
+  showHandle?: boolean;
+  [key: string]: any;
+}
+
+const {
+  id,
+  side = "bottom",
+  class: className,
+  overlayClass,
+  panelClass,
+  closeOnOverlay = true,
+  showHandle = true,
+  ...attrs
+} = Astro.props as Props;
+
+const drawerId = id ?? `admin-drawer-${Math.random().toString(36).slice(2, 10)}`;
+
+const panelSideClass = {
+  left: "left-0 top-0 h-full w-80 max-w-full -translate-x-full",
+  right: "right-0 top-0 h-full w-80 max-w-full translate-x-full",
+  bottom: "bottom-0 left-0 w-full max-h-screen translate-y-full rounded-t-xl",
+} as const;
+---
+
+<div
+  id={drawerId}
+  data-slot="drawer"
+  data-admin-drawer
+  data-state="closed"
+  data-side={side}
+  data-close-on-overlay={closeOnOverlay ? "true" : "false"}
+  class={cn("relative", className)}
+  {...attrs}
+>
+  <div data-slot="drawer-trigger" data-admin-drawer-trigger>
+    <slot name="trigger" />
+  </div>
+
+  <div
+    data-slot="drawer-overlay"
+    data-admin-drawer-overlay
+    class={cn("fixed inset-0 z-50 hidden bg-black/40 opacity-0 backdrop-blur-sm transition-opacity duration-150", overlayClass)}
+  >
+    <div
+      data-slot="drawer-content"
+      data-admin-drawer-content
+      class={cn(
+        "bg-background ring-border fixed z-50 overflow-auto p-4 shadow-lg ring-1 transition-transform duration-200",
+        panelSideClass[side],
+        panelClass,
+      )}
+    >
+      {showHandle && side === "bottom" && (
+        <div class="mb-3 flex justify-center">
+          <span class="bg-muted h-1.5 w-10 rounded-full" aria-hidden="true" />
+        </div>
+      )}
+
+      <Button data-admin-drawer-close variant="ghost" size="icon-sm" class="absolute top-2 right-2">
+        <span class="iconify ph--x size-4" aria-hidden="true" />
+        <span class="sr-only">Close</span>
+      </Button>
+
+      <slot />
+    </div>
+  </div>
+</div>
+
+<script is:inline>
+  const roots = document.querySelectorAll("[data-admin-drawer]");
+
+  roots.forEach((root) => {
+    if (root.__adminDrawerInit) {
+      return;
+    }
+    root.__adminDrawerInit = true;
+
+    const overlay = root.querySelector("[data-admin-drawer-overlay]");
+    const content = root.querySelector("[data-admin-drawer-content]");
+    const triggerHost = root.querySelector("[data-admin-drawer-trigger]");
+    if (overlay == null || content == null) {
+      return;
+    }
+
+    const side = root.dataset.side ?? "bottom";
+    const closeOnOverlay = root.dataset.closeOnOverlay === "true";
+
+    const openClass = {
+      left: "translate-x-0",
+      right: "translate-x-0",
+      bottom: "translate-y-0",
+    };
+
+    const setOpen = (open) => {
+      root.dataset.state = open ? "open" : "closed";
+
+      if (open) {
+        overlay.classList.remove("hidden", "opacity-0");
+        overlay.classList.add("opacity-100");
+        content.classList.add(openClass[side] ?? openClass.bottom);
+        document.body.classList.add("overflow-hidden");
+        root.dispatchEvent(new CustomEvent("drawer:open", { bubbles: true, detail: { id: root.id } }));
+        return;
+      }
+
+      overlay.classList.remove("opacity-100");
+      overlay.classList.add("opacity-0");
+      content.classList.remove(openClass[side] ?? openClass.bottom);
+
+      window.setTimeout(() => {
+        overlay.classList.add("hidden");
+      }, 150);
+
+      document.body.classList.remove("overflow-hidden");
+      root.dispatchEvent(new CustomEvent("drawer:close", { bubbles: true, detail: { id: root.id } }));
+    };
+
+    triggerHost?.addEventListener("click", (event) => {
+      const target = event.target;
+      if (target instanceof Element && target.closest("a") instanceof HTMLAnchorElement) {
+        event.preventDefault();
+      }
+      setOpen(true);
+    });
+
+    root.querySelectorAll("[data-admin-drawer-open]").forEach((el) => {
+      el.addEventListener("click", () => setOpen(true));
+    });
+
+    root.querySelectorAll("[data-admin-drawer-close]").forEach((el) => {
+      el.addEventListener("click", () => setOpen(false));
+    });
+
+    overlay.addEventListener("click", (event) => {
+      if (!closeOnOverlay) {
+        return;
+      }
+      if (event.target === overlay) {
+        setOpen(false);
+      }
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && root.dataset.state === "open") {
+        setOpen(false);
+      }
+    });
+  });
+</script>

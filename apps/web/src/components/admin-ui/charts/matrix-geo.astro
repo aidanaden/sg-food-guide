@@ -1,0 +1,51 @@
+---
+import { cn } from "../utils";
+
+interface Cell {
+  x: string;
+  y: string;
+  value: number;
+}
+
+interface Props {
+  cells?: Cell[];
+  class?: string;
+  [key: string]: any;
+}
+
+const {
+  cells = [
+    { x: "Mon", y: "A", value: 2 },
+    { x: "Tue", y: "A", value: 5 },
+    { x: "Wed", y: "A", value: 3 },
+    { x: "Mon", y: "B", value: 7 },
+    { x: "Tue", y: "B", value: 4 },
+    { x: "Wed", y: "B", value: 8 },
+  ],
+  class: className,
+  ...attrs
+} = Astro.props as Props;
+
+const xLabels = Array.from(new Set(cells.map((cell) => cell.x)));
+const yLabels = Array.from(new Set(cells.map((cell) => cell.y)));
+const max = Math.max(...cells.map((cell) => cell.value), 1);
+---
+
+<div data-slot="matrix-geo-chart" class={cn("w-full", className)} {...attrs}>
+  <div class="grid gap-1" style={`grid-template-columns: repeat(${xLabels.length}, minmax(0, 1fr));`}>
+    {yLabels.flatMap((y) =>
+      xLabels.map((x) => {
+        const cell = cells.find((entry) => entry.x === x && entry.y === y);
+        const value = cell?.value ?? 0;
+        const alpha = 0.18 + (value / max) * 0.72;
+        return (
+          <div
+            class="border-border h-7 rounded-sm border"
+            style={`background-color: rgba(14, 165, 233, ${alpha});`}
+            title={`${y} / ${x}: ${value}`}
+          />
+        );
+      }),
+    )}
+  </div>
+</div>

@@ -1,0 +1,30 @@
+---
+import type { HTMLAttributes } from "astro/types";
+import { cn } from "../utils";
+
+interface Props extends HTMLAttributes<"span"> {
+  variant?: "default" | "secondary" | "outline" | "destructive" | "success";
+}
+
+const { variant = "default", class: className, ...attrs } = Astro.props;
+
+const variantClasses = {
+  default: "bg-primary/20 text-primary",
+  secondary: "bg-muted text-foreground",
+  outline: "border border-border text-foreground-muted",
+  destructive: "bg-destructive/20 text-destructive",
+  success: "bg-emerald-500/20 text-emerald-400",
+} as const;
+---
+
+<span
+  data-slot="badge"
+  class={cn(
+    "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium transition-colors",
+    variantClasses[variant],
+    className,
+  )}
+  {...attrs}
+>
+  <slot />
+</span>

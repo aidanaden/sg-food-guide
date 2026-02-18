@@ -1,0 +1,18 @@
+---
+import type { HTMLAttributes } from "astro/types";
+import { cn } from "../utils";
+
+interface Props extends HTMLAttributes<"input"> {}
+
+const { class: className, ...attrs } = Astro.props;
+---
+
+<input
+  type="checkbox"
+  data-slot="checkbox"
+  class={cn(
+    "border-border-input text-primary size-4 rounded border bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50",
+    className,
+  )}
+  {...attrs}
+/>

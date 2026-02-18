@@ -1,0 +1,94 @@
+---
+import { cn } from "../utils";
+
+interface Props {
+  open?: boolean;
+  side?: "top" | "right" | "bottom" | "left";
+  align?: "start" | "center" | "end";
+  class?: string;
+  contentClass?: string;
+  triggerClass?: string;
+  [key: string]: any;
+}
+
+const {
+  open = false,
+  side = "bottom",
+  align = "center",
+  class: className,
+  contentClass,
+  triggerClass,
+  ...attrs
+} = Astro.props as Props;
+
+const sideClass = {
+  top: "bottom-full mb-2",
+  right: "left-full ml-2",
+  bottom: "top-full mt-2",
+  left: "right-full mr-2",
+} as const;
+
+const alignClass = {
+  start: "left-0",
+  center: "left-1/2 -translate-x-1/2",
+  end: "right-0",
+} as const;
+---
+
+<details
+  data-slot="popover"
+  data-admin-popover
+  open={open}
+  class={cn("relative inline-block", className)}
+  {...attrs}
+>
+  <summary
+    data-slot="popover-trigger"
+    class={cn("inline-flex list-none cursor-pointer items-center", triggerClass)}
+  >
+    <slot name="trigger">
+      <button type="button" class="rounded-md border px-2 py-1 text-sm">Open</button>
+    </slot>
+  </summary>
+
+  <div
+    data-slot="popover-content"
+    class={cn(
+      "bg-surface-overlay text-foreground ring-border absolute z-50 min-w-48 rounded-lg p-2.5 text-sm shadow-md ring-1",
+      sideClass[side],
+      alignClass[align],
+      contentClass,
+    )}
+  >
+    <slot />
+  </div>
+</details>
+
+<style>
+  details[data-admin-popover] > summary {
+    list-style: none;
+  }
+
+  details[data-admin-popover] > summary::-webkit-details-marker {
+    display: none;
+  }
+</style>
+
+<script is:inline>
+  if (!window.__adminPopoverInit) {
+    window.__adminPopoverInit = true;
+
+    document.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) {
+        return;
+      }
+
+      document.querySelectorAll("details[data-admin-popover][open]").forEach((popover) => {
+        if (!popover.contains(target)) {
+          popover.removeAttribute("open");
+        }
+      });
+    });
+  }
+</script>

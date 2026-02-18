@@ -2,6 +2,7 @@
 import Input from './ui/Input.astro';
 import Select from './ui/Select.astro';
 import Checkbox from './ui/Checkbox.astro';
+import ResponsiveDialog from './ui/ResponsiveDialog.astro';
 import { type TimeCategory, timeCategoryLabels, type Country, countryLabels } from '../data/stalls';
 
 interface Props {
@@ -69,93 +70,128 @@ const locationRadiusOptions = locationRadiusOptionsKm.map((km) => ({
 
 <section class="sticky top-0 z-30 border-b border-warm-800/60 bg-surface/90 backdrop-blur-xl">
   <div class="mx-auto max-w-6xl px-4 py-3">
-    <div class="flex flex-col sm:flex-row gap-3">
-      <div class="flex-1">
+    <div class="flex items-stretch gap-2 sm:gap-3">
+      <div class="min-w-0 flex-1">
         <Input
           id="search"
           type="text"
           icon="i-ph-magnifying-glass"
           placeholder="Search stalls, dishes, areas..."
+          class="text-base sm:text-sm"
         />
       </div>
-
-      <div class="flex gap-2 overflow-x-auto sm:flex-wrap sm:overflow-visible pb-1 sm:pb-0">
-        <Select id="filter-rating" options={ratingOptions} placeholder="All Ratings" />
-        <Select id="filter-area" options={areaOptions} placeholder="All Areas" />
-        <Select id="filter-time" options={timeOptions} placeholder="All Hours" />
-        {showCountryFilter && (
-          <Select id="filter-country" options={countryOptions} placeholder="All Countries" data-default={defaultCountry} />
-        )}
-        {showCuisineFilter && (
-          <Select id="filter-cuisine" options={cuisineOptions} placeholder="All Cuisines" />
-        )}
-        <Select id="sort-by" options={sortOptions} />
-      </div>
-    </div>
-
-    <!-- Active filter summary -->
-    <div id="active-filters" class="hidden items-center gap-2 mt-2 text-xs text-ink-faint">
-      <span id="active-filters-summary" class="inline-flex items-center rounded-full bg-warm-800/60 px-2.5 py-1"></span>
-      <button
-        id="active-filters-clear"
-        type="button"
-        class="inline-flex items-center rounded-full border border-warm-700/60 px-2.5 py-1 text-ink-muted hover:text-ink transition-colors"
+      <ResponsiveDialog
+        id="filter-settings-dialog"
+        panelClass="sm:max-w-3xl"
       >
-        Clear
-      </button>
+        <button
+          slot="trigger"
+          type="button"
+          data-rd-open
+          class="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-warm-700/60 bg-surface-raised px-3 py-2 text-sm font-medium text-ink-muted transition-colors hover:border-flame-500/40 hover:text-flame-400"
+          aria-haspopup="dialog"
+          aria-controls="filter-settings-dialog"
+        >
+          <span class="i-ph-sliders-horizontal text-sm" />
+          <span class="hidden sm:inline">Filters</span>
+        </button>
+
+        <div class="flex max-h-[80vh] flex-col">
+          <div class="flex items-center justify-between border-b border-warm-800/60 px-4 py-3 sm:px-5">
+            <h2 class="font-display text-xl text-ink">Filter & Sort</h2>
+            <button
+              type="button"
+              data-rd-close
+              class="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-warm-700/60 bg-surface-raised px-3 py-2 text-xs font-medium text-ink-muted transition-colors hover:border-flame-500/40 hover:text-flame-400"
+            >
+              <span class="i-ph-x text-xs" />
+              Close
+            </button>
+          </div>
+
+          <div class="space-y-4 overflow-y-auto px-4 py-4 sm:px-5">
+            <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              <Select id="filter-rating" options={ratingOptions} placeholder="All Ratings" class="sm:w-full" />
+              <Select id="filter-area" options={areaOptions} placeholder="All Areas" class="sm:w-full" />
+              <Select id="filter-time" options={timeOptions} placeholder="All Hours" class="sm:w-full" />
+              {showCountryFilter && (
+                <Select id="filter-country" options={countryOptions} placeholder="All Countries" data-default={defaultCountry} class="sm:w-full" />
+              )}
+              {showCuisineFilter && (
+                <Select id="filter-cuisine" options={cuisineOptions} placeholder="All Cuisines" class="sm:w-full" />
+              )}
+              <Select id="sort-by" options={sortOptions} class="sm:w-full" />
+            </div>
+
+            <div class="flex flex-col gap-2 border-t border-warm-800/50 pt-4">
+              <div class="flex flex-wrap items-center gap-3">
+                <Checkbox id="filter-favorites" class="shrink-0 whitespace-nowrap">
+                  <span class="i-ph-heart-fill text-xs text-flame-400" aria-hidden="true" />
+                  <span class="whitespace-nowrap">Favourites only</span>
+                </Checkbox>
+                <Checkbox id="filter-hide-visited" class="shrink-0 whitespace-nowrap">
+                  <span class="i-ph-eye-slash text-xs text-ink-faint" aria-hidden="true" />
+                  <span class="whitespace-nowrap">Hide visited</span>
+                </Checkbox>
+              </div>
+
+              {showLocationFilter && (
+                <div class="mt-1 flex flex-col gap-2">
+                  <button
+                    id="filter-nearby-toggle"
+                    type="button"
+                    data-default-radius={locationDefaultRadiusKm}
+                    class="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-lg border border-warm-700/60 bg-surface-raised px-3 py-2 text-xs font-medium text-ink-muted transition-colors hover:border-flame-500/40 hover:text-flame-400 sm:w-auto sm:justify-start"
+                  >
+                    <span class="i-ph-navigation-arrow text-xs" />
+                    Near me
+                  </button>
+
+                  <div id="filter-location-controls" class="hidden items-center gap-2">
+                    <Select
+                      id="filter-location-radius"
+                      options={locationRadiusOptions}
+                      class="min-w-28 sm:w-full"
+                      data-default={locationDefaultRadiusKm}
+                      aria-label="Nearby radius"
+                    />
+                  </div>
+
+                  <label id="filter-location-query-wrap" class="hidden items-center gap-2">
+                    <span class="sr-only">Fallback location input</span>
+                    <input
+                      id="filter-location-query"
+                      type="text"
+                      placeholder="Enter area (e.g. Woodlands)"
+                      class="w-full min-h-11 rounded-lg border border-warm-700/50 bg-surface-raised px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-flame-500/50 focus:outline-none focus:ring-1 focus:ring-flame-500/30 transition-colors"
+                      aria-label="Fallback location"
+                    />
+                  </label>
+
+                  <p id="filter-location-status" class="hidden text-xs text-ink-faint" aria-live="polite"></p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </ResponsiveDialog>
     </div>
 
-    <!-- Quick toggles -->
-    <div class="flex items-center flex-nowrap gap-3 mt-2 overflow-x-auto">
-      <Checkbox id="filter-favorites" class="shrink-0 whitespace-nowrap">
-        <span class="i-ph-heart-fill text-xs text-flame-400" aria-hidden="true" />
-        <span class="whitespace-nowrap">Favourites only</span>
-      </Checkbox>
-      <Checkbox id="filter-hide-visited" class="shrink-0 whitespace-nowrap">
-        <span class="i-ph-eye-slash text-xs text-ink-faint" aria-hidden="true" />
-        <span class="whitespace-nowrap">Hide visited</span>
-      </Checkbox>
-      <!-- Result count -->
-      <p id="result-count" class="text-ink-faint text-xs ml-auto shrink-0 whitespace-nowrap">
+    <div class="mt-2 flex flex-wrap items-center gap-2">
+      <div id="active-filters" class="hidden items-center gap-2 text-xs text-ink-faint">
+        <span id="active-filters-summary" class="inline-flex items-center rounded-full bg-warm-800/60 px-2.5 py-1"></span>
+        <button
+          id="active-filters-clear"
+          type="button"
+          class="inline-flex items-center rounded-full border border-warm-700/60 px-2.5 py-1 text-ink-muted transition-colors hover:text-ink"
+        >
+          Clear
+        </button>
+      </div>
+
+      <p id="result-count" class="ml-auto shrink-0 text-xs text-ink-faint whitespace-nowrap">
         Showing {totalCount} stalls
       </p>
     </div>
-
-    {showLocationFilter && (
-      <div class="mt-2 flex flex-wrap items-center gap-2">
-        <button
-          id="filter-nearby-toggle"
-          type="button"
-          data-default-radius={locationDefaultRadiusKm}
-          class="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-warm-700/60 bg-surface-raised px-3 py-2 text-xs font-medium text-ink-muted transition-colors hover:border-flame-500/40 hover:text-flame-400"
-        >
-          <span class="i-ph-navigation-arrow text-xs" />
-          Near me
-        </button>
-
-        <div id="filter-location-controls" class="hidden items-center gap-2">
-          <Select
-            id="filter-location-radius"
-            options={locationRadiusOptions}
-            class="min-w-28"
-            data-default={locationDefaultRadiusKm}
-            aria-label="Nearby radius"
-          />
-        </div>
-
-        <label id="filter-location-query-wrap" class="hidden items-center gap-2">
-          <span class="sr-only">Fallback location input</span>
-          <input
-            id="filter-location-query"
-            type="text"
-            placeholder="Enter area (e.g. Woodlands)"
-            class="w-56 sm:w-64 min-h-11 rounded-lg border border-warm-700/50 bg-surface-raised px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-flame-500/50 focus:outline-none focus:ring-1 focus:ring-flame-500/30 transition-colors"
-            aria-label="Fallback location"
-          />
-        </label>
-
-        <p id="filter-location-status" class="hidden text-xs text-ink-faint" aria-live="polite"></p>
-      </div>
-    )}
   </div>
 </section>

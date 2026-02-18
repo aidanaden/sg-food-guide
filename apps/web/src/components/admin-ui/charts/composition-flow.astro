@@ -1,0 +1,63 @@
+---
+import { cn } from "../utils";
+
+interface Slice {
+  label: string;
+  value: number;
+  color?: string;
+}
+
+interface Props {
+  data?: Slice[];
+  class?: string;
+  [key: string]: any;
+}
+
+const {
+  data = [
+    { label: "Direct", value: 42, color: "#22c55e" },
+    { label: "Search", value: 26, color: "#0ea5e9" },
+    { label: "Referral", value: 18, color: "#f59e0b" },
+    { label: "Social", value: 14, color: "#ef4444" },
+  ],
+  class: className,
+  ...attrs
+} = Astro.props as Props;
+
+const total = Math.max(
+  data.reduce((sum, item) => sum + Math.max(item.value, 0), 0),
+  1,
+);
+
+let offset = 0;
+const slices = data.map((item, index) => {
+  const color = item.color ?? ["#22c55e", "#0ea5e9", "#f59e0b", "#ef4444", "#8b5cf6"][index % 5];
+  const start = offset;
+  const end = offset + (item.value / total) * 360;
+  offset = end;
+  return `${color} ${start}deg ${end}deg`;
+});
+
+const gradient = `conic-gradient(${slices.join(", ")})`;
+---
+
+<div data-slot="composition-flow-chart" class={cn("grid gap-4 sm:grid-cols-2", className)} {...attrs}>
+  <div class="mx-auto flex h-40 w-40 items-center justify-center rounded-full" style={`background: ${gradient};`}>
+    <div class="bg-surface h-20 w-20 rounded-full" />
+  </div>
+
+  <div class="space-y-2">
+    {data.map((item, index) => (
+      <div class="flex items-center justify-between gap-2 text-xs">
+        <div class="flex items-center gap-2">
+          <span
+            class="inline-block h-2.5 w-2.5 rounded-full"
+            style={`background-color: ${item.color ?? ["#22c55e", "#0ea5e9", "#f59e0b", "#ef4444", "#8b5cf6"][index % 5]};`}
+          />
+          <span>{item.label}</span>
+        </div>
+        <span class="text-foreground-muted">{Math.round((item.value / total) * 100)}%</span>
+      </div>
+    ))}
+  </div>
+</div>

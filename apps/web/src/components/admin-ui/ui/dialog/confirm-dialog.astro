@@ -1,0 +1,77 @@
+---
+import Dialog from "./dialog-primitives.astro";
+import Button from "../button.astro";
+
+interface Props {
+  id?: string;
+  title: string;
+  description: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  variant?: "default" | "destructive-solid";
+  class?: string;
+  [key: string]: any;
+}
+
+const {
+  id,
+  title,
+  description,
+  confirmLabel = "Confirm",
+  cancelLabel = "Cancel",
+  variant = "default",
+  class: className,
+  ...attrs
+} = Astro.props as Props;
+
+const dialogId = id ?? `confirm-dialog-${Math.random().toString(36).slice(2, 10)}`;
+---
+
+<Dialog
+  id={dialogId}
+  data-confirm-dialog
+  class={className}
+  showCloseButton={false}
+  {...attrs}
+>
+  <slot name="trigger" slot="trigger" />
+
+  <div class="flex flex-col gap-4">
+    <div class="flex flex-col gap-1">
+      <h2 data-slot="dialog-title" class="text-base font-medium">{title}</h2>
+      <p data-slot="dialog-description" class="text-foreground-muted text-sm">{description}</p>
+    </div>
+
+    <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+      <Button data-admin-dialog-close data-confirm-dialog-action="cancel" variant="outline">
+        {cancelLabel}
+      </Button>
+      <Button data-admin-dialog-close data-confirm-dialog-action="confirm" variant={variant}>
+        {confirmLabel}
+      </Button>
+    </div>
+  </div>
+</Dialog>
+
+<script is:inline>
+  const dialogs = document.querySelectorAll("[data-confirm-dialog]");
+
+  dialogs.forEach((dialog) => {
+    if (dialog.__confirmDialogInit) {
+      return;
+    }
+    dialog.__confirmDialogInit = true;
+
+    dialog.querySelectorAll("[data-confirm-dialog-action]").forEach((el) => {
+      el.addEventListener("click", () => {
+        const action = el.getAttribute("data-confirm-dialog-action") ?? "";
+        dialog.dispatchEvent(
+          new CustomEvent(`confirm-dialog:${action}`, {
+            bubbles: true,
+            detail: { id: dialog.id },
+          }),
+        );
+      });
+    });
+  });
+</script>

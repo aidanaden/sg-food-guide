@@ -1,3 +1,5 @@
+import { Result } from 'better-result';
+
 export type Country = 'SG' | 'MY' | 'TH' | 'HK' | 'CN' | 'JP' | 'ID';
 
 export const countryLabels: Record<Country, string> = {
@@ -65,7 +67,9 @@ export function getRatingLabel(rating: number | null): RatingLabel {
 
 export function getRatingVariant(rating: number | null): 'rating-0' | 'rating-1' | 'rating-2' | 'rating-3' {
   if (rating === null) return 'rating-0';
-  return `rating-${Math.min(rating, 3)}` as 'rating-1' | 'rating-2' | 'rating-3';
+  if (!Number.isFinite(rating)) return 'rating-0';
+  const normalized = Math.max(0, Math.min(3, Math.round(rating)));
+  return `rating-${normalized}` as 'rating-0' | 'rating-1' | 'rating-2' | 'rating-3';
 }
 
 export function getCountries(stallList: Stall[] = stalls): Country[] {
@@ -82,37 +86,42 @@ export function getYouTubeSearchUrl(title: string): string {
 
 const YOUTUBE_VIDEO_ID_RE = /^[A-Za-z0-9_-]{11}$/;
 
+function isAllowedYouTubeHostname(hostname: string): boolean {
+  return (
+    hostname === 'youtube.com' ||
+    hostname.endsWith('.youtube.com') ||
+    hostname === 'youtube-nocookie.com' ||
+    hostname.endsWith('.youtube-nocookie.com')
+  );
+}
+
 export function normalizeYouTubeVideoId(value: string | null | undefined): string | null {
   const input = value?.trim();
   if (!input) return null;
 
   if (YOUTUBE_VIDEO_ID_RE.test(input)) return input;
 
-  try {
-    const url = new URL(input);
-    const hostname = url.hostname.replace(/^www\./, '');
-    let candidate = '';
+  const urlResult = Result.try(() => new URL(input));
+  if (Result.isError(urlResult)) return null;
 
-    if (hostname === 'youtu.be') {
-      candidate = url.pathname.split('/').filter(Boolean)[0] || '';
-    } else if (
-      hostname.endsWith('youtube.com') ||
-      hostname.endsWith('youtube-nocookie.com')
-    ) {
-      candidate = url.searchParams.get('v') || '';
-      if (!candidate) {
-        const segments = url.pathname.split('/').filter(Boolean);
-        if (segments[0] === 'embed' || segments[0] === 'shorts' || segments[0] === 'live') {
-          candidate = segments[1] || '';
-        }
+  const url = urlResult.value;
+  const hostname = url.hostname.replace(/^www\./, '');
+  let candidate = '';
+
+  if (hostname === 'youtu.be') {
+    candidate = url.pathname.split('/').find((segment) => segment.length > 0) || '';
+  } else if (isAllowedYouTubeHostname(hostname)) {
+    candidate = url.searchParams.get('v') || '';
+    if (!candidate) {
+      const segments = url.pathname.split('/').filter((segment) => segment.length > 0);
+      if (segments[0] === 'embed' || segments[0] === 'shorts' || segments[0] === 'live') {
+        candidate = segments[1] || '';
       }
     }
+  }
 
-    if (candidate && YOUTUBE_VIDEO_ID_RE.test(candidate)) {
-      return candidate;
-    }
-  } catch {
-    // Ignore invalid URL values and return null.
+  if (candidate && YOUTUBE_VIDEO_ID_RE.test(candidate)) {
+    return candidate;
   }
 
   return null;
@@ -143,20 +152,26 @@ export function parseTimeCategories(times: string): TimeCategory[] {
   const openMatch = t.match(/(\d{1,2})(?:\.(\d{2}))?\s*(am|pm)/);
   let openHour = 0;
   if (openMatch) {
-    openHour = parseInt(openMatch[1]);
-    if (openMatch[3] === 'pm' && openHour !== 12) openHour += 12;
-    if (openMatch[3] === 'am' && openHour === 12) openHour = 0;
+    openHour = parseInt(openMatch[1] ?? '0', 10);
+    const openPeriod = openMatch[3] ?? '';
+    if (openPeriod === 'pm' && openHour !== 12) openHour += 12;
+    if (openPeriod === 'am' && openHour === 12) openHour = 0;
   }
 
   // Parse closing hour - find last time mentioned
   const allTimes = [...t.matchAll(/(\d{1,2})(?:\.(\d{2}))?\s*(am|pm|mn)/g)];
-  let closeHour = 0;
-  if (allTimes.length >= 2) {
+  let closeHour = openHour;
+  if (allTimes.length > 0) {
     const last = allTimes[allTimes.length - 1];
-    closeHour = parseInt(last[1]);
-    if (last[3] === 'pm' && closeHour !== 12) closeHour += 12;
-    if (last[3] === 'am' && closeHour === 12) closeHour = 0;
-    if (last[3] === 'mn' || t.includes('12mn') || t.includes('midnight')) closeHour = 24;
+    if (last) {
+      closeHour = parseInt(last[1] ?? '0', 10);
+    }
+    const closePeriod = last?.[3] ?? '';
+    if (closePeriod === 'pm' && closeHour !== 12) closeHour += 12;
+    if (closePeriod === 'am' && closeHour === 12) closeHour = 0;
+    if (closePeriod === 'mn' || t.includes('12mn') || t.includes('midnight')) closeHour = 24;
+    // Handles spans that cross midnight (e.g. 6pm-2am) so late-night/all-day rules still work.
+    if (allTimes.length >= 2 && closeHour < openHour) closeHour += 24;
   }
 
   // Categorize

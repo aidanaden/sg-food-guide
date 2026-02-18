@@ -1,0 +1,8 @@
+{
+  "extends": "@sg-food-guide/tsconfig",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src"
+  },
+  "include": ["src"]
+}
