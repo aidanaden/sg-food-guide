@@ -1,0 +1,37 @@
+{
+  "name": "@sg-food-guide/web",
+  "private": true,
+  "type": "module",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "check:ratings": "bun scripts/validate-ratings.mjs",
+    "check:astro": "astro check",
+    "check": "bun run check:ratings && bun run check:astro",
+    "ci": "bun run check && bun run build",
+    "track:sheet": "bun scripts/track-food-guide-sheet.ts",
+    "populate:youtube-ids": "bun scripts/populate-youtube-ids.ts",
+    "preview": "astro preview",
+    "deploy": "astro build && bunx wrangler pages deploy ./dist --project-name=sg-food-guide",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@fontsource-variable/bricolage-grotesque": "^5.2.10",
+    "@fontsource-variable/dm-sans": "^5.2.8",
+    "@fontsource-variable/jetbrains-mono": "^5.2.8",
+    "astro": "^5.17.1"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.4",
+    "@egoist/tailwindcss-icons": "^1.9.2",
+    "@iconify-json/ph": "^1.2.2",
+    "@tailwindcss/vite": "^4.1.18",
+    "@types/leaflet": "^1.9.21",
+    "@types/node": "^24.3.0",
+    "leaflet": "^1.9.4",
+    "tailwindcss": "^4.1.18",
+    "typescript": "^5.9.3",
+    "wrangler": "^4.63.0"
+  }
+}

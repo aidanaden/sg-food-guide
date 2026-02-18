@@ -1,0 +1,50 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "tasks": {
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "build": {
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        "dist/**",
+        ".astro/**"
+      ]
+    },
+    "check:ratings": {
+      "outputs": []
+    },
+    "check:astro": {
+      "outputs": []
+    },
+    "check": {
+      "outputs": []
+    },
+    "ci": {
+      "outputs": []
+    },
+    "track:sheet": {
+      "outputs": [
+        "data/source/**"
+      ]
+    },
+    "populate:youtube-ids": {
+      "outputs": [
+        "src/data/**"
+      ]
+    },
+    "preview": {
+      "cache": false,
+      "persistent": true
+    },
+    "deploy": {
+      "cache": false
+    },
+    "astro": {
+      "cache": false
+    }
+  }
+}

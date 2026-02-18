@@ -1,0 +1,40 @@
+name: Track Food Guide Sheet
+
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  track-sheet:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install --frozen-lockfile
+
+      - run: bun run track:sheet
+        env:
+          FOOD_GUIDE_SHEET_ID: ${{ vars.FOOD_GUIDE_SHEET_ID }}
+          FOOD_GUIDE_SHEET_GID: ${{ vars.FOOD_GUIDE_SHEET_GID }}
+
+      - name: Commit source updates
+        run: |
+          if [ -z "$(git status --porcelain apps/web/data/source)" ]; then
+            echo "No source changes to commit."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/web/data/source
+          git commit -m "chore(data): sync food guide sheet snapshot"
+          git push

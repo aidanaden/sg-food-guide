@@ -2,7 +2,7 @@
  * Populate missing youtubeVideoId fields using a fixed episode -> video ID map.
  *
  * Usage:
- *   bun scripts/populate-youtube-ids.ts
+ *   bun run populate:youtube-ids
  */
 
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';

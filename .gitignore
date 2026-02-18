@@ -1,10 +1,13 @@
 # build output
 dist/
+apps/*/dist/
 # generated types
 .astro/
+apps/*/.astro/
 
 # dependencies
 node_modules/
+**/.turbo/
 
 # logs
 npm-debug.log*
@@ -14,7 +17,8 @@ pnpm-debug.log*
 
 
 # geocode cache
-scripts/.geocode-cache.json
+**/.geocode-cache.json
+!apps/web/scripts/.geocode-cache.json
 
 # environment variables
 .env
