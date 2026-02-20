@@ -14,7 +14,7 @@ function levenshtein(a: string, b: string, maxDist: number): number {
   const m = a.length;
   const n = b.length;
   let prev = Array.from({ length: n + 1 }, (_, i) => i);
-  let curr = new Array(n + 1);
+  let curr = Array.from({ length: n + 1 }, () => 0);
   for (let i = 1; i <= m; i++) {
     curr[0] = i;
     for (let j = 1; j <= n; j++) {

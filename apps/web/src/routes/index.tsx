@@ -18,10 +18,10 @@ export const Route = createFileRoute('/')({
 });
 
 function HomePage() {
-  const areas = getAreas();
-  const cuisines = getCuisines();
-  const countries = getCountries();
-  const timeCategories = getAllTimeCategories();
+  const areas = useMemo(() => getAreas(), []);
+  const cuisines = useMemo(() => getCuisines(), []);
+  const countries = useMemo(() => getCountries(), []);
+  const timeCategories = useMemo(() => getAllTimeCategories(), []);
 
   const [search, setSearch] = useState('');
   const [area, setArea] = useState('');
@@ -69,7 +69,7 @@ function HomePage() {
     else next.sort((a, b) => score(b.ratingModerated) - score(a.ratingModerated));
 
     return next;
-  }, [search, area, cuisine, country, timeCategory, favoritesOnly, hideVisited, sortBy, favoriteSet, visitedSet]);
+  }, [search, area, cuisine, country, timeCategory, timeCategories, favoritesOnly, hideVisited, sortBy, favoriteSet, visitedSet]);
 
   return (
     <div className="min-h-screen">

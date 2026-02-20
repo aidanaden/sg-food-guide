@@ -4,7 +4,6 @@ import '@fontsource-variable/jetbrains-mono';
 
 import { QueryClient } from '@tanstack/react-query';
 import { HeadContent, Outlet, Scripts, createRootRouteWithContext } from '@tanstack/react-router';
-import TanStackQueryProvider from '../integrations/tanstack-query/root-provider';
 import appCss from '../styles.css?url';
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
@@ -37,10 +36,8 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body className="min-h-screen font-sans">
-        <TanStackQueryProvider>
-          <Outlet />
-          {children}
-        </TanStackQueryProvider>
+        <Outlet />
+        {children}
         <Scripts />
       </body>
     </html>

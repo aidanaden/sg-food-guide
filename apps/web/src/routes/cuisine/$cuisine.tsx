@@ -4,7 +4,13 @@ import { z } from 'zod';
 
 import { StallCard } from '../../components/StallCard';
 import { getFavorites, getVisited, toggleFavorite, toggleVisited } from '../../lib/preferences';
-import { getStallsByCuisine, getAreas, getCountries, timeCategoryLabels, countryLabels } from '../../data/stalls';
+import {
+  getStallsByCuisine,
+  getAreas,
+  getCountries,
+  timeCategoryLabels,
+  countryLabels,
+} from '../../data/stalls';
 
 const paramsSchema = z.object({ cuisine: z.string().min(1) });
 
@@ -36,9 +42,12 @@ export const Route = createFileRoute('/cuisine/$cuisine')({
 function CuisinePage() {
   const { cuisineLabel, cuisineStalls } = Route.useLoaderData();
 
-  const areas = getAreas(cuisineStalls);
-  const countries = getCountries(cuisineStalls);
-  const timeCategories = [...new Set(cuisineStalls.flatMap((s) => s.timeCategories))];
+  const areas = useMemo(() => getAreas(cuisineStalls), [cuisineStalls]);
+  const countries = useMemo(() => getCountries(cuisineStalls), [cuisineStalls]);
+  const timeCategories = useMemo(
+    () => [...new Set(cuisineStalls.flatMap((stall) => stall.timeCategories))],
+    [cuisineStalls]
+  );
 
   const [search, setSearch] = useState('');
   const [area, setArea] = useState('');
@@ -62,7 +71,7 @@ function CuisinePage() {
 
       return true;
     });
-  }, [search, area, country, timeCategory, cuisineStalls]);
+  }, [search, area, country, timeCategory, timeCategories, cuisineStalls]);
 
   return (
     <div className="min-h-screen">
