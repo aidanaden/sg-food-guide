@@ -44,7 +44,7 @@ function HomePage() {
   const [area, setArea] = useState("");
   const [cuisine, setCuisine] = useState("");
   const [country, setCountry] = useState("");
-  const [timeCategory, setTimeCategory] = useState("");
+  const [selectedTimeCategories, setSelectedTimeCategories] = useState<string[]>([]);
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [hideVisited, setHideVisited] = useState(false);
   const [sortBy, setSortBy] = useState("rating-desc");
@@ -97,21 +97,23 @@ function HomePage() {
         area?: string;
         cuisine?: string;
         country?: string;
-        timeCategory?: string;
+        timeCategories?: string[];
       },
     ) => {
       const nextArea = overrides?.area ?? area;
       const nextCuisine = overrides?.cuisine ?? cuisine;
       const nextCountry = overrides?.country ?? country;
-      const nextTimeCategory = overrides?.timeCategory ?? timeCategory;
+      const nextTimeCategories = overrides?.timeCategories ?? selectedTimeCategories;
 
       if (!matchesSearchAndToggles(stall)) return false;
       if (!matchesArea(stall, nextArea)) return false;
       if (nextCuisine && stall.cuisine !== nextCuisine) return false;
       if (nextCountry && stall.country !== nextCountry) return false;
       if (
-        nextTimeCategory &&
-        !stall.timeCategories.includes(nextTimeCategory as (typeof stall.timeCategories)[number])
+        nextTimeCategories.length > 0 &&
+        !nextTimeCategories.some((category) =>
+          stall.timeCategories.includes(category as (typeof stall.timeCategories)[number]),
+        )
       ) {
         return false;
       }
@@ -127,7 +129,7 @@ function HomePage() {
       stalls.filter((stall) => matchesFilters(stall, { country: "" })),
     );
     const nextTimeCategories = getAllTimeCategories(
-      stalls.filter((stall) => matchesFilters(stall, { timeCategory: "" })),
+      stalls.filter((stall) => matchesFilters(stall, { timeCategories: [] })),
     );
     const next = stalls.filter((stall) => matchesFilters(stall));
 
@@ -153,7 +155,7 @@ function HomePage() {
     area,
     cuisine,
     country,
-    timeCategory,
+    selectedTimeCategories,
     favoritesOnly,
     hideVisited,
     sortBy,
@@ -180,13 +182,13 @@ function HomePage() {
   }, [country, countryOptions]);
 
   useEffect(() => {
-    if (
-      timeCategory &&
-      !timeCategoryOptions.includes(timeCategory as (typeof timeCategoryOptions)[number])
-    ) {
-      setTimeCategory("");
-    }
-  }, [timeCategory, timeCategoryOptions]);
+    setSelectedTimeCategories((current) => {
+      const next = current.filter((item) =>
+        timeCategoryOptions.includes(item as (typeof timeCategoryOptions)[number]),
+      );
+      return next.length === current.length ? current : next;
+    });
+  }, [timeCategoryOptions]);
 
   return (
     <div className="min-h-screen">
@@ -330,27 +332,48 @@ function HomePage() {
                   <label className="text-ink-faint space-y-1 text-xs">
                     <span>Hours</span>
                     <Select
-                      value={timeCategory || ALL_FILTER_VALUE}
-                      onValueChange={(value) =>
-                        setTimeCategory(!value || value === ALL_FILTER_VALUE ? "" : value)
-                      }
+                      multiple
+                      value={selectedTimeCategories}
+                      onValueChange={(value) => {
+                        if (!Array.isArray(value)) {
+                          setSelectedTimeCategories([]);
+                          return;
+                        }
+                        setSelectedTimeCategories(
+                          value.filter((item): item is string => typeof item === "string"),
+                        );
+                      }}
                     >
                       <SelectTrigger aria-label="Hours" className={filterSelectTriggerClass}>
                         <SelectValue>
                           {(value) => {
-                            const stringValue = typeof value === "string" ? value : "";
-                            if (!stringValue || stringValue === ALL_FILTER_VALUE) {
+                            const values = Array.isArray(value)
+                              ? value.filter((item): item is string => typeof item === "string")
+                              : [];
+                            if (values.length === 0) {
                               return "All Hours";
                             }
 
-                            return timeCategoryLabels[
-                              stringValue as keyof typeof timeCategoryLabels
-                            ] ?? "All Hours";
+                            const labels = values
+                              .map(
+                                (item) =>
+                                  timeCategoryLabels[item as keyof typeof timeCategoryLabels],
+                              )
+                              .filter((item): item is string => Boolean(item));
+
+                            if (labels.length === 0) {
+                              return "All Hours";
+                            }
+
+                            if (labels.length <= 2) {
+                              return labels.join(", ");
+                            }
+
+                            return `${labels.slice(0, 2).join(", ")} +${labels.length - 2}`;
                           }}
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent align="start" className="max-h-72">
-                        <SelectItem value={ALL_FILTER_VALUE}>All Hours</SelectItem>
                         {timeCategoryOptions.map((item) => (
                           <SelectItem key={item} value={item}>
                             {timeCategoryLabels[item]}
