@@ -20,6 +20,7 @@ import {
   getAllTimeCategories,
   getCuisines,
   getCountries,
+  getStallArea,
   timeCategoryLabels,
   countryLabels,
 } from "../data/stalls";
@@ -32,11 +33,6 @@ export const Route = createFileRoute("/")({
 });
 
 function HomePage() {
-  const areas = useMemo(() => getAreas(), []);
-  const cuisines = useMemo(() => getCuisines(), []);
-  const countries = useMemo(() => getCountries(), []);
-  const timeCategories = useMemo(() => getAllTimeCategories(), []);
-
   const [search, setSearch] = useState("");
   const [area, setArea] = useState("");
   const [cuisine, setCuisine] = useState("");
@@ -56,38 +52,77 @@ function HomePage() {
     setVisitedSet(getVisited());
   }, []);
 
-  const filtered = useMemo(() => {
+  const {
+    filtered,
+    areaOptions,
+    cuisineOptions,
+    countryOptions,
+    timeCategoryOptions,
+  } = useMemo(() => {
     const query = search.trim().toLowerCase();
-    const selectedTimeCategory = timeCategories.find((item) => item === timeCategory);
-
-    const next = stalls.filter((stall) => {
+    const matchesSearchAndToggles = (stall: (typeof stalls)[number]) => {
       if (query) {
         const haystack =
           `${stall.name} ${stall.dishName} ${stall.address} ${stall.cuisineLabel}`.toLowerCase();
         if (!haystack.includes(query)) return false;
       }
-
-      if (
-        area &&
-        area !== "all" &&
-        !stall.address.toLowerCase().includes(area.toLowerCase()) &&
-        area !== "Other"
-      ) {
-        // Keep legacy area behavior close enough by matching derived area label when available.
-        // This intentionally stays permissive to avoid over-filtering.
-        const areaMatch = getAreas([stall])[0];
-        if (areaMatch !== area) return false;
-      }
-
-      if (cuisine && stall.cuisine !== cuisine) return false;
-      if (country && stall.country !== country) return false;
-      if (selectedTimeCategory && !stall.timeCategories.includes(selectedTimeCategory))
-        return false;
       if (favoritesOnly && !favoriteSet.has(stall.slug)) return false;
       if (hideVisited && visitedSet.has(stall.slug)) return false;
 
       return true;
-    });
+    };
+
+    const matchesArea = (stall: (typeof stalls)[number], selectedArea: string) => {
+      if (!selectedArea) return true;
+
+      if (selectedArea === "Other") {
+        return getStallArea(stall) === "Other";
+      }
+
+      if (stall.address.toLowerCase().includes(selectedArea.toLowerCase())) return true;
+
+      return getStallArea(stall) === selectedArea;
+    };
+
+    const matchesFilters = (
+      stall: (typeof stalls)[number],
+      overrides?: {
+        area?: string;
+        cuisine?: string;
+        country?: string;
+        timeCategory?: string;
+      },
+    ) => {
+      const nextArea = overrides?.area ?? area;
+      const nextCuisine = overrides?.cuisine ?? cuisine;
+      const nextCountry = overrides?.country ?? country;
+      const nextTimeCategory = overrides?.timeCategory ?? timeCategory;
+
+      if (!matchesSearchAndToggles(stall)) return false;
+      if (!matchesArea(stall, nextArea)) return false;
+      if (nextCuisine && stall.cuisine !== nextCuisine) return false;
+      if (nextCountry && stall.country !== nextCountry) return false;
+      if (
+        nextTimeCategory &&
+        !stall.timeCategories.includes(nextTimeCategory as (typeof stall.timeCategories)[number])
+      ) {
+        return false;
+      }
+
+      return true;
+    };
+
+    const nextAreas = getAreas(stalls.filter((stall) => matchesFilters(stall, { area: "" })));
+    const nextCuisines = getCuisines(
+      stalls.filter((stall) => matchesFilters(stall, { cuisine: "" })),
+    );
+    const nextCountries = getCountries(
+      stalls.filter((stall) => matchesFilters(stall, { country: "" })),
+    );
+    const nextTimeCategories = getAllTimeCategories(
+      stalls.filter((stall) => matchesFilters(stall, { timeCategory: "" })),
+    );
+    const next = stalls.filter((stall) => matchesFilters(stall));
 
     const score = (v: number | null) => (v === null ? -1 : v);
 
@@ -99,20 +134,52 @@ function HomePage() {
       next.sort((a, b) => (a.episodeNumber ?? 9999) - (b.episodeNumber ?? 9999));
     else next.sort((a, b) => score(b.ratingModerated) - score(a.ratingModerated));
 
-    return next;
+    return {
+      filtered: next,
+      areaOptions: nextAreas,
+      cuisineOptions: nextCuisines,
+      countryOptions: nextCountries,
+      timeCategoryOptions: nextTimeCategories,
+    };
   }, [
     search,
     area,
     cuisine,
     country,
     timeCategory,
-    timeCategories,
     favoritesOnly,
     hideVisited,
     sortBy,
     favoriteSet,
     visitedSet,
   ]);
+
+  useEffect(() => {
+    if (area && !areaOptions.includes(area)) {
+      setArea("");
+    }
+  }, [area, areaOptions]);
+
+  useEffect(() => {
+    if (cuisine && !cuisineOptions.some((item) => item.id === cuisine)) {
+      setCuisine("");
+    }
+  }, [cuisine, cuisineOptions]);
+
+  useEffect(() => {
+    if (country && !countryOptions.includes(country as (typeof countryOptions)[number])) {
+      setCountry("");
+    }
+  }, [country, countryOptions]);
+
+  useEffect(() => {
+    if (
+      timeCategory &&
+      !timeCategoryOptions.includes(timeCategory as (typeof timeCategoryOptions)[number])
+    ) {
+      setTimeCategory("");
+    }
+  }, [timeCategory, timeCategoryOptions]);
 
   return (
     <div className="min-h-screen">
@@ -171,7 +238,7 @@ function HomePage() {
                       </SelectTrigger>
                       <SelectContent align="start" className="max-h-72">
                         <SelectItem value={ALL_FILTER_VALUE}>All Areas</SelectItem>
-                        {areas.map((item) => (
+                        {areaOptions.map((item) => (
                           <SelectItem key={item} value={item}>
                             {item}
                           </SelectItem>
@@ -193,7 +260,7 @@ function HomePage() {
                       </SelectTrigger>
                       <SelectContent align="start" className="max-h-72">
                         <SelectItem value={ALL_FILTER_VALUE}>All Cuisines</SelectItem>
-                        {cuisines.map((item) => (
+                        {cuisineOptions.map((item) => (
                           <SelectItem key={item.id} value={item.id}>
                             {item.label} ({item.count})
                           </SelectItem>
@@ -215,7 +282,7 @@ function HomePage() {
                       </SelectTrigger>
                       <SelectContent align="start" className="max-h-72">
                         <SelectItem value={ALL_FILTER_VALUE}>All Countries</SelectItem>
-                        {countries.map((item) => (
+                        {countryOptions.map((item) => (
                           <SelectItem key={item} value={item}>
                             {countryLabels[item]}
                           </SelectItem>
@@ -237,7 +304,7 @@ function HomePage() {
                       </SelectTrigger>
                       <SelectContent align="start" className="max-h-72">
                         <SelectItem value={ALL_FILTER_VALUE}>All Hours</SelectItem>
-                        {timeCategories.map((item) => (
+                        {timeCategoryOptions.map((item) => (
                           <SelectItem key={item} value={item}>
                             {timeCategoryLabels[item]}
                           </SelectItem>

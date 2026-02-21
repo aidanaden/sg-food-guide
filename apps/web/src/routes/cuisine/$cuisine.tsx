@@ -18,7 +18,9 @@ import { StallCard } from "../../components/StallCard";
 import {
   getStallsByCuisine,
   getAreas,
+  getAllTimeCategories,
   getCountries,
+  getStallArea,
   timeCategoryLabels,
   countryLabels,
 } from "../../data/stalls";
@@ -56,13 +58,6 @@ export const Route = createFileRoute("/cuisine/$cuisine")({
 function CuisinePage() {
   const { cuisineLabel, cuisineStalls } = Route.useLoaderData();
 
-  const areas = useMemo(() => getAreas(cuisineStalls), [cuisineStalls]);
-  const countries = useMemo(() => getCountries(cuisineStalls), [cuisineStalls]);
-  const timeCategories = useMemo(
-    () => [...new Set(cuisineStalls.flatMap((stall) => stall.timeCategories))],
-    [cuisineStalls],
-  );
-
   const [search, setSearch] = useState("");
   const [area, setArea] = useState("");
   const [country, setCountry] = useState("");
@@ -78,23 +73,87 @@ function CuisinePage() {
     setVisitedSet(getVisited());
   }, []);
 
-  const filtered = useMemo(() => {
+  const { filtered, areaOptions, countryOptions, timeCategoryOptions } = useMemo(() => {
     const query = search.trim().toLowerCase();
-    const selectedTimeCategory = timeCategories.find((item) => item === timeCategory);
-    return cuisineStalls.filter((stall) => {
+    const matchesArea = (stall: (typeof cuisineStalls)[number], selectedArea: string) => {
+      if (!selectedArea) return true;
+
+      if (selectedArea === "Other") {
+        return getStallArea(stall) === "Other";
+      }
+
+      if (stall.address.toLowerCase().includes(selectedArea.toLowerCase())) return true;
+
+      return getStallArea(stall) === selectedArea;
+    };
+
+    const matchesFilters = (
+      stall: (typeof cuisineStalls)[number],
+      overrides?: {
+        area?: string;
+        country?: string;
+        timeCategory?: string;
+      },
+    ) => {
+      const nextArea = overrides?.area ?? area;
+      const nextCountry = overrides?.country ?? country;
+      const nextTimeCategory = overrides?.timeCategory ?? timeCategory;
+
       if (query) {
         const haystack = `${stall.name} ${stall.dishName} ${stall.address}`.toLowerCase();
         if (!haystack.includes(query)) return false;
       }
 
-      if (area && getAreas([stall])[0] !== area) return false;
-      if (country && stall.country !== country) return false;
-      if (selectedTimeCategory && !stall.timeCategories.includes(selectedTimeCategory))
+      if (!matchesArea(stall, nextArea)) return false;
+      if (nextCountry && stall.country !== nextCountry) return false;
+      if (
+        nextTimeCategory &&
+        !stall.timeCategories.includes(nextTimeCategory as (typeof stall.timeCategories)[number])
+      ) {
         return false;
+      }
 
       return true;
-    });
-  }, [search, area, country, timeCategory, timeCategories, cuisineStalls]);
+    };
+
+    const nextAreas = getAreas(
+      cuisineStalls.filter((stall) => matchesFilters(stall, { area: "" })),
+    );
+    const nextCountries = getCountries(
+      cuisineStalls.filter((stall) => matchesFilters(stall, { country: "" })),
+    );
+    const nextTimeCategories = getAllTimeCategories(
+      cuisineStalls.filter((stall) => matchesFilters(stall, { timeCategory: "" })),
+    );
+
+    return {
+      filtered: cuisineStalls.filter((stall) => matchesFilters(stall)),
+      areaOptions: nextAreas,
+      countryOptions: nextCountries,
+      timeCategoryOptions: nextTimeCategories,
+    };
+  }, [search, area, country, timeCategory, cuisineStalls]);
+
+  useEffect(() => {
+    if (area && !areaOptions.includes(area)) {
+      setArea("");
+    }
+  }, [area, areaOptions]);
+
+  useEffect(() => {
+    if (country && !countryOptions.includes(country as (typeof countryOptions)[number])) {
+      setCountry("");
+    }
+  }, [country, countryOptions]);
+
+  useEffect(() => {
+    if (
+      timeCategory &&
+      !timeCategoryOptions.includes(timeCategory as (typeof timeCategoryOptions)[number])
+    ) {
+      setTimeCategory("");
+    }
+  }, [timeCategory, timeCategoryOptions]);
 
   return (
     <div className="min-h-screen">
@@ -152,7 +211,7 @@ function CuisinePage() {
                       </SelectTrigger>
                       <SelectContent align="start" className="max-h-72">
                         <SelectItem value={ALL_FILTER_VALUE}>All Areas</SelectItem>
-                        {areas.map((item) => (
+                        {areaOptions.map((item) => (
                           <SelectItem key={item} value={item}>
                             {item}
                           </SelectItem>
@@ -174,7 +233,7 @@ function CuisinePage() {
                       </SelectTrigger>
                       <SelectContent align="start" className="max-h-72">
                         <SelectItem value={ALL_FILTER_VALUE}>All Countries</SelectItem>
-                        {countries.map((item) => (
+                        {countryOptions.map((item) => (
                           <SelectItem key={item} value={item}>
                             {countryLabels[item]}
                           </SelectItem>
@@ -196,7 +255,7 @@ function CuisinePage() {
                       </SelectTrigger>
                       <SelectContent align="start" className="max-h-72">
                         <SelectItem value={ALL_FILTER_VALUE}>All Hours</SelectItem>
-                        {timeCategories.map((item) => (
+                        {timeCategoryOptions.map((item) => (
                           <SelectItem key={item} value={item}>
                             {timeCategoryLabels[item]}
                           </SelectItem>

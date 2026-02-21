@@ -125,9 +125,9 @@ export function getAreas(stallList: Stall[] = stalls): string[] {
   return [...new Set(stallList.map(getStallArea))].sort();
 }
 
-export function getCuisines(): { id: string; label: string; count: number }[] {
+export function getCuisines(stallList: Stall[] = stalls): { id: string; label: string; count: number }[] {
   const map = new Map<string, { label: string; count: number }>();
-  for (const s of stalls) {
+  for (const s of stallList) {
     const existing = map.get(s.cuisine);
     if (existing) {
       existing.count++;
@@ -142,9 +142,9 @@ export function getStallsByCuisine(cuisine: string): Stall[] {
   return stalls.filter((s) => s.cuisine === cuisine);
 }
 
-export function getAllTimeCategories(): TimeCategory[] {
+export function getAllTimeCategories(stallList: Stall[] = stalls): TimeCategory[] {
   const all = new Set<TimeCategory>();
-  for (const s of stalls) s.timeCategories.forEach((c) => all.add(c));
+  for (const s of stallList) s.timeCategories.forEach((c) => all.add(c));
   return [...all];
 }
 
