@@ -19,7 +19,6 @@ import {
   DrawerFooter,
   DrawerHeader,
   DrawerTitle,
-  DrawerTrigger,
 } from "../drawer";
 import {
   Dialog,
@@ -28,7 +27,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "./dialog-primitives";
 
 type ResponsiveDialogContextValue = {
@@ -95,13 +93,24 @@ type ResponsiveDialogTriggerProps = {
 };
 
 const ResponsiveDialogTrigger: FC<ResponsiveDialogTriggerProps> = ({ children, className }) => {
-  const { isMobile } = useResponsiveDialog();
+  const { setOpen } = useResponsiveDialog();
 
-  if (isMobile) {
-    return <DrawerTrigger className={className}>{children}</DrawerTrigger>;
-  }
-
-  return <DialogTrigger className={className}>{children}</DialogTrigger>;
+  return (
+    <button
+      type="button"
+      className={className}
+      onPointerDown={(event) => {
+        // Prevent the trigger press from being interpreted as an outside press.
+        event.preventDefault();
+      }}
+      onClick={() => {
+        // Open after the click event completes to avoid immediate dismiss races.
+        setTimeout(() => setOpen(true), 0);
+      }}
+    >
+      {children}
+    </button>
+  );
 };
 
 type ResponsiveDialogContentProps = {
