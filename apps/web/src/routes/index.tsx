@@ -157,7 +157,7 @@ function HomePage() {
                   </ResponsiveDialogTitle>
                 </ResponsiveDialogHeader>
 
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-3 px-4 sm:grid-cols-2 sm:px-0">
                   <label className="text-ink-faint space-y-1 text-xs">
                     <span>Area</span>
                     <Select
@@ -269,7 +269,7 @@ function HomePage() {
                   </label>
                 </div>
 
-                <div className="mt-4 space-y-2">
+                <div className="mt-4 space-y-2 px-4 pb-4 sm:px-0 sm:pb-0">
                   <label className="border-warm-700/50 bg-surface-raised inline-flex min-h-11 w-full items-center gap-2 rounded-lg border px-3 text-sm">
                     <input
                       type="checkbox"

@@ -3,6 +3,8 @@ import * as React from "react";
 
 import { cn } from "../../utils";
 
+const DRAWER_CLOSE_DRAG_DISTANCE = 72;
+
 type DrawerProps = DialogPrimitive.Root.Props & {
   shouldScaleBackground?: boolean;
 };
@@ -29,7 +31,7 @@ const DrawerOverlay: React.FC<DialogPrimitive.Backdrop.Props> = ({ className, ..
   <DialogPrimitive.Backdrop
     data-slot="drawer-overlay"
     className={cn(
-      "data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 fixed inset-0 z-50 bg-black/60 duration-100",
+      "fixed inset-0 z-50 bg-black/60 data-[closed]:opacity-0 data-[open]:opacity-100 transition-opacity duration-200",
       className,
     )}
     {...props}
@@ -39,23 +41,107 @@ const DrawerOverlay: React.FC<DialogPrimitive.Backdrop.Props> = ({ className, ..
 const DrawerContent: React.FC<DialogPrimitive.Popup.Props> = ({
   className,
   children,
+  style,
   ...props
-}) => (
-  <DrawerPortal>
-    <DrawerOverlay />
-    <DialogPrimitive.Popup
-      data-slot="drawer-content"
-      className={cn(
-        "bg-background data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-open:slide-in-from-bottom-2 data-closed:slide-out-to-bottom-2 fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto max-h-[85dvh] flex-col rounded-t-xl border p-0 duration-150 outline-none",
-        className,
-      )}
-      {...props}
-    >
-      <div className="bg-muted mx-auto mt-4 h-2 w-24 rounded-full" />
-      {children}
-    </DialogPrimitive.Popup>
-  </DrawerPortal>
-);
+}) => {
+  const closeRef = React.useRef<HTMLButtonElement | null>(null);
+  const dragStateRef = React.useRef<{ pointerId: number; startY: number } | null>(null);
+  const [dragOffset, setDragOffset] = React.useState(0);
+  const [isDragging, setIsDragging] = React.useState(false);
+
+  const clearDragState = React.useCallback(() => {
+    dragStateRef.current = null;
+    setIsDragging(false);
+    setDragOffset(0);
+  }, []);
+
+  const onDragStart = React.useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+
+    dragStateRef.current = { pointerId: event.pointerId, startY: event.clientY };
+    setIsDragging(true);
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }, []);
+
+  const onDragMove = React.useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    const dragState = dragStateRef.current;
+    if (!dragState || dragState.pointerId !== event.pointerId) return;
+
+    const nextOffset = Math.max(0, event.clientY - dragState.startY);
+    setDragOffset(nextOffset);
+  }, []);
+
+  const onDragEnd = React.useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      const dragState = dragStateRef.current;
+      if (!dragState || dragState.pointerId !== event.pointerId) return;
+
+      const dragDistance = Math.max(0, event.clientY - dragState.startY);
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+
+      clearDragState();
+
+      if (dragDistance >= DRAWER_CLOSE_DRAG_DISTANCE) {
+        closeRef.current?.click();
+      }
+    },
+    [clearDragState],
+  );
+
+  const onDragCancel = React.useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      const dragState = dragStateRef.current;
+      if (!dragState || dragState.pointerId !== event.pointerId) return;
+
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+
+      clearDragState();
+    },
+    [clearDragState],
+  );
+
+  const mergedStyle = React.useMemo<React.CSSProperties | undefined>(() => {
+    if (dragOffset <= 0) return style;
+    return {
+      ...(style ?? {}),
+      transform: `translateY(${dragOffset}px)`,
+    };
+  }, [dragOffset, style]);
+
+  return (
+    <DrawerPortal>
+      <DrawerOverlay />
+      <DialogPrimitive.Popup
+        data-slot="drawer-content"
+        className={cn(
+          "bg-background border-border fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto max-h-[85dvh] flex-col rounded-t-xl border p-0 outline-none data-[closed]:translate-y-2 data-[closed]:opacity-0 data-[open]:translate-y-0 data-[open]:opacity-100 transition-[opacity,transform] duration-200 ease-out",
+          isDragging && "transition-none",
+          className,
+        )}
+        style={mergedStyle}
+        {...props}
+      >
+        <DialogPrimitive.Close ref={closeRef} tabIndex={-1} className="sr-only">
+          Close
+        </DialogPrimitive.Close>
+        <div className="flex justify-center py-3">
+          <div
+            className="bg-muted h-2 w-24 touch-none rounded-full"
+            onPointerDown={onDragStart}
+            onPointerMove={onDragMove}
+            onPointerUp={onDragEnd}
+            onPointerCancel={onDragCancel}
+          />
+        </div>
+        {children}
+      </DialogPrimitive.Popup>
+    </DrawerPortal>
+  );
+};
 
 const DrawerHeader: React.FC<React.ComponentProps<"div">> = ({ className, ...props }) => (
   <div
@@ -68,7 +154,7 @@ const DrawerHeader: React.FC<React.ComponentProps<"div">> = ({ className, ...pro
 const DrawerFooter: React.FC<React.ComponentProps<"div">> = ({ className, ...props }) => (
   <div
     data-slot="drawer-footer"
-    className={cn("bg-background mt-auto flex flex-col gap-2 border-t p-4", className)}
+    className={cn("bg-background border-border mt-auto flex flex-col gap-2 border-t p-4", className)}
     {...props}
   />
 );

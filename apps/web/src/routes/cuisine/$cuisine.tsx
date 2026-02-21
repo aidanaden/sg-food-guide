@@ -138,7 +138,7 @@ function CuisinePage() {
                   </ResponsiveDialogTitle>
                 </ResponsiveDialogHeader>
 
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-3 px-4 pb-4 sm:grid-cols-2 sm:px-0 sm:pb-0">
                   <label className="text-ink-faint space-y-1 text-xs">
                     <span>Area</span>
                     <Select
