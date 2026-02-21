@@ -85,12 +85,11 @@ const ResponsiveDialog: FC<ResponsiveDialogProps> = ({
   }, [setOpen]);
 
   const handleOpenChange = useCallback(
-    (nextOpen: boolean, eventDetails?: { reason?: string }) => {
+    (nextOpen: boolean, _eventDetails?: { reason?: string }) => {
       if (
         !nextOpen &&
-        eventDetails?.reason === "outsidePress" &&
         lastTriggerOpenAtRef.current !== null &&
-        Date.now() - lastTriggerOpenAtRef.current < 200
+        Date.now() - lastTriggerOpenAtRef.current < 300
       ) {
         return;
       }
@@ -137,6 +136,12 @@ const ResponsiveDialogTrigger: FC<ResponsiveDialogTriggerProps> = ({ children, c
       type="button"
       className={className}
       aria-haspopup="dialog"
+      onPointerDown={(event) => {
+        if (event.pointerType === "touch") {
+          openFromTrigger();
+        }
+      }}
+      onTouchEnd={openFromTrigger}
       onClick={openFromTrigger}
     >
       {children}
