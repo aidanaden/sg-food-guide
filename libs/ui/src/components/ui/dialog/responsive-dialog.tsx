@@ -99,14 +99,8 @@ const ResponsiveDialogTrigger: FC<ResponsiveDialogTriggerProps> = ({ children, c
     <button
       type="button"
       className={className}
-      onPointerDown={(event) => {
-        // Prevent the trigger press from being interpreted as an outside press.
-        event.preventDefault();
-      }}
-      onClick={() => {
-        // Open after the click event completes to avoid immediate dismiss races.
-        setTimeout(() => setOpen(true), 0);
-      }}
+      aria-haspopup="dialog"
+      onClick={() => setOpen(true)}
     >
       {children}
     </button>
