@@ -17,58 +17,25 @@ type DrawerProps = DialogPrimitive.Root.Props & {
   shouldScaleBackground?: boolean;
 };
 
+function resolveStyleProp<TState>(
+  style:
+    | React.CSSProperties
+    | ((state: TState) => React.CSSProperties | undefined)
+    | undefined,
+  state: TState,
+): React.CSSProperties {
+  if (typeof style === "function") {
+    return style(state) ?? {};
+  }
+
+  return style ?? {};
+}
+
 const Drawer: React.FC<DrawerProps> = ({
   // Kept for API compatibility with the previous vaul-based implementation.
   shouldScaleBackground: _shouldScaleBackground = true,
-  onOpenChange,
-  actionsRef,
   ...props
-}) => {
-  const internalActionsRef = React.useRef<DialogPrimitive.Root.Actions | null>(null);
-  const closeTimeoutRef = React.useRef<number | null>(null);
-
-  React.useEffect(() => {
-    if (!actionsRef) return;
-    actionsRef.current = internalActionsRef.current;
-  });
-
-  React.useEffect(() => {
-    return () => {
-      if (closeTimeoutRef.current !== null) {
-        globalThis.clearTimeout(closeTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  const handleOpenChange = React.useCallback<NonNullable<DialogPrimitive.Root.Props["onOpenChange"]>>(
-    (open, eventDetails) => {
-      if (closeTimeoutRef.current !== null) {
-        globalThis.clearTimeout(closeTimeoutRef.current);
-        closeTimeoutRef.current = null;
-      }
-
-      if (!open) {
-        eventDetails.preventUnmountOnClose();
-        closeTimeoutRef.current = globalThis.setTimeout(() => {
-          internalActionsRef.current?.unmount();
-          closeTimeoutRef.current = null;
-        }, DRAWER_CLOSE_ANIMATION_DURATION_MS);
-      }
-
-      onOpenChange?.(open, eventDetails);
-    },
-    [onOpenChange],
-  );
-
-  return (
-    <DialogPrimitive.Root
-      data-slot="drawer"
-      actionsRef={internalActionsRef}
-      onOpenChange={handleOpenChange}
-      {...props}
-    />
-  );
-};
+}) => <DialogPrimitive.Root data-slot="drawer" {...props} />;
 
 const DrawerTrigger: React.FC<DialogPrimitive.Trigger.Props> = (props) => (
   <DialogPrimitive.Trigger data-slot="drawer-trigger" {...props} />
@@ -82,13 +49,21 @@ const DrawerClose: React.FC<DialogPrimitive.Close.Props> = (props) => (
   <DialogPrimitive.Close data-slot="drawer-close" {...props} />
 );
 
-const DrawerOverlay: React.FC<DialogPrimitive.Backdrop.Props> = ({ className, ...props }) => (
+const DrawerOverlay: React.FC<DialogPrimitive.Backdrop.Props> = ({
+  className,
+  style,
+  ...props
+}) => (
   <DialogPrimitive.Backdrop
     data-slot="drawer-overlay"
-    className={cn(
-      "fixed inset-0 z-50 bg-black/60 opacity-100 data-starting-style:opacity-0 data-ending-style:opacity-0 data-closed:opacity-0 transition-opacity duration-200",
-      className,
-    )}
+    className={cn("fixed inset-0 z-50 bg-black/60", className)}
+    style={(state) => ({
+      ...resolveStyleProp(style, state),
+      opacity: state.open && state.transitionStatus !== "starting" ? 1 : 0,
+      transitionProperty: "opacity",
+      transitionDuration: `${DRAWER_CLOSE_ANIMATION_DURATION_MS}ms`,
+      transitionTimingFunction: "cubic-bezier(0, 0, 0.2, 1)",
+    })}
     {...props}
   />
 );
@@ -250,20 +225,30 @@ const DrawerContent: React.FC<DialogPrimitive.Popup.Props> = ({
     clearDragState();
   }, [clearDragState, getTouchByIdentifier]);
 
-  const mergedStyle = React.useMemo<React.CSSProperties | undefined>(() => {
-    if (dragOffset <= 0) {
-      return {
-        ...(style ?? {}),
-        maxHeight: "85dvh",
-      };
-    }
+  const getContentStyle = React.useCallback(
+    (state: DialogPrimitive.Popup.State): React.CSSProperties => {
+      const resolvedStyle = resolveStyleProp(style, state);
+      const shouldHide =
+        !state.open || state.transitionStatus === "starting" || state.transitionStatus === "ending";
+      const transform =
+        dragOffset > 0
+          ? `translateY(${dragOffset}px)`
+          : shouldHide
+            ? "translateY(100%)"
+            : "translateY(0)";
 
-    return {
-      ...(style ?? {}),
-      maxHeight: "85dvh",
-      transform: `translateY(${dragOffset}px)`,
-    };
-  }, [dragOffset, style]);
+      return {
+        ...resolvedStyle,
+        maxHeight: "85dvh",
+        opacity: shouldHide ? 0 : 1,
+        transform,
+        transitionProperty: isDragging ? "none" : "transform, opacity",
+        transitionDuration: isDragging ? undefined : `${DRAWER_CLOSE_ANIMATION_DURATION_MS}ms`,
+        transitionTimingFunction: isDragging ? undefined : "cubic-bezier(0, 0, 0.2, 1)",
+      };
+    },
+    [dragOffset, isDragging, style],
+  );
 
   return (
     <DrawerPortal>
@@ -271,11 +256,10 @@ const DrawerContent: React.FC<DialogPrimitive.Popup.Props> = ({
       <DialogPrimitive.Popup
         data-slot="drawer-content"
         className={cn(
-          "bg-background border-border fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto flex-col rounded-t-xl border p-0 opacity-100 outline-none translate-y-0 data-starting-style:translate-y-full data-starting-style:opacity-0 data-ending-style:translate-y-full data-ending-style:opacity-0 data-closed:translate-y-full data-closed:opacity-0 transition duration-200 ease-out",
-          isDragging && "transition-none",
+          "bg-background border-border fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto flex-col rounded-t-xl border p-0 outline-none",
           className,
         )}
-        style={mergedStyle}
+        style={getContentStyle}
         {...props}
       >
         <DialogPrimitive.Close ref={closeRef} tabIndex={-1} className="sr-only">
