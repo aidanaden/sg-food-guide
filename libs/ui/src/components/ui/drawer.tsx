@@ -5,6 +5,13 @@ import { cn } from "../../utils";
 
 const DRAWER_CLOSE_DRAG_DISTANCE = 72;
 
+type DragState = {
+  mode: "pointer" | "touch";
+  id: number;
+  startY: number;
+  lastY: number;
+};
+
 type DrawerProps = DialogPrimitive.Root.Props & {
   shouldScaleBackground?: boolean;
 };
@@ -45,9 +52,22 @@ const DrawerContent: React.FC<DialogPrimitive.Popup.Props> = ({
   ...props
 }) => {
   const closeRef = React.useRef<HTMLButtonElement | null>(null);
-  const dragStateRef = React.useRef<{ pointerId: number; startY: number } | null>(null);
+  const dragStateRef = React.useRef<DragState | null>(null);
   const [dragOffset, setDragOffset] = React.useState(0);
   const [isDragging, setIsDragging] = React.useState(false);
+
+  const startDrag = React.useCallback((state: DragState) => {
+    dragStateRef.current = state;
+    setIsDragging(true);
+  }, []);
+
+  const updateDrag = React.useCallback((clientY: number) => {
+    const state = dragStateRef.current;
+    if (!state) return;
+
+    state.lastY = clientY;
+    setDragOffset(Math.max(0, clientY - state.startY));
+  }, []);
 
   const clearDragState = React.useCallback(() => {
     dragStateRef.current = null;
@@ -55,31 +75,13 @@ const DrawerContent: React.FC<DialogPrimitive.Popup.Props> = ({
     setDragOffset(0);
   }, []);
 
-  const onDragStart = React.useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    if (event.pointerType === "mouse" && event.button !== 0) return;
+  const endDrag = React.useCallback(
+    (clientY?: number) => {
+      const state = dragStateRef.current;
+      if (!state) return;
 
-    dragStateRef.current = { pointerId: event.pointerId, startY: event.clientY };
-    setIsDragging(true);
-    event.currentTarget.setPointerCapture(event.pointerId);
-  }, []);
-
-  const onDragMove = React.useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    const dragState = dragStateRef.current;
-    if (!dragState || dragState.pointerId !== event.pointerId) return;
-
-    const nextOffset = Math.max(0, event.clientY - dragState.startY);
-    setDragOffset(nextOffset);
-  }, []);
-
-  const onDragEnd = React.useCallback(
-    (event: React.PointerEvent<HTMLDivElement>) => {
-      const dragState = dragStateRef.current;
-      if (!dragState || dragState.pointerId !== event.pointerId) return;
-
-      const dragDistance = Math.max(0, event.clientY - dragState.startY);
-      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-        event.currentTarget.releasePointerCapture(event.pointerId);
-      }
+      const finalY = clientY ?? state.lastY;
+      const dragDistance = Math.max(0, finalY - state.startY);
 
       clearDragState();
 
@@ -90,10 +92,50 @@ const DrawerContent: React.FC<DialogPrimitive.Popup.Props> = ({
     [clearDragState],
   );
 
-  const onDragCancel = React.useCallback(
+  const onDragPointerStart = React.useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (event.pointerType === "mouse" && event.button !== 0) return;
+
+      startDrag({
+        mode: "pointer",
+        id: event.pointerId,
+        startY: event.clientY,
+        lastY: event.clientY,
+      });
+
+      event.currentTarget.setPointerCapture(event.pointerId);
+    },
+    [startDrag],
+  );
+
+  const onDragPointerMove = React.useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
       const dragState = dragStateRef.current;
-      if (!dragState || dragState.pointerId !== event.pointerId) return;
+      if (!dragState || dragState.mode !== "pointer" || dragState.id !== event.pointerId) return;
+
+      updateDrag(event.clientY);
+    },
+    [updateDrag],
+  );
+
+  const onDragPointerEnd = React.useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      const dragState = dragStateRef.current;
+      if (!dragState || dragState.mode !== "pointer" || dragState.id !== event.pointerId) return;
+
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+
+      endDrag(event.clientY);
+    },
+    [endDrag],
+  );
+
+  const onDragPointerCancel = React.useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      const dragState = dragStateRef.current;
+      if (!dragState || dragState.mode !== "pointer" || dragState.id !== event.pointerId) return;
 
       if (event.currentTarget.hasPointerCapture(event.pointerId)) {
         event.currentTarget.releasePointerCapture(event.pointerId);
@@ -103,6 +145,62 @@ const DrawerContent: React.FC<DialogPrimitive.Popup.Props> = ({
     },
     [clearDragState],
   );
+
+  const getTouchByIdentifier = React.useCallback((touches: React.TouchList, id: number) => {
+    for (let index = 0; index < touches.length; index += 1) {
+      const touch = touches.item(index);
+      if (touch && touch.identifier === id) {
+        return touch;
+      }
+    }
+
+    return null;
+  }, []);
+
+  const onDragTouchStart = React.useCallback((event: React.TouchEvent<HTMLDivElement>) => {
+    const touch = event.changedTouches.item(0);
+    if (!touch) return;
+
+    startDrag({
+      mode: "touch",
+      id: touch.identifier,
+      startY: touch.clientY,
+      lastY: touch.clientY,
+    });
+  }, [startDrag]);
+
+  const onDragTouchMove = React.useCallback((event: React.TouchEvent<HTMLDivElement>) => {
+    const dragState = dragStateRef.current;
+    if (!dragState || dragState.mode !== "touch") return;
+
+    const touch =
+      getTouchByIdentifier(event.touches, dragState.id) ??
+      getTouchByIdentifier(event.changedTouches, dragState.id);
+    if (!touch) return;
+
+    event.preventDefault();
+    updateDrag(touch.clientY);
+  }, [getTouchByIdentifier, updateDrag]);
+
+  const onDragTouchEnd = React.useCallback((event: React.TouchEvent<HTMLDivElement>) => {
+    const dragState = dragStateRef.current;
+    if (!dragState || dragState.mode !== "touch") return;
+
+    const touch = getTouchByIdentifier(event.changedTouches, dragState.id);
+    if (!touch) return;
+
+    endDrag(touch.clientY);
+  }, [endDrag, getTouchByIdentifier]);
+
+  const onDragTouchCancel = React.useCallback((event: React.TouchEvent<HTMLDivElement>) => {
+    const dragState = dragStateRef.current;
+    if (!dragState || dragState.mode !== "touch") return;
+
+    const touch = getTouchByIdentifier(event.changedTouches, dragState.id);
+    if (!touch) return;
+
+    clearDragState();
+  }, [clearDragState, getTouchByIdentifier]);
 
   const mergedStyle = React.useMemo<React.CSSProperties | undefined>(() => {
     if (dragOffset <= 0) {
@@ -135,13 +233,20 @@ const DrawerContent: React.FC<DialogPrimitive.Popup.Props> = ({
         <DialogPrimitive.Close ref={closeRef} tabIndex={-1} className="sr-only">
           Close
         </DialogPrimitive.Close>
-        <div className="flex justify-center py-3">
+        <div
+          className="flex cursor-grab touch-none justify-center py-3 active:cursor-grabbing"
+          onPointerDown={onDragPointerStart}
+          onPointerMove={onDragPointerMove}
+          onPointerUp={onDragPointerEnd}
+          onPointerCancel={onDragPointerCancel}
+          onTouchStart={onDragTouchStart}
+          onTouchMove={onDragTouchMove}
+          onTouchEnd={onDragTouchEnd}
+          onTouchCancel={onDragTouchCancel}
+        >
           <div
-            className="bg-muted h-2 w-24 touch-none rounded-full"
-            onPointerDown={onDragStart}
-            onPointerMove={onDragMove}
-            onPointerUp={onDragEnd}
-            onPointerCancel={onDragCancel}
+            aria-hidden="true"
+            className="bg-muted h-2 w-24 rounded-full"
           />
         </div>
         {children}
