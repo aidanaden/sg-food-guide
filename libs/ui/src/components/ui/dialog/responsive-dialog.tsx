@@ -19,6 +19,7 @@ import {
   DrawerFooter,
   DrawerHeader,
   DrawerTitle,
+  DrawerTrigger,
 } from "../drawer";
 import {
   Dialog,
@@ -27,6 +28,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "./dialog-primitives";
 
 type ResponsiveDialogContextValue = {
@@ -92,18 +94,21 @@ type ResponsiveDialogTriggerProps = {
   className?: string;
 };
 
-/**
- * Trigger button that opens the responsive dialog.
- * Note: For non-mobile, you need to handle the trigger manually since
- * base-ui Dialog uses a different trigger pattern.
- */
 const ResponsiveDialogTrigger: FC<ResponsiveDialogTriggerProps> = ({ children, className }) => {
-  const { setOpen } = useResponsiveDialog();
+  const { isMobile } = useResponsiveDialog();
+
+  if (isMobile) {
+    return (
+      <DrawerTrigger render={<button type="button" className={className} />}>
+        {children}
+      </DrawerTrigger>
+    );
+  }
 
   return (
-    <button type="button" className={className} onClick={() => setOpen(true)}>
+    <DialogTrigger render={<button type="button" className={className} />}>
       {children}
-    </button>
+    </DialogTrigger>
   );
 };
 
