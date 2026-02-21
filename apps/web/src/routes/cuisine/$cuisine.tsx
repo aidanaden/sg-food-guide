@@ -3,6 +3,8 @@ import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 
 import {
+  Button,
+  Input,
   ResponsiveDialog,
   ResponsiveDialogContent,
   ResponsiveDialogHeader,
@@ -15,29 +17,30 @@ import {
 } from "@sg-food-guide/ui";
 
 import { StallCard } from "../../components/StallCard";
+import type { Stall } from "../../data/shared";
 import {
-  getStallsByCuisine,
   getAreas,
   getAllTimeCategories,
   getCountries,
   getStallArea,
   timeCategoryLabels,
   countryLabels,
-} from "../../data/stalls";
+} from "../../lib/stall-utils";
 import { getFavorites, getVisited, toggleFavorite, toggleVisited } from "../../lib/preferences";
+import { getStallsByCuisine as getStallsByCuisineServer } from "../../server/stalls/read.functions";
 
 const ALL_FILTER_VALUE = "__all__";
 
 const paramsSchema = z.object({ cuisine: z.string().min(1) });
 
 export const Route = createFileRoute("/cuisine/$cuisine")({
-  loader: ({ params }) => {
+  loader: async ({ params }) => {
     const parsed = paramsSchema.safeParse(params);
     if (!parsed.success) {
       throw notFound();
     }
 
-    const cuisineStalls = getStallsByCuisine(parsed.data.cuisine);
+    const cuisineStalls = await getStallsByCuisineServer({ data: { cuisine: parsed.data.cuisine } });
     if (cuisineStalls.length === 0) {
       throw notFound();
     }
@@ -75,7 +78,7 @@ function CuisinePage() {
 
   const { filtered, areaOptions, countryOptions, timeCategoryOptions } = useMemo(() => {
     const query = search.trim().toLowerCase();
-    const matchesArea = (stall: (typeof cuisineStalls)[number], selectedArea: string) => {
+    const matchesArea = (stall: Stall, selectedArea: string) => {
       if (!selectedArea) return true;
 
       if (selectedArea === "Other") {
@@ -88,7 +91,7 @@ function CuisinePage() {
     };
 
     const matchesFilters = (
-      stall: (typeof cuisineStalls)[number],
+      stall: Stall,
       overrides?: {
         area?: string;
         country?: string;
@@ -119,17 +122,17 @@ function CuisinePage() {
     };
 
     const nextAreas = getAreas(
-      cuisineStalls.filter((stall) => matchesFilters(stall, { area: "" })),
+      cuisineStalls.filter((stall: Stall) => matchesFilters(stall, { area: "" })),
     );
     const nextCountries = getCountries(
-      cuisineStalls.filter((stall) => matchesFilters(stall, { country: "" })),
+      cuisineStalls.filter((stall: Stall) => matchesFilters(stall, { country: "" })),
     );
     const nextTimeCategories = getAllTimeCategories(
-      cuisineStalls.filter((stall) => matchesFilters(stall, { timeCategories: [] })),
+      cuisineStalls.filter((stall: Stall) => matchesFilters(stall, { timeCategories: [] })),
     );
 
     return {
-      filtered: cuisineStalls.filter((stall) => matchesFilters(stall)),
+      filtered: cuisineStalls.filter((stall: Stall) => matchesFilters(stall)),
       areaOptions: nextAreas,
       countryOptions: nextCountries,
       timeCategoryOptions: nextTimeCategories,
@@ -157,6 +160,10 @@ function CuisinePage() {
     });
   }, [timeCategoryOptions]);
 
+  const hasAreaOptions = areaOptions.length > 0;
+  const hasCountryOptions = countryOptions.length > 0;
+  const hasTimeCategoryOptions = timeCategoryOptions.length > 0;
+
   return (
     <div className="min-h-screen">
       <header className="border-warm-800/60 border-b px-4 py-6">
@@ -174,43 +181,53 @@ function CuisinePage() {
       <main className="mx-auto max-w-6xl px-4 py-6">
         <section className="mb-6">
           <div className="isolate grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
-            <input
+            <Input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search stalls or dishes..."
-              className="border-warm-700/50 bg-surface-raised relative z-0 min-h-11 min-w-0 w-full rounded-lg border px-3 text-base sm:text-sm"
+              className="border-warm-700/50 bg-surface-raised relative z-0 h-11 min-w-0 w-full px-3 text-base sm:text-sm"
             />
 
-            <button
+            <Button
               type="button"
+              variant="outline"
               onClick={() => setIsFiltersOpen(true)}
-              className="border-warm-700/50 bg-surface-raised text-ink-muted hover:border-flame-500/40 hover:text-flame-400 relative z-20 inline-flex min-h-11 flex-none touch-manipulation items-center gap-1.5 rounded-lg border px-3 text-sm"
+              className="border-warm-700/50 bg-surface-raised text-ink-muted hover:border-flame-500/40 hover:text-flame-400 relative z-20 min-h-11 flex-none touch-manipulation px-3 text-sm"
             >
               <span className="i-ph-sliders-horizontal text-sm" />
               Filters
-            </button>
+            </Button>
 
             <ResponsiveDialog open={isFiltersOpen} onOpenChange={setIsFiltersOpen}>
-              <ResponsiveDialogContent className="sm:max-w-2xl">
+              <ResponsiveDialogContent className="pt-0 sm:max-w-2xl">
                 <ResponsiveDialogHeader className="border-warm-800/50 border-b pb-3">
                   <ResponsiveDialogTitle className="font-display text-lg font-bold">
                     Filters
                   </ResponsiveDialogTitle>
                 </ResponsiveDialogHeader>
 
-                <div className="grid grid-cols-1 gap-3 px-4 pb-4 sm:grid-cols-2 sm:px-0 sm:pb-0">
+                <div className="grid grid-cols-1 gap-3 px-4 pt-3 pb-4 sm:grid-cols-2 sm:px-0 sm:pb-0">
                   <label className="text-ink-faint space-y-1 text-xs">
                     <span>Area</span>
                     <Select
+                      disabled={!hasAreaOptions}
                       value={area || ALL_FILTER_VALUE}
                       onValueChange={(value) =>
                         setArea(!value || value === ALL_FILTER_VALUE ? "" : value)
                       }
                     >
-                      <SelectTrigger aria-label="Area" className={filterSelectTriggerClass}>
+                      <SelectTrigger
+                        disabled={!hasAreaOptions}
+                        aria-label="Area"
+                        className={filterSelectTriggerClass}
+                      >
                         <SelectValue>
                           {(value) => {
+                            if (!hasAreaOptions) {
+                              return "No options";
+                            }
+
                             const stringValue = typeof value === "string" ? value : "";
                             if (!stringValue || stringValue === ALL_FILTER_VALUE) {
                               return "All Areas";
@@ -234,14 +251,23 @@ function CuisinePage() {
                   <label className="text-ink-faint space-y-1 text-xs">
                     <span>Country</span>
                     <Select
+                      disabled={!hasCountryOptions}
                       value={country || ALL_FILTER_VALUE}
                       onValueChange={(value) =>
                         setCountry(!value || value === ALL_FILTER_VALUE ? "" : value)
                       }
                     >
-                      <SelectTrigger aria-label="Country" className={filterSelectTriggerClass}>
+                      <SelectTrigger
+                        disabled={!hasCountryOptions}
+                        aria-label="Country"
+                        className={filterSelectTriggerClass}
+                      >
                         <SelectValue>
                           {(value) => {
+                            if (!hasCountryOptions) {
+                              return "No options";
+                            }
+
                             const stringValue = typeof value === "string" ? value : "";
                             if (!stringValue || stringValue === ALL_FILTER_VALUE) {
                               return "All Countries";
@@ -266,9 +292,15 @@ function CuisinePage() {
                   <label className="text-ink-faint space-y-1 text-xs sm:col-span-2">
                     <span>Hours</span>
                     <Select
+                      disabled={!hasTimeCategoryOptions}
                       multiple
                       value={selectedTimeCategories}
                       onValueChange={(value) => {
+                        if (!hasTimeCategoryOptions) {
+                          setSelectedTimeCategories([]);
+                          return;
+                        }
+
                         if (!Array.isArray(value)) {
                           setSelectedTimeCategories([]);
                           return;
@@ -278,9 +310,17 @@ function CuisinePage() {
                         );
                       }}
                     >
-                      <SelectTrigger aria-label="Hours" className={filterSelectTriggerClass}>
+                      <SelectTrigger
+                        disabled={!hasTimeCategoryOptions}
+                        aria-label="Hours"
+                        className={filterSelectTriggerClass}
+                      >
                         <SelectValue>
                           {(value) => {
+                            if (!hasTimeCategoryOptions) {
+                              return "No options";
+                            }
+
                             const values = Array.isArray(value)
                               ? value.filter((item): item is string => typeof item === "string")
                               : [];
@@ -325,7 +365,7 @@ function CuisinePage() {
         <p className="text-ink-faint mb-4 text-xs">Showing {filtered.length} stalls</p>
 
         <section className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((stall) => (
+          {filtered.map((stall: Stall) => (
             <StallCard
               key={stall.slug}
               stall={stall}

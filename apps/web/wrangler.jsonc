@@ -1,7 +1,26 @@
 {
   "$schema": "../../node_modules/wrangler/config-schema.json",
   "name": "sg-food-guide",
-  "compatibility_date": "2026-02-20",
+  "compatibility_date": "2025-09-27",
   "compatibility_flags": ["nodejs_compat"],
-  "main": "@tanstack/react-start/server-entry"
+  "main": "./worker-entry.ts",
+  "d1_databases": [
+    {
+      "binding": "STALLS_DB",
+      "database_name": "sg-food-guide-stalls",
+      "database_id": "00000000-0000-0000-0000-000000000000"
+    }
+  ],
+  "vars": {
+    "FOOD_GUIDE_SHEET_ID": "1UMOZE2SM3_y5oUHafwJFEB9RrPDMqBbWjWnMGkO4gGg",
+    "FOOD_GUIDE_SHEET_GID": "1935025317",
+    "YOUTUBE_CHANNEL_USERNAME": "Alderic",
+    "YOUTUBE_CHANNEL_FEED_URL": "https://www.youtube.com/feeds/videos.xml?user=Alderic",
+    "STALL_SYNC_MODE": "dry-run",
+    "STALL_SYNC_MAX_CHANGE_RATIO": "0.5",
+    "STALL_SYNC_ALERT_MODE": "all"
+  },
+  "triggers": {
+    "crons": ["0 0 * * *"]
+  }
 }

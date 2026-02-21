@@ -6,7 +6,7 @@
     "module": "ESNext",
     "types": ["vite/client", "node"]
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "scripts/generate-route-tree.ts"],
+  "include": ["src/**/*.ts", "src/**/*.tsx", "scripts/generate-route-tree.ts", "worker-entry.ts"],
   "exclude": [
     "node_modules",
     "dist"

@@ -2,6 +2,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 
 import {
+  Button,
+  Checkbox,
+  Input,
+  Label,
   ResponsiveDialog,
   ResponsiveDialogContent,
   ResponsiveDialogHeader,
@@ -14,8 +18,8 @@ import {
 } from "@sg-food-guide/ui";
 
 import { StallCard } from "../components/StallCard";
+import type { Stall } from "../data/shared";
 import {
-  stalls,
   getAreas,
   getAllTimeCategories,
   getCuisines,
@@ -23,8 +27,9 @@ import {
   getStallArea,
   timeCategoryLabels,
   countryLabels,
-} from "../data/stalls";
+} from "../lib/stall-utils";
 import { getFavorites, getVisited, toggleFavorite, toggleVisited } from "../lib/preferences";
+import { getAllStalls } from "../server/stalls/read.functions";
 
 const ALL_FILTER_VALUE = "__all__";
 const sortLabelByValue: Record<string, string> = {
@@ -36,10 +41,15 @@ const sortLabelByValue: Record<string, string> = {
 };
 
 export const Route = createFileRoute("/")({
+  loader: async () => {
+    const loadedStalls = await getAllStalls();
+    return { stalls: loadedStalls };
+  },
   component: HomePage,
 });
 
 function HomePage() {
+  const { stalls } = Route.useLoaderData();
   const [search, setSearch] = useState("");
   const [area, setArea] = useState("");
   const [cuisine, setCuisine] = useState("");
@@ -67,7 +77,7 @@ function HomePage() {
     timeCategoryOptions,
   } = useMemo(() => {
     const query = search.trim().toLowerCase();
-    const matchesSearchAndToggles = (stall: (typeof stalls)[number]) => {
+    const matchesSearchAndToggles = (stall: Stall) => {
       if (query) {
         const haystack =
           `${stall.name} ${stall.dishName} ${stall.address} ${stall.cuisineLabel}`.toLowerCase();
@@ -79,7 +89,7 @@ function HomePage() {
       return true;
     };
 
-    const matchesArea = (stall: (typeof stalls)[number], selectedArea: string) => {
+    const matchesArea = (stall: Stall, selectedArea: string) => {
       if (!selectedArea) return true;
 
       if (selectedArea === "Other") {
@@ -92,7 +102,7 @@ function HomePage() {
     };
 
     const matchesFilters = (
-      stall: (typeof stalls)[number],
+      stall: Stall,
       overrides?: {
         area?: string;
         cuisine?: string;
@@ -121,27 +131,27 @@ function HomePage() {
       return true;
     };
 
-    const nextAreas = getAreas(stalls.filter((stall) => matchesFilters(stall, { area: "" })));
+    const nextAreas = getAreas(stalls.filter((stall: Stall) => matchesFilters(stall, { area: "" })));
     const nextCuisines = getCuisines(
-      stalls.filter((stall) => matchesFilters(stall, { cuisine: "" })),
+      stalls.filter((stall: Stall) => matchesFilters(stall, { cuisine: "" })),
     );
     const nextCountries = getCountries(
-      stalls.filter((stall) => matchesFilters(stall, { country: "" })),
+      stalls.filter((stall: Stall) => matchesFilters(stall, { country: "" })),
     );
     const nextTimeCategories = getAllTimeCategories(
-      stalls.filter((stall) => matchesFilters(stall, { timeCategories: [] })),
+      stalls.filter((stall: Stall) => matchesFilters(stall, { timeCategories: [] })),
     );
-    const next = stalls.filter((stall) => matchesFilters(stall));
+    const next = stalls.filter((stall: Stall) => matchesFilters(stall));
 
     const score = (v: number | null) => (v === null ? -1 : v);
 
     if (sortBy === "rating-asc")
-      next.sort((a, b) => score(a.ratingModerated) - score(b.ratingModerated));
-    else if (sortBy === "price-asc") next.sort((a, b) => a.price - b.price);
-    else if (sortBy === "price-desc") next.sort((a, b) => b.price - a.price);
+      next.sort((a: Stall, b: Stall) => score(a.ratingModerated) - score(b.ratingModerated));
+    else if (sortBy === "price-asc") next.sort((a: Stall, b: Stall) => a.price - b.price);
+    else if (sortBy === "price-desc") next.sort((a: Stall, b: Stall) => b.price - a.price);
     else if (sortBy === "episode-asc")
-      next.sort((a, b) => (a.episodeNumber ?? 9999) - (b.episodeNumber ?? 9999));
-    else next.sort((a, b) => score(b.ratingModerated) - score(a.ratingModerated));
+      next.sort((a: Stall, b: Stall) => (a.episodeNumber ?? 9999) - (b.episodeNumber ?? 9999));
+    else next.sort((a: Stall, b: Stall) => score(b.ratingModerated) - score(a.ratingModerated));
 
     return {
       filtered: next,
@@ -190,6 +200,11 @@ function HomePage() {
     });
   }, [timeCategoryOptions]);
 
+  const hasAreaOptions = areaOptions.length > 0;
+  const hasCuisineOptions = cuisineOptions.length > 0;
+  const hasCountryOptions = countryOptions.length > 0;
+  const hasTimeCategoryOptions = timeCategoryOptions.length > 0;
+
   return (
     <div className="min-h-screen">
       <header className="border-warm-800/60 bg-surface/90 border-b px-4 py-8">
@@ -207,44 +222,54 @@ function HomePage() {
         <section className="mb-6">
           <div className="isolate grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
             <div className="min-w-0">
-              <input
+              <Input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search stalls, dishes, areas..."
-                className="border-warm-700/50 bg-surface-raised relative z-0 min-h-11 w-full rounded-lg border px-3 text-base sm:text-sm"
+                className="border-warm-700/50 bg-surface-raised relative z-0 h-11 w-full px-3 text-base sm:text-sm"
               />
             </div>
 
-            <button
+            <Button
               type="button"
+              variant="outline"
               onClick={() => setIsFiltersOpen(true)}
-              className="border-warm-700/50 bg-surface-raised text-ink-muted hover:border-flame-500/40 hover:text-flame-400 relative z-20 inline-flex min-h-11 flex-none touch-manipulation items-center gap-1.5 rounded-lg border px-3 text-sm"
+              className="border-warm-700/50 bg-surface-raised text-ink-muted hover:border-flame-500/40 hover:text-flame-400 relative z-20 min-h-11 flex-none touch-manipulation px-3 text-sm"
             >
               <span className="i-ph-sliders-horizontal text-sm" />
               Filters
-            </button>
+            </Button>
 
             <ResponsiveDialog open={isFiltersOpen} onOpenChange={setIsFiltersOpen}>
-              <ResponsiveDialogContent className="sm:max-w-2xl">
+              <ResponsiveDialogContent className="pt-0 sm:max-w-2xl">
                 <ResponsiveDialogHeader className="border-warm-800/50 border-b pb-3">
                   <ResponsiveDialogTitle className="font-display text-lg font-bold">
                     Filters
                   </ResponsiveDialogTitle>
                 </ResponsiveDialogHeader>
 
-                <div className="grid grid-cols-1 gap-3 px-4 sm:grid-cols-2 sm:px-0">
+                <div className="grid grid-cols-1 gap-3 px-4 pt-3 sm:grid-cols-2 sm:px-0">
                   <label className="text-ink-faint space-y-1 text-xs">
                     <span>Area</span>
                     <Select
+                      disabled={!hasAreaOptions}
                       value={area || ALL_FILTER_VALUE}
                       onValueChange={(value) =>
                         setArea(!value || value === ALL_FILTER_VALUE ? "" : value)
                       }
                     >
-                      <SelectTrigger aria-label="Area" className={filterSelectTriggerClass}>
+                      <SelectTrigger
+                        disabled={!hasAreaOptions}
+                        aria-label="Area"
+                        className={filterSelectTriggerClass}
+                      >
                         <SelectValue>
                           {(value) => {
+                            if (!hasAreaOptions) {
+                              return "No options";
+                            }
+
                             const stringValue = typeof value === "string" ? value : "";
                             if (!stringValue || stringValue === ALL_FILTER_VALUE) {
                               return "All Areas";
@@ -268,14 +293,23 @@ function HomePage() {
                   <label className="text-ink-faint space-y-1 text-xs">
                     <span>Cuisine</span>
                     <Select
+                      disabled={!hasCuisineOptions}
                       value={cuisine || ALL_FILTER_VALUE}
                       onValueChange={(value) =>
                         setCuisine(!value || value === ALL_FILTER_VALUE ? "" : value)
                       }
                     >
-                      <SelectTrigger aria-label="Cuisine" className={filterSelectTriggerClass}>
+                      <SelectTrigger
+                        disabled={!hasCuisineOptions}
+                        aria-label="Cuisine"
+                        className={filterSelectTriggerClass}
+                      >
                         <SelectValue>
                           {(value) => {
+                            if (!hasCuisineOptions) {
+                              return "No options";
+                            }
+
                             const stringValue = typeof value === "string" ? value : "";
                             if (!stringValue || stringValue === ALL_FILTER_VALUE) {
                               return "All Cuisines";
@@ -300,14 +334,23 @@ function HomePage() {
                   <label className="text-ink-faint space-y-1 text-xs">
                     <span>Country</span>
                     <Select
+                      disabled={!hasCountryOptions}
                       value={country || ALL_FILTER_VALUE}
                       onValueChange={(value) =>
                         setCountry(!value || value === ALL_FILTER_VALUE ? "" : value)
                       }
                     >
-                      <SelectTrigger aria-label="Country" className={filterSelectTriggerClass}>
+                      <SelectTrigger
+                        disabled={!hasCountryOptions}
+                        aria-label="Country"
+                        className={filterSelectTriggerClass}
+                      >
                         <SelectValue>
                           {(value) => {
+                            if (!hasCountryOptions) {
+                              return "No options";
+                            }
+
                             const stringValue = typeof value === "string" ? value : "";
                             if (!stringValue || stringValue === ALL_FILTER_VALUE) {
                               return "All Countries";
@@ -332,9 +375,15 @@ function HomePage() {
                   <label className="text-ink-faint space-y-1 text-xs">
                     <span>Hours</span>
                     <Select
+                      disabled={!hasTimeCategoryOptions}
                       multiple
                       value={selectedTimeCategories}
                       onValueChange={(value) => {
+                        if (!hasTimeCategoryOptions) {
+                          setSelectedTimeCategories([]);
+                          return;
+                        }
+
                         if (!Array.isArray(value)) {
                           setSelectedTimeCategories([]);
                           return;
@@ -344,9 +393,17 @@ function HomePage() {
                         );
                       }}
                     >
-                      <SelectTrigger aria-label="Hours" className={filterSelectTriggerClass}>
+                      <SelectTrigger
+                        disabled={!hasTimeCategoryOptions}
+                        aria-label="Hours"
+                        className={filterSelectTriggerClass}
+                      >
                         <SelectValue>
                           {(value) => {
+                            if (!hasTimeCategoryOptions) {
+                              return "No options";
+                            }
+
                             const values = Array.isArray(value)
                               ? value.filter((item): item is string => typeof item === "string")
                               : [];
@@ -412,23 +469,23 @@ function HomePage() {
                 </div>
 
                 <div className="mt-4 space-y-2 px-4 pb-4 sm:px-0 sm:pb-0">
-                  <label className="border-warm-700/50 bg-surface-raised inline-flex min-h-11 w-full items-center gap-2 rounded-lg border px-3 text-sm">
-                    <input
-                      type="checkbox"
+                  <Label className="border-warm-700/50 bg-surface-raised min-h-11 w-full rounded-lg border px-3 text-sm font-normal">
+                    <Checkbox
+                      variant="tick"
                       checked={favoritesOnly}
-                      onChange={(e) => setFavoritesOnly(e.target.checked)}
+                      onCheckedChange={(checked) => setFavoritesOnly(checked)}
                     />
                     Favourites only
-                  </label>
+                  </Label>
 
-                  <label className="border-warm-700/50 bg-surface-raised inline-flex min-h-11 w-full items-center gap-2 rounded-lg border px-3 text-sm">
-                    <input
-                      type="checkbox"
+                  <Label className="border-warm-700/50 bg-surface-raised min-h-11 w-full rounded-lg border px-3 text-sm font-normal">
+                    <Checkbox
+                      variant="tick"
                       checked={hideVisited}
-                      onChange={(e) => setHideVisited(e.target.checked)}
+                      onCheckedChange={(checked) => setHideVisited(checked)}
                     />
                     Hide visited
-                  </label>
+                  </Label>
                 </div>
               </ResponsiveDialogContent>
             </ResponsiveDialog>
@@ -438,7 +495,7 @@ function HomePage() {
         <p className="text-ink-faint mb-4 text-xs">Showing {filtered.length} stalls</p>
 
         <section className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((stall) => (
+          {filtered.map((stall: Stall) => (
             <StallCard
               key={stall.slug}
               stall={stall}

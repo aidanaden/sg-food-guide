@@ -19,6 +19,10 @@
     "track:sheet": "bun scripts/track-food-guide-sheet.ts",
     "populate:youtube-ids": "bun scripts/populate-youtube-ids.ts",
     "check:ratings": "bun scripts/validate-ratings.mjs",
+    "d1:migrate:local": "wrangler d1 execute sg-food-guide-stalls --local --file ./data/d1/migrations/0001_init.sql",
+    "d1:migrate:remote": "wrangler d1 execute sg-food-guide-stalls --remote --file ./data/d1/migrations/0001_init.sql",
+    "sync:stalls:api": "curl -sS -X POST 'http://127.0.0.1:3000/api/sync/stalls?mode=dry-run'",
+    "sync:stalls:scheduled:dev": "wrangler dev --test-scheduled --port 8787",
     "check": "bun run check:ratings && bun run lint:check && bun run typecheck",
     "ci": "bun run check && bun run test && bun run build",
     "deploy": "bun run build && wrangler deploy"

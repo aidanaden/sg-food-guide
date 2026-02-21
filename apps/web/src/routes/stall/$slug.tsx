@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link, createFileRoute, notFound } from '@tanstack/react-router';
+import { Button } from '@sg-food-guide/ui';
 import { z } from 'zod';
 
 import {
-  stalls,
   getGoogleMapsUrl,
   getYouTubeEmbedUrl,
   getYouTubeSearchUrl,
@@ -11,17 +11,18 @@ import {
   getStallArea,
   getRatingLabel,
   getRatingVariant,
-} from '../../data/stalls';
+} from '../../lib/stall-utils';
 import { getFavorites, getVisited, markVisited, toggleFavorite, toggleVisited } from '../../lib/preferences';
+import { getStallBySlug } from '../../server/stalls/read.functions';
 
 const paramsSchema = z.object({ slug: z.string().min(1) });
 
 export const Route = createFileRoute('/stall/$slug')({
-  loader: ({ params }) => {
+  loader: async ({ params }) => {
     const parsed = paramsSchema.safeParse(params);
     if (!parsed.success) throw notFound();
 
-    const stall = stalls.find((item) => item.slug === parsed.data.slug);
+    const stall = await getStallBySlug({ data: { slug: parsed.data.slug } });
     if (!stall) throw notFound();
 
     return { stall };
@@ -78,22 +79,24 @@ function StallPage() {
         </div>
 
         <div className="mt-4 flex gap-2">
-          <button
+          <Button
             type="button"
+            variant="outline"
             onClick={() => setVisitedSet(toggleVisited(stall.slug))}
-            className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-warm-700/50 px-3 py-2 text-sm"
+            className="border-warm-700/50 bg-transparent px-3 py-2 text-sm"
           >
             <span className={isVisited ? 'i-ph-check-circle-fill text-jade-400' : 'i-ph-eye'} />
             {isVisited ? 'Visited' : 'Mark visited'}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant="outline"
             onClick={() => setFavoriteSet(toggleFavorite(stall.slug))}
-            className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-warm-700/50 px-3 py-2 text-sm"
+            className="border-warm-700/50 bg-transparent px-3 py-2 text-sm"
           >
             <span className={isFavorite ? 'i-ph-heart-fill text-flame-400' : 'i-ph-heart'} />
             Favourite
-          </button>
+          </Button>
         </div>
 
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -107,7 +110,7 @@ function StallPage() {
           <section className="mt-6 rounded-xl border border-jade-500/20 bg-jade-500/5 p-4">
             <h2 className="mb-2 text-sm font-semibold text-jade-400">Hits</h2>
             <ul className="space-y-1 text-sm text-ink-muted">
-              {stall.hits.map((item) => (
+              {stall.hits.map((item: string) => (
                 <li key={item} className="flex items-start gap-2"><span className="i-ph-check text-jade-500/70 mt-0.5 text-xs" />{item}</li>
               ))}
             </ul>
@@ -118,7 +121,7 @@ function StallPage() {
           <section className="mt-4 rounded-xl border border-flame-500/20 bg-flame-500/5 p-4">
             <h2 className="mb-2 text-sm font-semibold text-flame-400">Misses</h2>
             <ul className="space-y-1 text-sm text-ink-muted">
-              {stall.misses.map((item) => (
+              {stall.misses.map((item: string) => (
                 <li key={item} className="flex items-start gap-2"><span className="i-ph-x text-flame-500/70 mt-0.5 text-xs" />{item}</li>
               ))}
             </ul>

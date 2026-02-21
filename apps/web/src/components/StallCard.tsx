@@ -1,6 +1,7 @@
 import { Link } from '@tanstack/react-router';
+import { Button } from '@sg-food-guide/ui';
 
-import { type Stall, getRatingLabel, getRatingVariant, getStallArea } from '../data/stalls';
+import { type Stall, getRatingLabel, getRatingVariant, getStallArea } from '../lib/stall-utils';
 
 type StallCardProps = {
   stall: Stall;
@@ -24,17 +25,18 @@ export function StallCard({
   const ratingLabel = getRatingLabel(rating);
 
   return (
-    <article className="rounded-xl border border-warm-800/60 bg-surface-card p-4 shadow-sm">
+    <article className="group relative rounded-xl border border-warm-800/60 bg-surface-card p-4 shadow-sm">
+      <Link
+        to="/stall/$slug"
+        params={{ slug: stall.slug }}
+        aria-label={`View details for ${stall.name}`}
+        className="absolute inset-0 z-10 rounded-xl focus-visible:ring-2 focus-visible:ring-flame-400 focus-visible:outline-none"
+      />
+
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
-          <h3 className="font-display text-lg leading-tight">
-            <Link
-              to="/stall/$slug"
-              params={{ slug: stall.slug }}
-              className="hover:text-flame-400 transition-colors"
-            >
-              {stall.name}
-            </Link>
+          <h3 className="font-display text-lg leading-tight transition-colors group-hover:text-flame-400">
+            {stall.name}
           </h3>
           <p className="mt-1 text-xs text-ink-faint">{getStallArea(stall)}</p>
           {showCuisine ? <p className="text-xs text-ink-faint">{stall.cuisineLabel}</p> : null}
@@ -49,24 +51,28 @@ export function StallCard({
 
       <p className="mb-3 text-sm text-ink-muted">{stall.dishName}</p>
 
-      <div className="flex items-center gap-2">
-        <button
+      <div className="relative z-20 flex items-center gap-2">
+        <Button
           type="button"
+          variant="outline"
+          size="sm"
           onClick={() => onToggleVisited(stall.slug)}
-          className="inline-flex min-h-10 items-center gap-1.5 rounded-md border border-warm-700/50 px-2.5 text-xs text-ink-muted hover:border-flame-500/40 hover:text-flame-400"
+          className="min-h-10 border-warm-700/50 bg-transparent text-ink-muted hover:border-flame-500/40 hover:text-flame-400"
         >
           <span className={isVisited ? 'i-ph-check-circle-fill text-jade-400' : 'i-ph-eye'} />
           {isVisited ? 'Visited' : 'Mark visited'}
-        </button>
+        </Button>
 
-        <button
+        <Button
           type="button"
+          variant="outline"
+          size="sm"
           onClick={() => onToggleFavorite(stall.slug)}
-          className="inline-flex min-h-10 items-center gap-1.5 rounded-md border border-warm-700/50 px-2.5 text-xs text-ink-muted hover:border-flame-500/40 hover:text-flame-400"
+          className="min-h-10 border-warm-700/50 bg-transparent text-ink-muted hover:border-flame-500/40 hover:text-flame-400"
         >
           <span className={isFavorite ? 'i-ph-heart-fill text-flame-400' : 'i-ph-heart'} />
           {isFavorite ? 'Favourite' : 'Favourite'}
-        </button>
+        </Button>
       </div>
     </article>
   );

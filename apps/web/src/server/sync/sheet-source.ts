@@ -1,0 +1,311 @@
+import { Result } from 'better-result';
+import * as z from 'zod/mini';
+
+import type { WorkerEnv } from '../cloudflare/runtime';
+import { countryCodeSchema } from '../stalls/contracts';
+import { makeStableHash, normalizeDisplayText } from './normalize';
+
+export interface SheetStallRow {
+  sourceRow: number;
+  sourceRowKey: string;
+  name: string;
+  address: string;
+  cuisine: string;
+  cuisineLabel: string;
+  country: z.infer<typeof countryCodeSchema>;
+  episodeNumber: number | null;
+  dishName: string;
+  price: number;
+  ratingOriginal: number | null;
+  ratingModerated: number | null;
+  openingTimes: string;
+  youtubeVideoUrl: string | null;
+  youtubeTitle: string;
+  awards: string[];
+}
+
+const DEFAULT_SHEET_ID = '1UMOZE2SM3_y5oUHafwJFEB9RrPDMqBbWjWnMGkO4gGg';
+const DEFAULT_SHEET_GID = '1935025317';
+
+const fetchPayloadSchema = z.object({
+  sourceUrl: z.string(),
+  csv: z.string(),
+});
+
+function normalizeCsv(input: string): string {
+  return input
+    .replace(/^\uFEFF/, '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .replace(/\n+$/, '\n');
+}
+
+function parseCsv(csv: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cell = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < csv.length; i += 1) {
+    const char = csv[i];
+
+    if (inQuotes) {
+      if (char === '"') {
+        if (csv[i + 1] === '"') {
+          cell += '"';
+          i += 1;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        cell += char;
+      }
+      continue;
+    }
+
+    if (char === '"') {
+      inQuotes = true;
+      continue;
+    }
+
+    if (char === ',') {
+      row.push(cell);
+      cell = '';
+      continue;
+    }
+
+    if (char === '\n') {
+      row.push(cell);
+      rows.push(row);
+      row = [];
+      cell = '';
+      continue;
+    }
+
+    cell += char;
+  }
+
+  row.push(cell);
+  rows.push(row);
+
+  return rows.filter((currentRow) => currentRow.some((value) => value.trim().length > 0));
+}
+
+function normalizeHeader(value: string): string {
+  return value.toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+function readCell(row: string[], index: number): string {
+  if (index < 0) {
+    return '';
+  }
+
+  return normalizeDisplayText(row[index] ?? '');
+}
+
+function findRequiredColumn(
+  headers: string[],
+  matches: Array<(header: string) => boolean>,
+  label: string
+): Result<number, Error> {
+  const index = headers.findIndex((header) => matches.some((match) => match(header)));
+  if (index === -1) {
+    return Result.err(new Error(`Missing required column "${label}" in Google Sheet export.`));
+  }
+
+  return Result.ok(index);
+}
+
+function findOptionalColumn(headers: string[], match: (header: string) => boolean): number {
+  return headers.findIndex(match);
+}
+
+function parseNumber(value: string): number | null {
+  if (value.length === 0) {
+    return null;
+  }
+
+  const match = value.match(/-?\d+(?:\.\d+)?/);
+  if (!match) {
+    return null;
+  }
+
+  const parsed = Number(match[0]);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function parseAwards(value: string): string[] {
+  if (value.length === 0) {
+    return [];
+  }
+
+  return value
+    .split(/\n|;/g)
+    .map((award) => normalizeDisplayText(award))
+    .filter((award) => award.length > 0);
+}
+
+function normalizeCuisine(rawCuisine: string, fallbackDishName: string): { cuisine: string; cuisineLabel: string } {
+  const label = normalizeDisplayText(rawCuisine || fallbackDishName || 'Unknown');
+  const cuisine = label
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+
+  return {
+    cuisine: cuisine || 'unknown',
+    cuisineLabel: label || 'Unknown',
+  };
+}
+
+function normalizeCountry(rawCountry: string): z.infer<typeof countryCodeSchema> {
+  const countryCode = normalizeDisplayText(rawCountry).toUpperCase();
+  const parsed = countryCodeSchema.safeParse(countryCode);
+  if (parsed.success) {
+    return parsed.data;
+  }
+
+  return 'SG';
+}
+
+export async function fetchSheetCsv(env: WorkerEnv): Promise<Result<{ sourceUrl: string; csv: string }, Error>> {
+  const explicitUrl = normalizeDisplayText(env.FOOD_GUIDE_SHEET_CSV_URL ?? '');
+  const sheetId = normalizeDisplayText(env.FOOD_GUIDE_SHEET_ID ?? DEFAULT_SHEET_ID) || DEFAULT_SHEET_ID;
+  const gid = normalizeDisplayText(env.FOOD_GUIDE_SHEET_GID ?? DEFAULT_SHEET_GID) || DEFAULT_SHEET_GID;
+
+  const sourceUrl =
+    explicitUrl.length > 0
+      ? explicitUrl
+      : `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`;
+
+  const responseResult = await Result.tryPromise(() =>
+    fetch(sourceUrl, {
+      headers: {
+        'User-Agent': 'sg-food-guide-stall-sync/1.0',
+      },
+    })
+  );
+
+  if (Result.isError(responseResult)) {
+    return Result.err(new Error('Failed to fetch Google Sheet CSV source.'));
+  }
+
+  if (!responseResult.value.ok) {
+    return Result.err(
+      new Error(`Google Sheet CSV fetch failed with HTTP ${responseResult.value.status}.`)
+    );
+  }
+
+  const textResult = await Result.tryPromise(() => responseResult.value.text());
+  if (Result.isError(textResult)) {
+    return Result.err(new Error('Failed reading CSV response body from Google Sheet source.'));
+  }
+
+  const payload = fetchPayloadSchema.safeParse({
+    sourceUrl,
+    csv: normalizeCsv(textResult.value),
+  });
+
+  if (!payload.success) {
+    return Result.err(new Error('Invalid Google Sheet CSV fetch payload.'));
+  }
+
+  return Result.ok(payload.data);
+}
+
+export function parseSheetRows(csv: string): Result<SheetStallRow[], Error> {
+  const rows = parseCsv(csv);
+  if (rows.length === 0) {
+    return Result.ok([]);
+  }
+
+  const headerRow = rows[0];
+  if (!headerRow) {
+    return Result.ok([]);
+  }
+
+  const headers = headerRow.map(normalizeHeader);
+
+  const nameColResult = findRequiredColumn(headers, [(header) => header === 'name'], 'name');
+  if (Result.isError(nameColResult)) {
+    return Result.err(nameColResult.error);
+  }
+
+  const addressColResult = findRequiredColumn(headers, [(header) => header === 'address'], 'address');
+  if (Result.isError(addressColResult)) {
+    return Result.err(addressColResult.error);
+  }
+
+  const cuisineCol = findOptionalColumn(headers, (header) => header === 'cuisine' || header === 'food type');
+  const countryCol = findOptionalColumn(headers, (header) => header === 'country' || header === 'country code');
+  const openingTimesCol = findOptionalColumn(headers, (header) => header.includes('opening times') || header.includes('hours'));
+  const episodeCol = findOptionalColumn(headers, (header) => header.includes('episode number'));
+  const dishNameCol = findOptionalColumn(headers, (header) => header.includes('dish name'));
+  const priceCol = findOptionalColumn(headers, (header) => header === 'price');
+  const ratingOriginalCol = findOptionalColumn(headers, (header) => header.includes('at time of shoot'));
+  const ratingModeratedCol = findOptionalColumn(headers, (header) => header.includes('rating (moderated)'));
+  const youtubeVideoLinkCol = findOptionalColumn(headers, (header) => header.includes('youtube video link'));
+  const youtubeTitleCol = findOptionalColumn(headers, (header) => header === 'youtube title' || header === 'video title');
+  const awardsCol = findOptionalColumn(headers, (header) => header === 'awards');
+
+  const parsedRows: SheetStallRow[] = [];
+  let lastYoutubeUrl: string | null = null;
+
+  for (let rowIndex = 1; rowIndex < rows.length; rowIndex += 1) {
+    const row = rows[rowIndex];
+    if (!row) {
+      continue;
+    }
+
+    const name = readCell(row, nameColResult.value);
+    const address = readCell(row, addressColResult.value);
+
+    if (!name || !address) {
+      continue;
+    }
+
+    const rawYoutube = readCell(row, youtubeVideoLinkCol);
+    if (rawYoutube.length > 0) {
+      lastYoutubeUrl = rawYoutube;
+    }
+
+    const dishName = readCell(row, dishNameCol);
+    const cuisineSource = readCell(row, cuisineCol);
+    const cuisine = normalizeCuisine(cuisineSource, dishName);
+    const country = normalizeCountry(readCell(row, countryCol));
+    const episodeNumber = parseNumber(readCell(row, episodeCol));
+    const price = parseNumber(readCell(row, priceCol)) ?? 0;
+    const ratingOriginal = parseNumber(readCell(row, ratingOriginalCol));
+    const ratingModerated = parseNumber(readCell(row, ratingModeratedCol));
+    const openingTimes = readCell(row, openingTimesCol);
+    const youtubeVideoUrl = rawYoutube || lastYoutubeUrl;
+    const youtubeTitle = readCell(row, youtubeTitleCol);
+    const awards = parseAwards(readCell(row, awardsCol));
+    const sourceRowKey = `sheet-row-${makeStableHash(
+      `${name}|${address}|${country}|${cuisine.cuisine}|${dishName}|${episodeNumber ?? ''}|${youtubeVideoUrl ?? ''}`
+    ).slice(0, 24)}`;
+
+    parsedRows.push({
+      sourceRow: rowIndex + 1,
+      sourceRowKey,
+      name,
+      address,
+      cuisine: cuisine.cuisine,
+      cuisineLabel: cuisine.cuisineLabel,
+      country,
+      episodeNumber,
+      dishName,
+      price,
+      ratingOriginal,
+      ratingModerated,
+      openingTimes,
+      youtubeVideoUrl,
+      youtubeTitle,
+      awards,
+    });
+  }
+
+  return Result.ok(parsedRows);
+}
