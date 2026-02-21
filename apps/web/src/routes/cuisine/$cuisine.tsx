@@ -7,7 +7,6 @@ import {
   ResponsiveDialogContent,
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
-  ResponsiveDialogTrigger,
   Select,
   SelectContent,
   SelectItem,
@@ -68,6 +67,7 @@ function CuisinePage() {
   const [area, setArea] = useState("");
   const [country, setCountry] = useState("");
   const [timeCategory, setTimeCategory] = useState("");
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [favoriteSet, setFavoriteSet] = useState<Set<string>>(() => getFavorites());
   const [visitedSet, setVisitedSet] = useState<Set<string>>(() => getVisited());
   const filterSelectTriggerClass =
@@ -113,15 +113,21 @@ function CuisinePage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search stalls or dishes..."
-              className="border-warm-700/50 bg-surface-raised min-h-11 w-full rounded-lg border px-3 text-base sm:text-sm"
+              className="border-warm-700/50 bg-surface-raised min-h-11 min-w-0 flex-1 rounded-lg border px-3 text-base sm:text-sm"
             />
 
-            <ResponsiveDialog>
-              <ResponsiveDialogTrigger className="border-warm-700/50 bg-surface-raised text-ink-muted hover:border-flame-500/40 hover:text-flame-400 inline-flex min-h-11 items-center gap-1.5 rounded-lg border px-3 text-sm">
-                <span className="i-ph-sliders-horizontal text-sm" />
-                Filters
-              </ResponsiveDialogTrigger>
+            <button
+              type="button"
+              className="border-warm-700/50 bg-surface-raised text-ink-muted hover:border-flame-500/40 hover:text-flame-400 inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg border px-3 text-sm"
+              aria-haspopup="dialog"
+              aria-expanded={isFiltersOpen}
+              onClick={() => setIsFiltersOpen(true)}
+            >
+              <span className="i-ph-sliders-horizontal text-sm" />
+              Filters
+            </button>
 
+            <ResponsiveDialog open={isFiltersOpen} onOpenChange={setIsFiltersOpen}>
               <ResponsiveDialogContent className="sm:max-w-2xl">
                 <ResponsiveDialogHeader className="border-warm-800/50 border-b pb-3">
                   <ResponsiveDialogTitle className="font-display text-lg font-bold">
