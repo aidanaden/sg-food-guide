@@ -92,11 +92,6 @@ type ResponsiveDialogTriggerProps = {
   className?: string;
 };
 
-/**
- * Trigger button that opens the responsive dialog.
- * Note: For non-mobile, you need to handle the trigger manually since
- * base-ui Dialog uses a different trigger pattern.
- */
 const ResponsiveDialogTrigger: FC<ResponsiveDialogTriggerProps> = ({ children, className }) => {
   const { setOpen } = useResponsiveDialog();
 
@@ -220,7 +215,6 @@ const ResponsiveDialogClose: FC<{
     return <DrawerClose render={render}>{children}</DrawerClose>;
   }
 
-  // For desktop dialog, we just close via setOpen
   return (
     <button
       type="button"
