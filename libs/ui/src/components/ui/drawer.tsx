@@ -31,7 +31,7 @@ const DrawerOverlay: React.FC<DialogPrimitive.Backdrop.Props> = ({ className, ..
   <DialogPrimitive.Backdrop
     data-slot="drawer-overlay"
     className={cn(
-      "fixed inset-0 z-50 bg-black/60 data-[closed]:opacity-0 data-[open]:opacity-100 transition-opacity duration-200",
+      "fixed inset-0 z-50 bg-black/60 opacity-100 data-starting-style:opacity-0 data-ending-style:opacity-0 transition-opacity duration-200",
       className,
     )}
     {...props}
@@ -105,9 +105,16 @@ const DrawerContent: React.FC<DialogPrimitive.Popup.Props> = ({
   );
 
   const mergedStyle = React.useMemo<React.CSSProperties | undefined>(() => {
-    if (dragOffset <= 0) return style;
+    if (dragOffset <= 0) {
+      return {
+        ...(style ?? {}),
+        maxHeight: "85dvh",
+      };
+    }
+
     return {
       ...(style ?? {}),
+      maxHeight: "85dvh",
       transform: `translateY(${dragOffset}px)`,
     };
   }, [dragOffset, style]);
@@ -118,7 +125,7 @@ const DrawerContent: React.FC<DialogPrimitive.Popup.Props> = ({
       <DialogPrimitive.Popup
         data-slot="drawer-content"
         className={cn(
-          "bg-background border-border fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto max-h-[85dvh] flex-col rounded-t-xl border p-0 outline-none data-[closed]:translate-y-2 data-[closed]:opacity-0 data-[open]:translate-y-0 data-[open]:opacity-100 transition-[opacity,transform] duration-200 ease-out",
+          "bg-background border-border fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto flex-col rounded-t-xl border p-0 opacity-100 outline-none translate-y-0 data-starting-style:translate-y-full data-starting-style:opacity-0 data-ending-style:translate-y-full data-ending-style:opacity-0 transition duration-200 ease-out",
           isDragging && "transition-none",
           className,
         )}
