@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { createFileRoute } from '@tanstack/react-router';
 
+import { ResponsiveDislog } from '../components/ResponsiveDialog';
 import { StallCard } from '../components/StallCard';
 import { getFavorites, getVisited, toggleFavorite, toggleVisited } from '../lib/preferences';
 import {
@@ -31,6 +32,7 @@ function HomePage() {
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [hideVisited, setHideVisited] = useState(false);
   const [sortBy, setSortBy] = useState('rating-desc');
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [favoriteSet, setFavoriteSet] = useState<Set<string>>(() => getFavorites());
   const [visitedSet, setVisitedSet] = useState<Set<string>>(() => getVisited());
 
@@ -83,60 +85,88 @@ function HomePage() {
       </header>
 
       <main className="mx-auto max-w-6xl px-4 py-6">
-        <section className="mb-6 grid grid-cols-1 gap-2 md:grid-cols-3 lg:grid-cols-4">
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search stalls, dishes, areas..."
-            className="w-full min-h-11 rounded-lg border border-warm-700/50 bg-surface-raised px-3 text-base sm:text-sm"
-          />
+        <section className="mb-6">
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search stalls, dishes, areas..."
+              className="w-full min-h-11 rounded-lg border border-warm-700/50 bg-surface-raised px-3 text-base sm:text-sm"
+            />
 
-          <select value={area} onChange={(e) => setArea(e.target.value)} className="min-h-11 rounded-lg border border-warm-700/50 bg-surface-raised px-3 text-sm">
-            <option value="">All Areas</option>
-            {areas.map((item) => (
-              <option key={item} value={item}>{item}</option>
-            ))}
-          </select>
+            <ResponsiveDislog
+              open={isFiltersOpen}
+              onOpenChange={setIsFiltersOpen}
+              title="Filters"
+              triggerLabel="Filters"
+            >
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <label className="space-y-1 text-xs text-ink-faint">
+                  <span>Area</span>
+                  <select value={area} onChange={(e) => setArea(e.target.value)} className="w-full min-h-11 rounded-lg border border-warm-700/50 bg-surface-raised px-3 text-sm text-ink">
+                    <option value="">All Areas</option>
+                    {areas.map((item) => (
+                      <option key={item} value={item}>{item}</option>
+                    ))}
+                  </select>
+                </label>
 
-          <select value={cuisine} onChange={(e) => setCuisine(e.target.value)} className="min-h-11 rounded-lg border border-warm-700/50 bg-surface-raised px-3 text-sm">
-            <option value="">All Cuisines</option>
-            {cuisines.map((item) => (
-              <option key={item.id} value={item.id}>{item.label} ({item.count})</option>
-            ))}
-          </select>
+                <label className="space-y-1 text-xs text-ink-faint">
+                  <span>Cuisine</span>
+                  <select value={cuisine} onChange={(e) => setCuisine(e.target.value)} className="w-full min-h-11 rounded-lg border border-warm-700/50 bg-surface-raised px-3 text-sm text-ink">
+                    <option value="">All Cuisines</option>
+                    {cuisines.map((item) => (
+                      <option key={item.id} value={item.id}>{item.label} ({item.count})</option>
+                    ))}
+                  </select>
+                </label>
 
-          <select value={country} onChange={(e) => setCountry(e.target.value)} className="min-h-11 rounded-lg border border-warm-700/50 bg-surface-raised px-3 text-sm">
-            <option value="">All Countries</option>
-            {countries.map((item) => (
-              <option key={item} value={item}>{countryLabels[item]}</option>
-            ))}
-          </select>
+                <label className="space-y-1 text-xs text-ink-faint">
+                  <span>Country</span>
+                  <select value={country} onChange={(e) => setCountry(e.target.value)} className="w-full min-h-11 rounded-lg border border-warm-700/50 bg-surface-raised px-3 text-sm text-ink">
+                    <option value="">All Countries</option>
+                    {countries.map((item) => (
+                      <option key={item} value={item}>{countryLabels[item]}</option>
+                    ))}
+                  </select>
+                </label>
 
-          <select value={timeCategory} onChange={(e) => setTimeCategory(e.target.value)} className="min-h-11 rounded-lg border border-warm-700/50 bg-surface-raised px-3 text-sm">
-            <option value="">All Hours</option>
-            {timeCategories.map((item) => (
-              <option key={item} value={item}>{timeCategoryLabels[item]}</option>
-            ))}
-          </select>
+                <label className="space-y-1 text-xs text-ink-faint">
+                  <span>Hours</span>
+                  <select value={timeCategory} onChange={(e) => setTimeCategory(e.target.value)} className="w-full min-h-11 rounded-lg border border-warm-700/50 bg-surface-raised px-3 text-sm text-ink">
+                    <option value="">All Hours</option>
+                    {timeCategories.map((item) => (
+                      <option key={item} value={item}>{timeCategoryLabels[item]}</option>
+                    ))}
+                  </select>
+                </label>
 
-          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="min-h-11 rounded-lg border border-warm-700/50 bg-surface-raised px-3 text-sm">
-            <option value="rating-desc">Highest Rated</option>
-            <option value="rating-asc">Lowest Rated</option>
-            <option value="price-asc">Cheapest First</option>
-            <option value="price-desc">Priciest First</option>
-            <option value="episode-asc">Episode Order</option>
-          </select>
+                <label className="space-y-1 text-xs text-ink-faint sm:col-span-2">
+                  <span>Sort</span>
+                  <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="w-full min-h-11 rounded-lg border border-warm-700/50 bg-surface-raised px-3 text-sm text-ink">
+                    <option value="rating-desc">Highest Rated</option>
+                    <option value="rating-asc">Lowest Rated</option>
+                    <option value="price-asc">Cheapest First</option>
+                    <option value="price-desc">Priciest First</option>
+                    <option value="episode-asc">Episode Order</option>
+                  </select>
+                </label>
+              </div>
 
-          <label className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-warm-700/50 bg-surface-raised px-3 text-sm">
-            <input type="checkbox" checked={favoritesOnly} onChange={(e) => setFavoritesOnly(e.target.checked)} />
-            Favourites only
-          </label>
+              <div className="mt-4 space-y-2">
+                <label className="inline-flex min-h-11 w-full items-center gap-2 rounded-lg border border-warm-700/50 bg-surface-raised px-3 text-sm">
+                  <input type="checkbox" checked={favoritesOnly} onChange={(e) => setFavoritesOnly(e.target.checked)} />
+                  Favourites only
+                </label>
 
-          <label className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-warm-700/50 bg-surface-raised px-3 text-sm">
-            <input type="checkbox" checked={hideVisited} onChange={(e) => setHideVisited(e.target.checked)} />
-            Hide visited
-          </label>
+                <label className="inline-flex min-h-11 w-full items-center gap-2 rounded-lg border border-warm-700/50 bg-surface-raised px-3 text-sm">
+                  <input type="checkbox" checked={hideVisited} onChange={(e) => setHideVisited(e.target.checked)} />
+                  Hide visited
+                </label>
+              </div>
+            </ResponsiveDislog>
+          </div>
         </section>
 
         <p className="mb-4 text-xs text-ink-faint">Showing {filtered.length} stalls</p>

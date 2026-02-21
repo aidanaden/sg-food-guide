@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link, createFileRoute, notFound } from '@tanstack/react-router';
 import { z } from 'zod';
 
+import { ResponsiveDislog } from '../../components/ResponsiveDialog';
 import { StallCard } from '../../components/StallCard';
 import { getFavorites, getVisited, toggleFavorite, toggleVisited } from '../../lib/preferences';
 import {
@@ -53,6 +54,7 @@ function CuisinePage() {
   const [area, setArea] = useState('');
   const [country, setCountry] = useState('');
   const [timeCategory, setTimeCategory] = useState('');
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [favoriteSet, setFavoriteSet] = useState<Set<string>>(() => getFavorites());
   const [visitedSet, setVisitedSet] = useState<Set<string>>(() => getVisited());
 
@@ -84,35 +86,55 @@ function CuisinePage() {
       </header>
 
       <main className="mx-auto max-w-6xl px-4 py-6">
-        <section className="mb-6 grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-4">
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search stalls or dishes..."
-            className="w-full min-h-11 rounded-lg border border-warm-700/50 bg-surface-raised px-3 text-base sm:text-sm"
-          />
+        <section className="mb-6">
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search stalls or dishes..."
+              className="w-full min-h-11 rounded-lg border border-warm-700/50 bg-surface-raised px-3 text-base sm:text-sm"
+            />
 
-          <select value={area} onChange={(e) => setArea(e.target.value)} className="min-h-11 rounded-lg border border-warm-700/50 bg-surface-raised px-3 text-sm">
-            <option value="">All Areas</option>
-            {areas.map((item) => (
-              <option key={item} value={item}>{item}</option>
-            ))}
-          </select>
+            <ResponsiveDislog
+              open={isFiltersOpen}
+              onOpenChange={setIsFiltersOpen}
+              title="Filters"
+              triggerLabel="Filters"
+            >
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <label className="space-y-1 text-xs text-ink-faint">
+                  <span>Area</span>
+                  <select value={area} onChange={(e) => setArea(e.target.value)} className="w-full min-h-11 rounded-lg border border-warm-700/50 bg-surface-raised px-3 text-sm text-ink">
+                    <option value="">All Areas</option>
+                    {areas.map((item) => (
+                      <option key={item} value={item}>{item}</option>
+                    ))}
+                  </select>
+                </label>
 
-          <select value={country} onChange={(e) => setCountry(e.target.value)} className="min-h-11 rounded-lg border border-warm-700/50 bg-surface-raised px-3 text-sm">
-            <option value="">All Countries</option>
-            {countries.map((item) => (
-              <option key={item} value={item}>{countryLabels[item]}</option>
-            ))}
-          </select>
+                <label className="space-y-1 text-xs text-ink-faint">
+                  <span>Country</span>
+                  <select value={country} onChange={(e) => setCountry(e.target.value)} className="w-full min-h-11 rounded-lg border border-warm-700/50 bg-surface-raised px-3 text-sm text-ink">
+                    <option value="">All Countries</option>
+                    {countries.map((item) => (
+                      <option key={item} value={item}>{countryLabels[item]}</option>
+                    ))}
+                  </select>
+                </label>
 
-          <select value={timeCategory} onChange={(e) => setTimeCategory(e.target.value)} className="min-h-11 rounded-lg border border-warm-700/50 bg-surface-raised px-3 text-sm">
-            <option value="">All Hours</option>
-            {timeCategories.map((item) => (
-              <option key={item} value={item}>{timeCategoryLabels[item]}</option>
-            ))}
-          </select>
+                <label className="space-y-1 text-xs text-ink-faint sm:col-span-2">
+                  <span>Hours</span>
+                  <select value={timeCategory} onChange={(e) => setTimeCategory(e.target.value)} className="w-full min-h-11 rounded-lg border border-warm-700/50 bg-surface-raised px-3 text-sm text-ink">
+                    <option value="">All Hours</option>
+                    {timeCategories.map((item) => (
+                      <option key={item} value={item}>{timeCategoryLabels[item]}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            </ResponsiveDislog>
+          </div>
         </section>
 
         <p className="mb-4 text-xs text-ink-faint">Showing {filtered.length} stalls</p>
