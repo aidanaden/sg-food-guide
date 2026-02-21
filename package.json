@@ -24,9 +24,7 @@
         "clsx": "2.1.1",
         "motion": "12.33.0",
         "react-day-picker": "9.13.1",
-        "sonner": "2.0.7",
         "tailwind-merge": "3.4.0",
-        "vaul-base": "1.0.0",
         "virtua": "0.48.5",
         "lucide-react": "0.545.0"
       },
