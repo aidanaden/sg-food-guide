@@ -3,6 +3,8 @@ import {
   useContext,
   useState,
   useMemo,
+  useRef,
+  useCallback,
   type ComponentProps,
   type FC,
   type ReactNode,
@@ -32,6 +34,7 @@ import {
 type ResponsiveDialogContextValue = {
   open: boolean;
   setOpen: (open: boolean) => void;
+  openFromTrigger: () => void;
   isMobile: boolean;
 };
 
@@ -61,17 +64,51 @@ const ResponsiveDialog: FC<ResponsiveDialogProps> = ({
   children,
 }) => {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const lastTriggerOpenAtRef = useRef<number | null>(null);
   const isMobile = useIsMobile();
 
   const open = controlledOpen ?? uncontrolledOpen;
-  const setOpen = onOpenChange ?? setUncontrolledOpen;
+  const setOpen = useCallback(
+    (nextOpen: boolean) => {
+      if (onOpenChange) {
+        onOpenChange(nextOpen);
+        return;
+      }
+      setUncontrolledOpen(nextOpen);
+    },
+    [onOpenChange],
+  );
 
-  const contextValue = useMemo(() => ({ open, setOpen, isMobile }), [open, setOpen, isMobile]);
+  const openFromTrigger = useCallback(() => {
+    lastTriggerOpenAtRef.current = Date.now();
+    setOpen(true);
+  }, [setOpen]);
+
+  const handleOpenChange = useCallback(
+    (nextOpen: boolean, eventDetails?: { reason?: string }) => {
+      if (
+        !nextOpen &&
+        eventDetails?.reason === "outsidePress" &&
+        lastTriggerOpenAtRef.current !== null &&
+        Date.now() - lastTriggerOpenAtRef.current < 200
+      ) {
+        return;
+      }
+
+      setOpen(nextOpen);
+    },
+    [setOpen],
+  );
+
+  const contextValue = useMemo(
+    () => ({ open, setOpen, openFromTrigger, isMobile }),
+    [open, setOpen, openFromTrigger, isMobile],
+  );
 
   if (isMobile) {
     return (
       <ResponsiveDialogContext.Provider value={contextValue}>
-        <Drawer open={open} onOpenChange={setOpen}>
+        <Drawer open={open} onOpenChange={handleOpenChange}>
           {children}
         </Drawer>
       </ResponsiveDialogContext.Provider>
@@ -80,7 +117,7 @@ const ResponsiveDialog: FC<ResponsiveDialogProps> = ({
 
   return (
     <ResponsiveDialogContext.Provider value={contextValue}>
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
         {children}
       </Dialog>
     </ResponsiveDialogContext.Provider>
@@ -93,14 +130,14 @@ type ResponsiveDialogTriggerProps = {
 };
 
 const ResponsiveDialogTrigger: FC<ResponsiveDialogTriggerProps> = ({ children, className }) => {
-  const { setOpen } = useResponsiveDialog();
+  const { openFromTrigger } = useResponsiveDialog();
 
   return (
     <button
       type="button"
       className={className}
       aria-haspopup="dialog"
-      onClick={() => setOpen(true)}
+      onClick={openFromTrigger}
     >
       {children}
     </button>
