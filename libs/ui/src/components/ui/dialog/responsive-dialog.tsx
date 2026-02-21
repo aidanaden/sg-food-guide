@@ -1,40 +1,22 @@
 import {
   createContext,
-  useContext,
-  useState,
-  useMemo,
-  useRef,
   useCallback,
-  type ComponentProps,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
   type FC,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 
 import { useIsMobile } from "../../../environment";
 import { cn } from "../../../utils";
 import { Button } from "../button";
-import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-} from "../drawer";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "./dialog-primitives";
 
 type ResponsiveDialogContextValue = {
   open: boolean;
   setOpen: (open: boolean) => void;
-  openFromTrigger: () => void;
   isMobile: boolean;
 };
 
@@ -55,8 +37,8 @@ type ResponsiveDialogProps = {
 };
 
 /**
- * A responsive dialog component that renders as a Dialog on desktop
- * and as a Drawer on mobile devices.
+ * Responsive dialog state container.
+ * Renders no wrapper element and lets Trigger/Content coordinate through context.
  */
 const ResponsiveDialog: FC<ResponsiveDialogProps> = ({
   open: controlledOpen,
@@ -64,7 +46,6 @@ const ResponsiveDialog: FC<ResponsiveDialogProps> = ({
   children,
 }) => {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
-  const lastTriggerOpenAtRef = useRef<number | null>(null);
   const isMobile = useIsMobile();
 
   const open = controlledOpen ?? uncontrolledOpen;
@@ -79,46 +60,11 @@ const ResponsiveDialog: FC<ResponsiveDialogProps> = ({
     [onOpenChange],
   );
 
-  const openFromTrigger = useCallback(() => {
-    lastTriggerOpenAtRef.current = Date.now();
-    setOpen(true);
-  }, [setOpen]);
-
-  const handleOpenChange = useCallback(
-    (nextOpen: boolean, _eventDetails?: { reason?: string }) => {
-      if (
-        !nextOpen &&
-        lastTriggerOpenAtRef.current !== null &&
-        Date.now() - lastTriggerOpenAtRef.current < 300
-      ) {
-        return;
-      }
-
-      setOpen(nextOpen);
-    },
-    [setOpen],
-  );
-
-  const contextValue = useMemo(
-    () => ({ open, setOpen, openFromTrigger, isMobile }),
-    [open, setOpen, openFromTrigger, isMobile],
-  );
-
-  if (isMobile) {
-    return (
-      <ResponsiveDialogContext.Provider value={contextValue}>
-        <Drawer open={open} onOpenChange={handleOpenChange}>
-          {children}
-        </Drawer>
-      </ResponsiveDialogContext.Provider>
-    );
-  }
+  const contextValue = useMemo(() => ({ open, setOpen, isMobile }), [open, setOpen, isMobile]);
 
   return (
     <ResponsiveDialogContext.Provider value={contextValue}>
-      <Dialog open={open} onOpenChange={handleOpenChange}>
-        {children}
-      </Dialog>
+      {children}
     </ResponsiveDialogContext.Provider>
   );
 };
@@ -129,20 +75,14 @@ type ResponsiveDialogTriggerProps = {
 };
 
 const ResponsiveDialogTrigger: FC<ResponsiveDialogTriggerProps> = ({ children, className }) => {
-  const { openFromTrigger } = useResponsiveDialog();
+  const { setOpen } = useResponsiveDialog();
 
   return (
     <button
       type="button"
       className={className}
       aria-haspopup="dialog"
-      onPointerDown={(event) => {
-        if (event.pointerType === "touch") {
-          openFromTrigger();
-        }
-      }}
-      onTouchEnd={openFromTrigger}
-      onClick={openFromTrigger}
+      onClick={() => setOpen(true)}
     >
       {children}
     </button>
@@ -160,16 +100,82 @@ const ResponsiveDialogContent: FC<ResponsiveDialogContentProps> = ({
   className,
   showCloseButton = true,
 }) => {
-  const { isMobile } = useResponsiveDialog();
+  const { open, setOpen, isMobile } = useResponsiveDialog();
+  const [mounted, setMounted] = useState(false);
 
-  if (isMobile) {
-    return <DrawerContent className={className}>{children}</DrawerContent>;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted || !open) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [mounted, open]);
+
+  useEffect(() => {
+    if (!mounted || !open) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [mounted, open, setOpen]);
+
+  if (!mounted || !open) {
+    return null;
   }
 
-  return (
-    <DialogContent className={className} showCloseButton={showCloseButton}>
-      {children}
-    </DialogContent>
+  return createPortal(
+    <div className="fixed inset-0 z-50" role="presentation">
+      <button
+        type="button"
+        aria-label="Close dialog"
+        className={cn(
+          "absolute inset-0 m-0 h-full w-full border-0 p-0",
+          isMobile ? "bg-black/60" : "bg-black/10 supports-backdrop-filter:backdrop-blur-xs",
+        )}
+        onClick={() => setOpen(false)}
+      />
+
+      <div
+        role="dialog"
+        aria-modal="true"
+        className={cn(
+          isMobile
+            ? "bg-background fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto max-h-[85dvh] flex-col rounded-t-xl border p-0 outline-none"
+            : "bg-background ring-foreground/10 fixed top-1/2 left-1/2 z-50 grid w-full -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl p-4 text-sm ring-1 outline-none sm:max-w-sm",
+          className,
+        )}
+        onClick={(event) => event.stopPropagation()}
+      >
+        {isMobile && <div className="bg-muted mx-auto mt-4 h-2 w-24 rounded-full" />}
+
+        {!isMobile && showCloseButton && (
+          <Button
+            variant="ghost"
+            className="absolute top-2 right-2"
+            size="icon-sm"
+            onClick={() => setOpen(false)}
+          >
+            <span aria-hidden="true" className="iconify ph--x size-4" />
+            <span className="sr-only">Close</span>
+          </Button>
+        )}
+
+        {children}
+      </div>
+    </div>,
+    document.body,
   );
 };
 
@@ -182,10 +188,10 @@ const ResponsiveDialogHeader: FC<ResponsiveDialogHeaderProps> = ({ children, cla
   const { isMobile } = useResponsiveDialog();
 
   if (isMobile) {
-    return <DrawerHeader className={cn("text-left", className)}>{children}</DrawerHeader>;
+    return <div className={cn("grid gap-1.5 p-4 text-left", className)}>{children}</div>;
   }
 
-  return <DialogHeader className={className}>{children}</DialogHeader>;
+  return <div className={cn("flex flex-col gap-2", className)}>{children}</div>;
 };
 
 type ResponsiveDialogFooterProps = {
@@ -199,21 +205,35 @@ const ResponsiveDialogFooter: FC<ResponsiveDialogFooterProps> = ({
   className,
   showCloseButton = false,
 }) => {
-  const { isMobile } = useResponsiveDialog();
+  const { isMobile, setOpen } = useResponsiveDialog();
 
   if (isMobile) {
     return (
-      <DrawerFooter className={cn("[&_[data-slot=button]]:min-h-11", className)}>
+      <div className={cn("bg-background mt-auto flex flex-col gap-2 border-t p-4", className)}>
         {children}
-        {showCloseButton && <DrawerClose render={<Button variant="outline" />}>Close</DrawerClose>}
-      </DrawerFooter>
+        {showCloseButton && (
+          <Button variant="outline" onClick={() => setOpen(false)}>
+            Close
+          </Button>
+        )}
+      </div>
     );
   }
 
   return (
-    <DialogFooter className={className} showCloseButton={showCloseButton}>
+    <div
+      className={cn(
+        "bg-background -mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-xl border-t px-4 py-2 sm:flex-row sm:justify-end",
+        className,
+      )}
+    >
       {children}
-    </DialogFooter>
+      {showCloseButton && (
+        <Button variant="outline" onClick={() => setOpen(false)}>
+          Close
+        </Button>
+      )}
+    </div>
   );
 };
 
@@ -225,11 +245,11 @@ type ResponsiveDialogTitleProps = {
 const ResponsiveDialogTitle: FC<ResponsiveDialogTitleProps> = ({ children, className }) => {
   const { isMobile } = useResponsiveDialog();
 
-  if (isMobile) {
-    return <DrawerTitle className={className}>{children}</DrawerTitle>;
-  }
-
-  return <DialogTitle className={className}>{children}</DialogTitle>;
+  return (
+    <h2 className={cn(isMobile ? "text-lg leading-none font-semibold tracking-tight" : "text-base leading-none font-medium", className)}>
+      {children}
+    </h2>
+  );
 };
 
 type ResponsiveDialogDescriptionProps = {
@@ -241,28 +261,26 @@ const ResponsiveDialogDescription: FC<ResponsiveDialogDescriptionProps> = ({
   children,
   className,
 }) => {
-  const { isMobile } = useResponsiveDialog();
-
-  if (isMobile) {
-    return <DrawerDescription className={className}>{children}</DrawerDescription>;
-  }
-
-  return <DialogDescription className={className}>{children}</DialogDescription>;
+  return (
+    <p
+      className={cn(
+        "text-foreground-muted *:[a]:hover:text-foreground text-sm *:[a]:underline *:[a]:underline-offset-3",
+        className,
+      )}
+    >
+      {children}
+    </p>
+  );
 };
 
 const ResponsiveDialogClose: FC<{
   children: ReactNode;
-  render?: ComponentProps<typeof DrawerClose>["render"];
+  render?: unknown;
   /** Accessible label for the close button when children is not text */
   "aria-label"?: string;
-}> = ({ children, render, "aria-label": ariaLabel }) => {
-  const { setOpen, isMobile } = useResponsiveDialog();
+}> = ({ children, render: _render, "aria-label": ariaLabel }) => {
+  const { setOpen } = useResponsiveDialog();
 
-  if (isMobile) {
-    return <DrawerClose render={render}>{children}</DrawerClose>;
-  }
-
-  // For desktop dialog, we just close via setOpen
   return (
     <button
       type="button"
