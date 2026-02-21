@@ -13,6 +13,18 @@
       "types": "./src/index.ts",
       "import": "./src/index.ts"
     },
+    "./components": {
+      "types": "./src/components/index.ts",
+      "import": "./src/components/index.ts"
+    },
+    "./environment": {
+      "types": "./src/environment/index.ts",
+      "import": "./src/environment/index.ts"
+    },
+    "./utils": {
+      "types": "./src/utils/index.ts",
+      "import": "./src/utils/index.ts"
+    },
     "./global.css": "./global.css"
   },
   "scripts": {
@@ -22,8 +34,22 @@
     "lint:fix": "oxlint ./src -c ../../configs/oxlint-config/oxlintrc.react.json --fix --type-aware"
   },
   "dependencies": {
+    "@base-ui/react": "catalog:ui",
+    "@dnd-kit/core": "catalog:ui",
+    "@dnd-kit/sortable": "catalog:ui",
+    "@dnd-kit/utilities": "catalog:ui",
+    "@sg-food-guide/toolkit": "workspace:*",
+    "better-result": "catalog:toolkit",
+    "class-variance-authority": "catalog:ui",
     "clsx": "catalog:ui",
-    "tailwind-merge": "catalog:ui"
+    "date-fns": "catalog:toolkit",
+    "motion": "catalog:ui",
+    "react-day-picker": "catalog:ui",
+    "sonner": "catalog:ui",
+    "tailwind-merge": "catalog:ui",
+    "vaul-base": "catalog:ui",
+    "virtua": "catalog:ui",
+    "zod": "catalog:toolkit"
   },
   "devDependencies": {
     "@sg-food-guide/tsconfig": "workspace:*",

@@ -16,8 +16,18 @@
         "@types/react-dom": "19.2.2",
         "tailwindcss": "4.1.18",
         "@tailwindcss/vite": "4.1.18",
+        "@base-ui/react": "1.1.0",
+        "@dnd-kit/core": "6.3.1",
+        "@dnd-kit/sortable": "10.0.0",
+        "@dnd-kit/utilities": "3.2.2",
+        "class-variance-authority": "0.7.1",
         "clsx": "2.1.1",
+        "motion": "12.33.0",
+        "react-day-picker": "9.13.1",
+        "sonner": "2.0.7",
         "tailwind-merge": "3.4.0",
+        "vaul-base": "1.0.0",
+        "virtua": "0.48.5",
         "lucide-react": "0.545.0"
       },
       "tanstack": {
@@ -38,7 +48,8 @@
       },
       "toolkit": {
         "zod": "4.3.6",
-        "better-result": "2.7.0"
+        "better-result": "2.7.0",
+        "date-fns": "4.1.0"
       },
       "dev": {
         "@types/node": "22.10.2",
