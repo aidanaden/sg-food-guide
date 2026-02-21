@@ -395,7 +395,7 @@ async function startSession(): Promise<void> {
   }
   writeFileSync(tokenFile, `${tunnelToken}\n`, { encoding: "utf8", mode: 0o600 });
 
-  const localCommand = `cd ${shellQuote(WEB_DIR)} && while true; do bun run vite dev --force --port ${shellQuote(String(port))} >>${shellQuote(localLog)} 2>&1; echo '[local exited]' >>${shellQuote(localLog)}; sleep 1; done`;
+  const localCommand = `cd ${shellQuote(WEB_DIR)} && while true; do bun run vite dev --port ${shellQuote(String(port))} >>${shellQuote(localLog)} 2>&1; echo '[local exited]' >>${shellQuote(localLog)}; sleep 1; done`;
   const tunnelCommand = `while ! curl -fsS --max-time 2 http://localhost:${port} >/dev/null 2>&1; do sleep 0.2; done; while true; do cloudflared tunnel --url ${shellQuote(`http://localhost:${port}`)} --http-host-header ${shellQuote(`localhost:${port}`)} --no-autoupdate run --token-file ${shellQuote(tokenFile)} >>${shellQuote(tunnelLog)} 2>&1; echo '[tunnel exited]' >>${shellQuote(tunnelLog)}; sleep 2; done`;
 
   writeFileSync(localLog, "", "utf8");
