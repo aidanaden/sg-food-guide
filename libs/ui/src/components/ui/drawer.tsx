@@ -4,6 +4,7 @@ import * as React from "react";
 import { cn } from "../../utils";
 
 const DRAWER_CLOSE_DRAG_DISTANCE = 72;
+const DRAWER_CLOSE_ANIMATION_DURATION_MS = 200;
 
 type DragState = {
   mode: "pointer" | "touch";
@@ -19,8 +20,55 @@ type DrawerProps = DialogPrimitive.Root.Props & {
 const Drawer: React.FC<DrawerProps> = ({
   // Kept for API compatibility with the previous vaul-based implementation.
   shouldScaleBackground: _shouldScaleBackground = true,
+  onOpenChange,
+  actionsRef,
   ...props
-}) => <DialogPrimitive.Root data-slot="drawer" {...props} />;
+}) => {
+  const internalActionsRef = React.useRef<DialogPrimitive.Root.Actions | null>(null);
+  const closeTimeoutRef = React.useRef<number | null>(null);
+
+  React.useEffect(() => {
+    if (!actionsRef) return;
+    actionsRef.current = internalActionsRef.current;
+  });
+
+  React.useEffect(() => {
+    return () => {
+      if (closeTimeoutRef.current !== null) {
+        globalThis.clearTimeout(closeTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleOpenChange = React.useCallback<NonNullable<DialogPrimitive.Root.Props["onOpenChange"]>>(
+    (open, eventDetails) => {
+      if (closeTimeoutRef.current !== null) {
+        globalThis.clearTimeout(closeTimeoutRef.current);
+        closeTimeoutRef.current = null;
+      }
+
+      if (!open) {
+        eventDetails.preventUnmountOnClose();
+        closeTimeoutRef.current = globalThis.setTimeout(() => {
+          internalActionsRef.current?.unmount();
+          closeTimeoutRef.current = null;
+        }, DRAWER_CLOSE_ANIMATION_DURATION_MS);
+      }
+
+      onOpenChange?.(open, eventDetails);
+    },
+    [onOpenChange],
+  );
+
+  return (
+    <DialogPrimitive.Root
+      data-slot="drawer"
+      actionsRef={internalActionsRef}
+      onOpenChange={handleOpenChange}
+      {...props}
+    />
+  );
+};
 
 const DrawerTrigger: React.FC<DialogPrimitive.Trigger.Props> = (props) => (
   <DialogPrimitive.Trigger data-slot="drawer-trigger" {...props} />
