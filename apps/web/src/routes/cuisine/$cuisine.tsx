@@ -7,7 +7,6 @@ import {
   ResponsiveDialogContent,
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
-  ResponsiveDialogTrigger,
   Select,
   SelectContent,
   SelectItem,
@@ -68,6 +67,7 @@ function CuisinePage() {
   const [area, setArea] = useState("");
   const [country, setCountry] = useState("");
   const [timeCategory, setTimeCategory] = useState("");
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [favoriteSet, setFavoriteSet] = useState<Set<string>>(() => new Set<string>());
   const [visitedSet, setVisitedSet] = useState<Set<string>>(() => new Set<string>());
   const filterSelectTriggerClass =
@@ -121,11 +121,16 @@ function CuisinePage() {
               className="border-warm-700/50 bg-surface-raised relative z-0 min-h-11 min-w-0 w-full rounded-lg border px-3 text-base sm:text-sm"
             />
 
-            <ResponsiveDialog>
-              <ResponsiveDialogTrigger className="border-warm-700/50 bg-surface-raised text-ink-muted hover:border-flame-500/40 hover:text-flame-400 relative z-20 inline-flex min-h-11 flex-none touch-manipulation items-center gap-1.5 rounded-lg border px-3 text-sm">
+            <button
+              type="button"
+              onClick={() => setIsFiltersOpen(true)}
+              className="border-warm-700/50 bg-surface-raised text-ink-muted hover:border-flame-500/40 hover:text-flame-400 relative z-20 inline-flex min-h-11 flex-none touch-manipulation items-center gap-1.5 rounded-lg border px-3 text-sm"
+            >
                 <span className="i-ph-sliders-horizontal text-sm" />
                 Filters
-              </ResponsiveDialogTrigger>
+              </button>
+
+            <ResponsiveDialog open={isFiltersOpen} onOpenChange={setIsFiltersOpen}>
 
               <ResponsiveDialogContent className="sm:max-w-2xl">
                 <ResponsiveDialogHeader className="border-warm-800/50 border-b pb-3">

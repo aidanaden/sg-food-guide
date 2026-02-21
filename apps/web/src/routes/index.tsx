@@ -6,7 +6,6 @@ import {
   ResponsiveDialogContent,
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
-  ResponsiveDialogTrigger,
   Select,
   SelectContent,
   SelectItem,
@@ -46,6 +45,7 @@ function HomePage() {
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [hideVisited, setHideVisited] = useState(false);
   const [sortBy, setSortBy] = useState("rating-desc");
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [favoriteSet, setFavoriteSet] = useState<Set<string>>(() => new Set<string>());
   const [visitedSet, setVisitedSet] = useState<Set<string>>(() => new Set<string>());
   const filterSelectTriggerClass =
@@ -140,11 +140,16 @@ function HomePage() {
               />
             </div>
 
-            <ResponsiveDialog>
-              <ResponsiveDialogTrigger className="border-warm-700/50 bg-surface-raised text-ink-muted hover:border-flame-500/40 hover:text-flame-400 relative z-20 inline-flex min-h-11 flex-none touch-manipulation items-center gap-1.5 rounded-lg border px-3 text-sm">
+            <button
+              type="button"
+              onClick={() => setIsFiltersOpen(true)}
+              className="border-warm-700/50 bg-surface-raised text-ink-muted hover:border-flame-500/40 hover:text-flame-400 relative z-20 inline-flex min-h-11 flex-none touch-manipulation items-center gap-1.5 rounded-lg border px-3 text-sm"
+            >
                 <span className="i-ph-sliders-horizontal text-sm" />
                 Filters
-              </ResponsiveDialogTrigger>
+              </button>
+
+            <ResponsiveDialog open={isFiltersOpen} onOpenChange={setIsFiltersOpen}>
 
               <ResponsiveDialogContent className="sm:max-w-2xl">
                 <ResponsiveDialogHeader className="border-warm-800/50 border-b pb-3">
