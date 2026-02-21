@@ -8,10 +8,18 @@ import tailwindcss from '@tailwindcss/vite';
 import { cloudflare } from '@cloudflare/vite-plugin';
 
 const webNodeModules = resolvePath(import.meta.dirname, 'node_modules');
+const devtoolsEventBusPort = Number(process.env.TANSTACK_DEVTOOLS_EVENT_BUS_PORT ?? '0');
+const devtoolsEventBusEnabled = process.env.TANSTACK_DEVTOOLS_EVENT_BUS === '1';
 
 export default defineConfig({
   plugins: [
-    devtools(),
+    devtools({
+      eventBusConfig: {
+        // Default to disabled to avoid hard crashes when :42069 is already in use.
+        enabled: devtoolsEventBusEnabled,
+        port: Number.isFinite(devtoolsEventBusPort) ? devtoolsEventBusPort : 0,
+      },
+    }),
     cloudflare({ viteEnvironment: { name: 'ssr' } }),
     tsconfigPaths({ projects: ['./tsconfig.json'] }),
     tailwindcss(),

@@ -21,7 +21,6 @@ export interface ApplyCanonicalStallsSummary {
 }
 
 const schemaStatements = [
-  'PRAGMA foreign_keys = ON',
   `CREATE TABLE IF NOT EXISTS stalls (
     id TEXT PRIMARY KEY,
     source_stall_key TEXT NOT NULL UNIQUE,
@@ -90,9 +89,23 @@ const schemaStatements = [
 
 export async function ensureStallTables(db: D1Database): Promise<Result<void, Error>> {
   for (const statement of schemaStatements) {
-    const execResult = await Result.tryPromise(() => db.exec(statement));
-    if (Result.isError(execResult)) {
-      return Result.err(new Error(`Failed to execute schema statement: ${statement}`));
+    const isPragma = statement.trim().toUpperCase().startsWith('PRAGMA ');
+    const executionResult = isPragma
+      ? await Result.tryPromise(() => db.exec(statement))
+      : await Result.tryPromise(() => db.prepare(statement).run());
+
+    if (Result.isError(executionResult)) {
+      const reason =
+        executionResult.error instanceof Error
+          ? executionResult.error.message
+          : String(executionResult.error);
+      return Result.err(
+        new Error(`Failed to execute schema statement: ${statement}\nReason: ${reason}`)
+      );
+    }
+
+    if (!executionResult.value.success) {
+      return Result.err(new Error(`Schema statement reported unsuccessful execution: ${statement}`));
     }
   }
 
@@ -347,11 +360,6 @@ export async function applyCanonicalStalls(
   stalls: CanonicalStall[],
   syncedAtIso: string
 ): Promise<Result<ApplyCanonicalStallsSummary, Error>> {
-  const beginResult = await Result.tryPromise(() => db.exec('BEGIN'));
-  if (Result.isError(beginResult)) {
-    return Result.err(new Error('Failed to start D1 transaction.'));
-  }
-
   let upsertedStalls = 0;
   let upsertedLocations = 0;
 
@@ -515,32 +523,15 @@ export async function applyCanonicalStalls(
       }
     }
 
-    if (stalls.length > 0) {
-      const placeholders = stalls.map(() => '?').join(',');
-      const closeQuery = `
-        UPDATE stalls
-        SET status = 'closed', updated_at = ?, last_synced_at = ?
-        WHERE status = 'active'
-          AND source_stall_key NOT IN (${placeholders})
-      `;
-
-      const closeResult = await Result.tryPromise(() =>
-        db.prepare(closeQuery).bind(syncedAtIso, syncedAtIso, ...stalls.map((stall) => stall.sourceStallKey)).run()
-      );
-      if (Result.isError(closeResult)) {
-        throw closeResult.error;
-      }
-    } else {
-      const closeAllResult = await Result.tryPromise(() =>
-        db.prepare(
-          `UPDATE stalls
-           SET status = 'closed', updated_at = ?, last_synced_at = ?
-           WHERE status = 'active'`
-        ).bind(syncedAtIso, syncedAtIso).run()
-      );
-      if (Result.isError(closeAllResult)) {
-        throw closeAllResult.error;
-      }
+    const closeMissingResult = await Result.tryPromise(() =>
+      db.prepare(
+        `UPDATE stalls
+         SET status = 'closed', updated_at = ?, last_synced_at = ?
+         WHERE status = 'active' AND last_synced_at <> ?`
+      ).bind(syncedAtIso, syncedAtIso, syncedAtIso).run()
+    );
+    if (Result.isError(closeMissingResult)) {
+      throw closeMissingResult.error;
     }
 
     const deactivateLocationsResult = await Result.tryPromise(() =>
@@ -556,8 +547,8 @@ export async function applyCanonicalStalls(
   });
 
   if (Result.isError(workResult)) {
-    await Result.tryPromise(() => db.exec('ROLLBACK'));
-    return Result.err(new Error('Failed to apply canonical stalls to D1.'));
+    const reason = workResult.error instanceof Error ? workResult.error.message : String(workResult.error);
+    return Result.err(new Error(`Failed to apply canonical stalls to D1. Reason: ${reason}`));
   }
 
   const closedCountResult = await Result.tryPromise(() =>
@@ -565,12 +556,6 @@ export async function applyCanonicalStalls(
       `SELECT COUNT(*) AS count FROM stalls WHERE status = 'closed' AND updated_at = ?`
     ).bind(syncedAtIso).first<Record<string, unknown>>()
   );
-
-  const commitResult = await Result.tryPromise(() => db.exec('COMMIT'));
-  if (Result.isError(commitResult)) {
-    await Result.tryPromise(() => db.exec('ROLLBACK'));
-    return Result.err(new Error('Failed to commit D1 transaction.'));
-  }
 
   const closedStalls = Result.isError(closedCountResult)
     ? 0
