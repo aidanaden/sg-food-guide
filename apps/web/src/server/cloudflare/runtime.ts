@@ -1,4 +1,5 @@
 import { Result } from 'better-result';
+import { getStartContext } from '@tanstack/start-storage-context';
 import * as z from 'zod/mini';
 
 export interface D1PreparedStatement {
@@ -22,8 +23,8 @@ const workerEnvSchema = z.object({
   FOOD_GUIDE_SHEET_ID: z.optional(z.string()),
   FOOD_GUIDE_SHEET_GID: z.optional(z.string()),
   FOOD_GUIDE_SHEET_CSV_URL: z.optional(z.string()),
+  YOUTUBE_CHANNEL_ID: z.optional(z.string()),
   YOUTUBE_CHANNEL_FEED_URL: z.optional(z.string()),
-  YOUTUBE_CHANNEL_USERNAME: z.optional(z.string()),
   STALL_SYNC_MODE: z.optional(modeSchema),
   STALL_SYNC_MAX_CHANGE_RATIO: z.optional(z.union([z.string(), z.number()])),
   STALL_SYNC_ALERT_MODE: z.optional(alertModeSchema),
@@ -41,6 +42,12 @@ const requestContextSchema = z.object({
   }),
 });
 
+const cloudflareContextSchema = z.object({
+  env: z.unknown(),
+  executionCtx: z.optional(z.unknown()),
+  request: z.optional(z.unknown()),
+});
+
 export interface WorkerExecutionContextLike {
   waitUntil(promise: Promise<unknown>): void;
 }
@@ -50,8 +57,8 @@ export interface WorkerEnv {
   FOOD_GUIDE_SHEET_ID?: string;
   FOOD_GUIDE_SHEET_GID?: string;
   FOOD_GUIDE_SHEET_CSV_URL?: string;
+  YOUTUBE_CHANNEL_ID?: string;
   YOUTUBE_CHANNEL_FEED_URL?: string;
-  YOUTUBE_CHANNEL_USERNAME?: string;
   STALL_SYNC_MODE?: 'dry-run' | 'apply';
   STALL_SYNC_MAX_CHANGE_RATIO?: string | number;
   STALL_SYNC_ALERT_MODE?: 'all' | 'failed';
@@ -67,6 +74,35 @@ export interface WorkerRequestContext {
     executionCtx?: WorkerExecutionContextLike;
     request?: Request;
   };
+}
+
+function resolveCloudflareContext(context: unknown): Result<z.infer<typeof cloudflareContextSchema>, Error> {
+  const parsedContext = requestContextSchema.safeParse(context);
+  if (parsedContext.success) {
+    return Result.ok(parsedContext.data.cloudflare);
+  }
+
+  const parsedDirectContext = cloudflareContextSchema.safeParse(context);
+  if (parsedDirectContext.success) {
+    return Result.ok(parsedDirectContext.data);
+  }
+
+  const startContextResult = Result.try(() => getStartContext({ throwIfNotFound: false }));
+  if (!Result.isError(startContextResult)) {
+    const globalContext = startContextResult.value?.contextAfterGlobalMiddlewares;
+
+    const parsedGlobalContext = requestContextSchema.safeParse(globalContext);
+    if (parsedGlobalContext.success) {
+      return Result.ok(parsedGlobalContext.data.cloudflare);
+    }
+
+    const parsedGlobalDirectContext = cloudflareContextSchema.safeParse(globalContext);
+    if (parsedGlobalDirectContext.success) {
+      return Result.ok(parsedGlobalDirectContext.data);
+    }
+  }
+
+  return Result.err(new Error('Missing Cloudflare request context.'));
 }
 
 export function isD1Database(value: unknown): value is D1Database {
@@ -99,23 +135,23 @@ export function parseWorkerEnv(input: unknown): Result<WorkerEnv, Error> {
 }
 
 export function getWorkerEnvFromServerContext(context: unknown): Result<WorkerEnv, Error> {
-  const parsedContext = requestContextSchema.safeParse(context);
-  if (!parsedContext.success) {
-    return Result.err(new Error('Missing Cloudflare request context.'));
+  const cloudflareContextResult = resolveCloudflareContext(context);
+  if (Result.isError(cloudflareContextResult)) {
+    return Result.err(cloudflareContextResult.error);
   }
 
-  return parseWorkerEnv(parsedContext.data.cloudflare.env);
+  return parseWorkerEnv(cloudflareContextResult.value.env);
 }
 
 export function getExecutionContextFromServerContext(
   context: unknown
 ): Result<WorkerExecutionContextLike | null, Error> {
-  const parsedContext = requestContextSchema.safeParse(context);
-  if (!parsedContext.success) {
-    return Result.err(new Error('Missing Cloudflare request context.'));
+  const cloudflareContextResult = resolveCloudflareContext(context);
+  if (Result.isError(cloudflareContextResult)) {
+    return Result.err(cloudflareContextResult.error);
   }
 
-  const executionCtx = parsedContext.data.cloudflare.executionCtx;
+  const executionCtx = cloudflareContextResult.value.executionCtx;
   if (!executionCtx) {
     return Result.ok(null);
   }

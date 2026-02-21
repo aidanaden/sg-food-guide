@@ -6,6 +6,7 @@ import {
   Button,
   Input,
   ResponsiveDialog,
+  ResponsiveDialogClose,
   ResponsiveDialogContent,
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
@@ -69,7 +70,9 @@ function CuisinePage() {
   const [favoriteSet, setFavoriteSet] = useState<Set<string>>(() => new Set<string>());
   const [visitedSet, setVisitedSet] = useState<Set<string>>(() => new Set<string>());
   const filterSelectTriggerClass =
-    "h-11 w-full border-warm-700/50 bg-surface-raised text-ink data-[placeholder]:text-ink-faint";
+    "h-11 w-full border-border bg-surface-raised text-foreground data-[placeholder]:text-foreground-faint";
+  const filterButtonClass =
+    "border-border bg-surface-raised text-foreground-muted hover:border-primary hover:text-primary relative z-20 h-11 flex-none touch-manipulation px-3 text-base sm:text-sm";
 
   useEffect(() => {
     setFavoriteSet(getFavorites());
@@ -166,15 +169,15 @@ function CuisinePage() {
 
   return (
     <div className="min-h-screen">
-      <header className="border-warm-800/60 border-b px-4 py-6">
+      <header className="border-border border-b px-4 py-6">
         <div className="mx-auto max-w-6xl">
-          <Link to="/" className="text-ink-faint hover:text-flame-400 text-sm">
+          <Link to="/" className="text-foreground-faint hover:text-primary text-sm">
             ← All stalls
           </Link>
           <h1 className="font-display mt-2 text-3xl font-black">
-            Best <span className="text-flame-400">{cuisineLabel}</span> in Singapore
+            Best <span className="text-primary">{cuisineLabel}</span> in Singapore
           </h1>
-          <p className="text-ink-muted">{cuisineStalls.length} stalls reviewed and ranked.</p>
+          <p className="text-foreground-muted">{cuisineStalls.length} stalls reviewed and ranked.</p>
         </div>
       </header>
 
@@ -186,29 +189,34 @@ function CuisinePage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search stalls or dishes..."
-              className="border-warm-700/50 bg-surface-raised relative z-0 h-11 min-w-0 w-full px-3 text-base sm:text-sm"
+              className="border-border bg-surface-raised relative z-0 h-11 min-w-0 w-full px-3 text-base sm:text-sm"
             />
 
             <Button
               type="button"
               variant="outline"
               onClick={() => setIsFiltersOpen(true)}
-              className="border-warm-700/50 bg-surface-raised text-ink-muted hover:border-flame-500/40 hover:text-flame-400 relative z-20 min-h-11 flex-none touch-manipulation px-3 text-sm"
+              className={filterButtonClass}
             >
-              <span className="i-ph-sliders-horizontal text-sm" />
+              <span className="iconify ph--sliders-horizontal text-sm" />
               Filters
             </Button>
 
             <ResponsiveDialog open={isFiltersOpen} onOpenChange={setIsFiltersOpen}>
-              <ResponsiveDialogContent className="pt-0 sm:max-w-2xl">
-                <ResponsiveDialogHeader className="border-warm-800/50 border-b pb-3">
-                  <ResponsiveDialogTitle className="font-display text-lg font-bold">
-                    Filters
-                  </ResponsiveDialogTitle>
+              <ResponsiveDialogContent showCloseButton={false} className="pt-0 sm:max-w-2xl sm:gap-0">
+                <ResponsiveDialogHeader className="border-border -mx-4 border-b px-4 pb-3 sm:pt-3 sm:pb-2">
+                  <div className="flex items-center justify-between">
+                    <ResponsiveDialogTitle className="font-display text-lg font-bold">
+                      Filters
+                    </ResponsiveDialogTitle>
+                    <ResponsiveDialogClose aria-label="Close filters">
+                      <span aria-hidden="true" className="iconify ph--x-bold text-foreground-muted size-4 shrink-0" />
+                    </ResponsiveDialogClose>
+                  </div>
                 </ResponsiveDialogHeader>
 
-                <div className="grid grid-cols-1 gap-3 px-4 pt-3 pb-4 sm:grid-cols-2 sm:px-0 sm:pb-0">
-                  <label className="text-ink-faint space-y-1 text-xs">
+                <div className="grid grid-cols-1 gap-3 px-4 pt-3 pb-4 sm:grid-cols-2 sm:px-0 sm:pt-3 sm:pb-0">
+                  <label className="text-foreground-faint space-y-1 text-xs">
                     <span>Area</span>
                     <Select
                       disabled={!hasAreaOptions}
@@ -248,7 +256,7 @@ function CuisinePage() {
                     </Select>
                   </label>
 
-                  <label className="text-ink-faint space-y-1 text-xs">
+                  <label className="text-foreground-faint space-y-1 text-xs">
                     <span>Country</span>
                     <Select
                       disabled={!hasCountryOptions}
@@ -289,7 +297,7 @@ function CuisinePage() {
                     </Select>
                   </label>
 
-                  <label className="text-ink-faint space-y-1 text-xs sm:col-span-2">
+                  <label className="text-foreground-faint space-y-1 text-xs sm:col-span-2">
                     <span>Hours</span>
                     <Select
                       disabled={!hasTimeCategoryOptions}
@@ -362,7 +370,7 @@ function CuisinePage() {
           </div>
         </section>
 
-        <p className="text-ink-faint mb-4 text-xs">Showing {filtered.length} stalls</p>
+        <p className="text-foreground-faint mb-4 text-xs">Showing {filtered.length} stalls</p>
 
         <section className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
           {filtered.map((stall: Stall) => (

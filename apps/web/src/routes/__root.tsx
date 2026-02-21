@@ -2,11 +2,12 @@ import '@fontsource-variable/dm-sans';
 import '@fontsource-variable/bricolage-grotesque';
 import '@fontsource-variable/jetbrains-mono';
 
-import { QueryClient } from '@tanstack/react-query';
 import { HeadContent, Scripts, createRootRouteWithContext } from '@tanstack/react-router';
 import appCss from '../styles.css?url';
+import dmSansLatinWghtNormal from '@fontsource-variable/dm-sans/files/dm-sans-latin-wght-normal.woff2?url';
+import bricolageGrotesqueLatinWghtNormal from '@fontsource-variable/bricolage-grotesque/files/bricolage-grotesque-latin-wght-normal.woff2?url';
 
-export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+export const Route = createRootRouteWithContext<Record<string, never>>()({
   head: () => ({
     meta: [
       { charSet: 'utf-8' },
@@ -22,6 +23,20 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: 'SG Food Guide' },
     ],
     links: [
+      {
+        rel: 'preload',
+        href: dmSansLatinWghtNormal,
+        as: 'font',
+        type: 'font/woff2',
+        crossOrigin: 'anonymous',
+      },
+      {
+        rel: 'preload',
+        href: bricolageGrotesqueLatinWghtNormal,
+        as: 'font',
+        type: 'font/woff2',
+        crossOrigin: 'anonymous',
+      },
       { rel: 'stylesheet', href: appCss },
       { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
     ],
@@ -31,7 +46,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="bg-surface text-ink antialiased" suppressHydrationWarning>
+    <html lang="en" className="dark bg-background text-foreground antialiased" suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>

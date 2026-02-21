@@ -36,7 +36,7 @@ const TooltipContent: FC<TooltipContentProps> = ({
         <TooltipPrimitive.Popup
           data-slot="tooltip-content"
           className={cn(
-            "bg-surface-overlay text-foreground ring-foreground/10 max-w-64 rounded-lg px-2 py-1 text-sm shadow-md ring-1",
+            "bg-surface-overlay text-foreground ring-border max-w-64 rounded-lg px-2 py-1 text-sm shadow-md ring-1",
             "data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-closed:zoom-out-95 data-open:zoom-in-95 data-open:blur-in-sm data-closed:blur-out-sm",
             "data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
             "origin-(--transform-origin) outline-hidden duration-100",

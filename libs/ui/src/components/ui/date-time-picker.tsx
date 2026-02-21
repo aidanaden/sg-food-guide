@@ -60,7 +60,7 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({
       <PopoverTrigger
         disabled={disabled}
         className={cn(
-          "border-border-input bg-background hover:bg-muted inline-flex w-full items-center justify-start rounded-lg border px-3 py-2 text-left text-sm font-normal",
+          "border-border-input bg-background hover:border-border-hover hover:bg-muted-hover inline-flex w-full items-center justify-start rounded-lg border px-3 py-2 text-left text-sm font-normal transition-colors",
           !value && "text-foreground-muted",
           className,
         )}

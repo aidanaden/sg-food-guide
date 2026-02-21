@@ -16,7 +16,7 @@ const ComboboxTrigger: React.FC<React.ComponentProps<typeof ComboboxPrimitive.Tr
     <ComboboxPrimitive.Trigger
       data-slot="combobox-trigger"
       className={cn(
-        "border-border-input data-[placeholder]:text-foreground-muted dark:bg-gray-3 dark:hover:bg-gray-4 focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:aria-invalid:border-destructive/50 flex h-8 w-full items-center justify-between gap-1.5 rounded-lg border bg-transparent py-1 pr-2 pl-2.5 text-sm whitespace-nowrap transition-colors outline-none select-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:ring-2 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "border-border-input data-[placeholder]:text-foreground-muted bg-surface-raised hover:bg-surface-hover hover:border-border-hover focus-visible:border-ring focus-visible:ring-ring aria-invalid:ring-destructive aria-invalid:ring-destructive aria-invalid:border-destructive aria-invalid:border-destructive flex h-8 w-full items-center justify-between gap-1.5 rounded-lg border bg-transparent py-1 pr-2 pl-2.5 text-sm whitespace-nowrap transition-colors outline-none select-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:ring-2 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className,
       )}
       {...props}
@@ -51,7 +51,7 @@ const ComboboxInput: React.FC<React.ComponentProps<typeof ComboboxPrimitive.Inpu
     <ComboboxPrimitive.Input
       data-slot="combobox-input"
       className={cn(
-        "dark:bg-gray-3 border-border-input focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:aria-invalid:border-destructive/50 disabled:bg-gray-3 dark:disabled:bg-gray-5 placeholder:text-foreground-muted h-8 w-full min-w-0 rounded-lg border bg-transparent px-2.5 py-1 text-base transition-colors outline-none focus-visible:ring-2 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:ring-2 md:text-sm",
+        "bg-surface-raised border-border-input hover:bg-surface-hover hover:border-border-hover focus-visible:border-ring focus-visible:ring-ring aria-invalid:ring-destructive aria-invalid:ring-destructive aria-invalid:border-destructive aria-invalid:border-destructive disabled:bg-surface-raised disabled:bg-muted-active placeholder:text-foreground-muted h-8 w-full min-w-0 rounded-lg border bg-transparent px-2.5 py-1 text-base transition-colors outline-none focus-visible:ring-2 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:ring-2 md:text-sm",
         className,
       )}
       {...props}
@@ -68,7 +68,7 @@ const ComboboxClear: React.FC<React.ComponentProps<typeof ComboboxPrimitive.Clea
     <ComboboxPrimitive.Clear
       data-slot="combobox-clear"
       className={cn(
-        "text-foreground-muted hover:text-foreground inline-flex size-6 items-center justify-center rounded-md outline-none",
+        "text-foreground-muted hover:bg-muted hover:text-foreground inline-flex size-6 items-center justify-center rounded-md transition-colors outline-none",
         className,
       )}
       {...props}
@@ -116,7 +116,7 @@ const ComboboxChipRemove: React.FC<React.ComponentProps<typeof ComboboxPrimitive
     <ComboboxPrimitive.ChipRemove
       data-slot="combobox-chip-remove"
       className={cn(
-        "text-foreground-muted hover:text-foreground inline-flex size-4 items-center justify-center rounded-sm",
+        "text-foreground-muted hover:bg-muted hover:text-foreground inline-flex size-4 items-center justify-center rounded-sm transition-colors",
         className,
       )}
       {...props}

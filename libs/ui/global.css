@@ -9,15 +9,13 @@
  * =============================================================================
  * DESIGN TOKEN SYSTEM
  * =============================================================================
- * 
+ *
  * Architecture:
  *   SEMANTIC LAYER (bg-background, bg-surface, text-foreground)
  *        |
- *   PRIMITIVE LAYER (gray-1 through gray-13, Radix-style)
+ *   PRIMITIVE LAYER (gray-1 through gray-13 + brand primitives)
  *        |
- *   BASE SCALE (zinc-50 through zinc-950, swappable)
- *
- * See docs/design-tokens.md for full documentation.
+ *   BASE SCALE (OKLCH)
  * =============================================================================
  */
 
@@ -25,151 +23,142 @@
   :root {
     /*
      * =========================================================================
-     * BASE SCALE - Tailwind v4 Zinc (OKLCH)
+     * BASE SCALE - SG DARK (OKLCH)
      * =========================================================================
-     * Swappable foundation. Change these to use neutral/slate instead.
      */
-    --base-50: oklch(0.985 0 0);
-    --base-75: oklch(0.976 0.0005 286.375);
-    --base-100: oklch(0.967 0.001 286.375);
-    --base-200: oklch(0.92 0.004 286.32);
-    --base-300: oklch(0.871 0.006 286.286);
-    --base-400: oklch(0.705 0.015 286.067);
-    --base-500: oklch(0.552 0.016 285.938);
-    --base-600: oklch(0.442 0.017 285.786);
-    --base-700: oklch(0.37 0.013 285.805);
-    --base-800: oklch(0.274 0.006 286.033);
-    --base-900: oklch(0.21 0.006 285.885);
-    --base-925: oklch(0.176 0.0055 285.854);
-    --base-950: oklch(0.141 0.005 285.823);
+    --base-50: oklch(0.975 0.01 85);
+    --base-75: oklch(0.955 0.012 82);
+    --base-100: oklch(0.93 0.014 80);
+    --base-200: oklch(0.86 0.018 78);
+    --base-300: oklch(0.78 0.02 76);
+    --base-400: oklch(0.68 0.022 72);
+    --base-500: oklch(0.58 0.022 68);
+    --base-600: oklch(0.48 0.021 64);
+    --base-700: oklch(0.39 0.02 60);
+    --base-800: oklch(0.31 0.019 56);
+    --base-900: oklch(0.24 0.018 52);
+    --base-925: oklch(0.205 0.017 50);
+    --base-950: oklch(0.175 0.016 48);
 
     /*
      * =========================================================================
-     * PRIMITIVE LAYER - Gray Scale (Light Mode)
+     * BRAND PRIMITIVES
      * =========================================================================
-     * Radix-style 13-step scale with semantic meaning per step.
-     * See docs/design-tokens.md for step definitions.
      */
+    --flame-300: oklch(0.735 0.19 45);
+    --flame-400: oklch(0.69 0.205 41);
+    --flame-500: oklch(0.62 0.205 37);
 
-    /* Steps 1-3: Backgrounds */
-    --gray-1: var(--base-50); /* App background */
-    --gray-2: var(--base-75); /* Very subtle background (hover) */
-    --gray-3: var(--base-100); /* Subtle background */
+    --jade-300: oklch(0.765 0.155 160);
+    --jade-400: oklch(0.705 0.17 162);
+    --jade-500: oklch(0.62 0.155 165);
 
-    /* Steps 4-6: Interactive component backgrounds */
-    --gray-4: var(--base-200); /* UI element bg (normal) */
-    --gray-5: var(--base-300); /* UI element bg (hover) */
-    --gray-6: var(--base-400); /* UI element bg (active/selected) */
-
-    /* Steps 7-9: Borders */
-    --gray-7: var(--base-200); /* Subtle borders, separators */
-    --gray-8: var(--base-300); /* UI element border, focus rings */
-    --gray-9: var(--base-400); /* Strong borders, hovered borders */
-
-    /* Steps 10-11: Solid colors */
-    --gray-10: var(--base-500); /* Solid backgrounds, disabled text */
-    --gray-11: var(--base-600); /* Solid bg hover, subtle text */
-
-    /* Steps 12-13: Text */
-    --gray-12: var(--base-600); /* Low-contrast text */
-    --gray-13: var(--base-950); /* High-contrast text */
+    --gold-300: oklch(0.83 0.17 88);
+    --gold-400: oklch(0.77 0.19 84);
+    --gold-500: oklch(0.69 0.18 78);
 
     /*
      * =========================================================================
-     * SEMANTIC LAYER - Backgrounds (Light Mode)
+     * PRIMITIVE LAYER - DARK-FIRST GRAY SCALE
+     * =========================================================================
+     */
+    --gray-1: var(--base-950); /* app background */
+    --gray-2: var(--base-925); /* subtle background */
+    --gray-3: var(--base-900); /* raised/card background */
+    --gray-4: var(--base-800); /* muted background */
+    --gray-5: var(--base-700); /* muted hover */
+    --gray-6: var(--base-600); /* muted active / border */
+    --gray-7: var(--base-700); /* subtle border */
+    --gray-8: var(--base-600); /* input border / ring */
+    --gray-9: var(--base-500); /* stronger border */
+    --gray-10: var(--base-400); /* faint text */
+    --gray-11: var(--base-300); /* muted text */
+    --gray-12: var(--base-200); /* high-contrast text */
+    --gray-13: var(--base-75); /* strongest text */
+
+    /*
+     * =========================================================================
+     * SEMANTIC LAYER - BACKGROUNDS
      * =========================================================================
      */
     --background: var(--gray-1);
-    --surface: var(--gray-3);
-    --surface-hover: var(--gray-2);
-    --surface-raised: var(--gray-4);
-    --surface-overlay: var(--gray-3);
+    --surface: var(--gray-2);
+    --surface-hover: var(--gray-3);
+    --surface-raised: var(--gray-3);
+    --surface-card: var(--gray-3);
+    --surface-overlay: var(--gray-4);
     --muted: var(--gray-4);
     --muted-hover: var(--gray-5);
     --muted-active: var(--gray-6);
 
     /*
      * =========================================================================
-     * SEMANTIC LAYER - Borders (Light Mode)
+     * SEMANTIC LAYER - BORDERS / RINGS
      * =========================================================================
      */
-    --border: var(--gray-7);
-    --border-input: var(--gray-8);
-    --border-hover: var(--gray-9);
-    --ring: var(--gray-8);
+    --border: var(--gray-4);
+    --border-input: var(--gray-4);
+    --border-hover: var(--gray-5);
+    --ring: var(--flame-400);
 
     /*
      * =========================================================================
-     * SEMANTIC LAYER - Text (Light Mode)
+     * SEMANTIC LAYER - TEXT
      * =========================================================================
      */
     --foreground: var(--gray-13);
-    --foreground-muted: var(--gray-12);
-    --foreground-subtle: var(--gray-11);
-    --foreground-faint: var(--gray-10);
-    --foreground-disabled: var(--gray-10);
+    --foreground-muted: var(--gray-11);
+    --foreground-subtle: var(--gray-10);
+    --foreground-faint: var(--gray-9);
+    --foreground-disabled: var(--gray-8);
 
     /*
      * =========================================================================
-     * STATUS COLORS (Light Mode)
+     * PRIMARY (BRAND ACCENT)
      * =========================================================================
      */
-
-    /* Destructive (Red) */
-    --destructive: oklch(0.577 0.245 27.325);
-    --destructive-hover: oklch(0.505 0.213 27.518);
-    --destructive-active: oklch(0.444 0.177 26.899);
-    --destructive-foreground: oklch(0.985 0 0);
-    --destructive-text: oklch(0.637 0.237 25.331);
-
-    /* Success (Emerald) */
-    --success: oklch(0.696 0.17 162.48);
-    --success-hover: oklch(0.596 0.145 163.225);
-    --success-active: oklch(0.508 0.118 165.612);
-    --success-foreground: oklch(0.985 0 0);
-    --success-text: oklch(0.765 0.177 163.223);
-
-    /* Warning (Amber) */
-    --warning: oklch(0.769 0.188 70.08);
-    --warning-hover: oklch(0.666 0.179 58.318);
-    --warning-active: oklch(0.555 0.163 48.998);
-    --warning-foreground: oklch(0.141 0.005 285.823);
-    --warning-text: oklch(0.828 0.189 84.429);
-
-    /* Info (Blue) */
-    --info: oklch(0.623 0.214 259.815);
-    --info-hover: oklch(0.546 0.245 262.881);
-    --info-active: oklch(0.488 0.243 264.376);
-    --info-foreground: oklch(0.985 0 0);
-    --info-text: oklch(0.707 0.165 254.624);
-
-    /*
-     * =========================================================================
-     * PRIMARY (Brand/Accent)
-     * =========================================================================
-     * Used for interactive accents: links, active checkboxes, switches,
-     * loading bars, badges, and brand highlights.
-     */
-    --primary: var(--gray-13);
+    --primary: var(--flame-400);
+    --primary-hover: var(--flame-300);
+    --primary-active: var(--flame-500);
     --primary-foreground: var(--gray-1);
 
     /*
      * =========================================================================
-     * OTHER TOKENS
+     * STATUS COLORS
      * =========================================================================
      */
-    --radius: 0.375rem;
+    --destructive: var(--flame-400);
+    --destructive-hover: var(--flame-300);
+    --destructive-active: var(--flame-500);
+    --destructive-surface: oklch(0.27 0.045 37);
+    --destructive-foreground: var(--gray-1);
+    --destructive-text: var(--flame-300);
 
-    /**
-     * Page container horizontal padding.
-     * Used by:
-     * - Root layout container (px-page)
-     * - Header container (px-page)
-     * - VirtualTable full-bleed wrapper (-mx-page)
-     * - VirtualTableWindow edge cell padding (via getPagePadding())
-     *
-     * Responsive: 8px on mobile, 16px on sm+ breakpoint.
+    --success: var(--jade-400);
+    --success-hover: var(--jade-300);
+    --success-active: var(--jade-500);
+    --success-surface: oklch(0.27 0.045 165);
+    --success-foreground: var(--gray-1);
+    --success-text: var(--jade-300);
+
+    --warning: var(--gold-400);
+    --warning-hover: var(--gold-300);
+    --warning-active: var(--gold-500);
+    --warning-foreground: var(--gray-1);
+    --warning-text: var(--gold-300);
+
+    --info: oklch(0.67 0.16 247);
+    --info-hover: oklch(0.73 0.14 246);
+    --info-active: oklch(0.59 0.16 248);
+    --info-foreground: var(--gray-1);
+    --info-text: oklch(0.75 0.13 246);
+
+    /*
+     * =========================================================================
+     * LAYOUT TOKENS
+     * =========================================================================
      */
+    --radius: 0.5rem;
     --page-padding: 0.5rem;
   }
 
@@ -179,29 +168,12 @@
     }
   }
 
-  /*
-   * ===========================================================================
-   * DARK MODE OVERRIDES
-   * ===========================================================================
-   * Inverts the primitive layer mappings for dark theme.
-   */
-  .dark {
-    /* Primitive Layer - Gray Scale (Dark Mode) */
-    --gray-1: var(--base-950); /* App background */
-    --gray-2: var(--base-925); /* Very subtle background (hover) */
-    --gray-3: var(--base-900); /* Subtle background */
-    --gray-4: var(--base-800); /* UI element bg (normal) */
-    --gray-5: var(--base-700); /* UI element bg (hover) */
-    --gray-6: var(--base-600); /* UI element bg (active/selected) */
-    --gray-7: var(--base-800); /* Subtle borders, separators */
-    --gray-8: var(--base-700); /* UI element border, focus rings */
-    --gray-9: var(--base-600); /* Strong borders, hovered borders */
-    --gray-10: var(--base-500); /* Solid backgrounds, disabled text */
-    --gray-11: var(--base-400); /* Solid bg hover, subtle text */
-    --gray-12: var(--base-400); /* Low-contrast text */
-    --gray-13: var(--base-50); /* High-contrast text */
+  * {
+    @apply border-border;
+  }
 
-    /* Semantic tokens automatically update via gray-* references */
+  body {
+    @apply bg-background text-foreground;
   }
 }
 
@@ -209,18 +181,34 @@
  * =============================================================================
  * TAILWIND THEME REGISTRATION
  * =============================================================================
- * Registers design tokens as Tailwind utilities (bg-*, text-*, border-*, etc.)
  */
 @theme {
-  --font-sans: "Inter", system-ui, sans-serif;
+  --font-sans: "DM Sans Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Bricolage Grotesque Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
 
   /* Radius */
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-xl: calc(var(--radius) + 0.25rem);
   --radius-lg: var(--radius);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 0.125rem);
+  --radius-sm: calc(var(--radius) - 0.25rem);
 
-  /* Primitive Layer - Gray Scale */
+  /* Base */
+  --color-base-50: var(--base-50);
+  --color-base-75: var(--base-75);
+  --color-base-100: var(--base-100);
+  --color-base-200: var(--base-200);
+  --color-base-300: var(--base-300);
+  --color-base-400: var(--base-400);
+  --color-base-500: var(--base-500);
+  --color-base-600: var(--base-600);
+  --color-base-700: var(--base-700);
+  --color-base-800: var(--base-800);
+  --color-base-900: var(--base-900);
+  --color-base-925: var(--base-925);
+  --color-base-950: var(--base-950);
+
+  /* Primitive - Gray */
   --color-gray-1: var(--gray-1);
   --color-gray-2: var(--gray-2);
   --color-gray-3: var(--gray-3);
@@ -235,11 +223,23 @@
   --color-gray-12: var(--gray-12);
   --color-gray-13: var(--gray-13);
 
+  /* Primitive - Brand */
+  --color-flame-300: var(--flame-300);
+  --color-flame-400: var(--flame-400);
+  --color-flame-500: var(--flame-500);
+  --color-jade-300: var(--jade-300);
+  --color-jade-400: var(--jade-400);
+  --color-jade-500: var(--jade-500);
+  --color-gold-300: var(--gold-300);
+  --color-gold-400: var(--gold-400);
+  --color-gold-500: var(--gold-500);
+
   /* Semantic - Backgrounds */
   --color-background: var(--background);
   --color-surface: var(--surface);
   --color-surface-hover: var(--surface-hover);
   --color-surface-raised: var(--surface-raised);
+  --color-surface-card: var(--surface-card);
   --color-surface-overlay: var(--surface-overlay);
   --color-muted: var(--muted);
   --color-muted-hover: var(--muted-hover);
@@ -258,14 +258,17 @@
   --color-foreground-faint: var(--foreground-faint);
   --color-foreground-disabled: var(--foreground-disabled);
 
-  /* Primary (Brand/Accent) */
+  /* Primary */
   --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-active: var(--primary-active);
   --color-primary-foreground: var(--primary-foreground);
 
   /* Status - Destructive */
   --color-destructive: var(--destructive);
   --color-destructive-hover: var(--destructive-hover);
   --color-destructive-active: var(--destructive-active);
+  --color-destructive-surface: var(--destructive-surface);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-destructive-text: var(--destructive-text);
 
@@ -273,6 +276,7 @@
   --color-success: var(--success);
   --color-success-hover: var(--success-hover);
   --color-success-active: var(--success-active);
+  --color-success-surface: var(--success-surface);
   --color-success-foreground: var(--success-foreground);
   --color-success-text: var(--success-text);
 
@@ -320,15 +324,6 @@
     to {
       height: 0;
     }
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
   }
 }
 

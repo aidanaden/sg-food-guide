@@ -278,19 +278,21 @@ const SidebarTrigger: React.FC<React.ComponentProps<typeof Button>> = ({
   );
 };
 
-const SidebarRail: React.FC<React.ComponentProps<"button">> = ({ className, ...props }) => {
+const SidebarRail: React.FC<React.ComponentProps<typeof Button>> = ({ className, ...props }) => {
   const { toggleSidebar } = useSidebar();
 
   return (
-    <button
+    <Button
       type="button"
+      variant="ghost"
+      size="icon-sm"
       data-slot="sidebar-rail"
       data-sidebar="rail"
       aria-label="Toggle Sidebar"
       tabIndex={-1}
       onClick={toggleSidebar}
       className={cn(
-        "border-border hover:bg-muted/70 absolute inset-y-0 z-30 hidden w-4 -translate-x-1/2 cursor-pointer transition-colors sm:flex",
+        "border-border hover:bg-muted-hover absolute inset-y-0 z-30 hidden h-auto min-h-0 w-4 min-w-0 -translate-x-1/2 cursor-pointer rounded-none border bg-transparent p-0 transition-colors sm:flex",
         "group-data-[side=left]:-right-4 group-data-[side=right]:-left-4",
         className,
       )}
@@ -484,7 +486,7 @@ const SidebarMenuItem: React.FC<React.ComponentProps<"li">> = ({ className, ...p
 };
 
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button ring-ring/50 hover:bg-muted hover:text-foreground data-[active=true]:bg-muted data-[active=true]:text-foreground flex w-full items-center gap-2 overflow-hidden rounded-md px-2 py-1.5 text-left text-sm transition-colors outline-none group-has-data-[sidebar=menu-action]/menu-item:pr-8 group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2 focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50 data-[active=true]:font-medium [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
+  "peer/menu-button ring-ring hover:bg-muted hover:text-foreground data-[active=true]:bg-muted data-[active=true]:text-foreground flex w-full items-center gap-2 overflow-hidden rounded-md px-2 py-1.5 text-left text-sm transition-colors outline-none group-has-data-[sidebar=menu-action]/menu-item:pr-8 group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2 focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50 data-[active=true]:font-medium [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
   {
     variants: {
       variant: {

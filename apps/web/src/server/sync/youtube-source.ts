@@ -18,6 +18,8 @@ const videoEntrySchema = z.object({
 
 export type YouTubeVideoEntry = z.infer<typeof videoEntrySchema>;
 
+const DEFAULT_YOUTUBE_CHANNEL_ID = 'UCH-dJYvV8UiemFsLZRO0X4A';
+
 function decodeXmlEntities(value: string): string {
   return value
     .replace(/&amp;/g, '&')
@@ -45,14 +47,20 @@ function extractEntries(xml: string): string[] {
     .filter((value) => value.length > 0);
 }
 
+function buildFeedFromChannelId(channelId: string): string {
+  return `https://www.youtube.com/feeds/videos.xml?channel_id=${encodeURIComponent(channelId)}`;
+}
+
 function buildFeedUrl(env: WorkerEnv): string {
-  const explicitUrl = normalizeDisplayText(env.YOUTUBE_CHANNEL_FEED_URL ?? '');
-  if (explicitUrl.length > 0) {
-    return explicitUrl;
+  const explicitFeedUrl = normalizeDisplayText(env.YOUTUBE_CHANNEL_FEED_URL ?? '');
+  if (explicitFeedUrl.length > 0) {
+    return explicitFeedUrl;
   }
 
-  const username = normalizeDisplayText(env.YOUTUBE_CHANNEL_USERNAME ?? 'Alderic') || 'Alderic';
-  return `https://www.youtube.com/feeds/videos.xml?user=${encodeURIComponent(username.replace(/^@/, ''))}`;
+  const channelId =
+    normalizeDisplayText(env.YOUTUBE_CHANNEL_ID ?? DEFAULT_YOUTUBE_CHANNEL_ID) ||
+    DEFAULT_YOUTUBE_CHANNEL_ID;
+  return buildFeedFromChannelId(channelId);
 }
 
 export async function fetchYouTubeFeed(env: WorkerEnv): Promise<Result<{ sourceUrl: string; xml: string }, Error>> {

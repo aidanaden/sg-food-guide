@@ -47,7 +47,7 @@ const DropdownMenuContent: React.FC<DropdownMenuContentProps> = ({
         <MenuPrimitive.Popup
           data-slot="dropdown-menu-content"
           className={cn(
-            "bg-surface-overlay text-foreground data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-closed:zoom-out-95 data-open:zoom-in-95 data-open:blur-in-sm data-closed:blur-out-sm data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 ring-foreground/10 min-w-36 origin-(--transform-origin) overflow-hidden rounded-lg shadow-md ring-1 duration-100",
+            "bg-surface-overlay text-foreground data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-closed:zoom-out-95 data-open:zoom-in-95 data-open:blur-in-sm data-closed:blur-out-sm data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 ring-border min-w-36 origin-(--transform-origin) overflow-hidden rounded-lg shadow-md ring-1 duration-100",
             className,
           )}
           {...props}
@@ -68,7 +68,7 @@ const DropdownMenuItem: React.FC<MenuPrimitive.Item.Props> = ({
     <MenuPrimitive.Item
       data-slot="dropdown-menu-item"
       className={cn(
-        "focus:bg-muted focus:text-foreground data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:bg-destructive/10 data-[variant=destructive]:focus:text-destructive relative flex w-full cursor-default items-center gap-2 px-3 py-1.5 text-sm outline-hidden select-none first:pt-2 last:pb-2 data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground data-[variant=destructive]:text-destructive data-[variant=destructive]:hover:bg-destructive data-[variant=destructive]:hover:text-destructive-foreground data-[variant=destructive]:focus:bg-destructive data-[variant=destructive]:focus:text-destructive-foreground relative flex w-full cursor-default items-center gap-2 px-3 py-1.5 text-sm outline-hidden select-none first:pt-2 last:pb-2 data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className,
       )}
       {...props}
@@ -118,7 +118,7 @@ const DropdownMenuSubTrigger: React.FC<MenuPrimitive.SubmenuTrigger.Props> = ({
     <MenuPrimitive.SubmenuTrigger
       data-slot="dropdown-menu-sub-trigger"
       className={cn(
-        "focus:bg-muted focus:text-foreground data-[popup-open]:bg-muted data-[popup-open]:text-foreground relative flex w-full cursor-default items-center gap-2 px-3 py-1.5 text-sm outline-hidden select-none first:pt-2 last:pb-2 data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground data-[popup-open]:bg-muted data-[popup-open]:text-foreground relative flex w-full cursor-default items-center gap-2 px-3 py-1.5 text-sm outline-hidden select-none first:pt-2 last:pb-2 data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className,
       )}
       {...props}
@@ -149,7 +149,7 @@ const DropdownMenuSubContent: React.FC<DropdownMenuSubContentProps> = ({
         <MenuPrimitive.Popup
           data-slot="dropdown-menu-sub-content"
           className={cn(
-            "bg-surface-overlay text-foreground data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-closed:zoom-out-95 data-open:zoom-in-95 data-open:blur-in-sm data-closed:blur-out-sm data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 ring-foreground/10 min-w-36 origin-(--transform-origin) overflow-hidden rounded-lg shadow-md ring-1 duration-100",
+            "bg-surface-overlay text-foreground data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-closed:zoom-out-95 data-open:zoom-in-95 data-open:blur-in-sm data-closed:blur-out-sm data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 ring-border min-w-36 origin-(--transform-origin) overflow-hidden rounded-lg shadow-md ring-1 duration-100",
             className,
           )}
           {...props}

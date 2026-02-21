@@ -32,6 +32,59 @@ const fetchPayloadSchema = z.object({
   csv: z.string(),
 });
 
+function buildSheetCsvExportUrl(sheetId: string, gid: string): string {
+  return `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`;
+}
+
+function extractGidFromHash(hash: string): string | null {
+  const normalizedHash = hash.replace(/^#/, '');
+  if (!normalizedHash) {
+    return null;
+  }
+
+  const hashParams = new URLSearchParams(normalizedHash);
+  const hashGid = normalizeDisplayText(hashParams.get('gid') ?? '');
+  if (hashGid.length > 0) {
+    return hashGid;
+  }
+
+  const match = normalizedHash.match(/(?:^|&)gid=([^&]+)/);
+  return normalizeDisplayText(match?.[1] ?? '') || null;
+}
+
+function resolveExplicitSheetSourceToCsvUrl(explicitSource: string, fallbackGid: string): string {
+  if (explicitSource.length === 0) {
+    return explicitSource;
+  }
+
+  // Treat a bare spreadsheet id as shorthand.
+  if (!explicitSource.includes('/')) {
+    return buildSheetCsvExportUrl(explicitSource, fallbackGid);
+  }
+
+  const parsedUrl = Result.try(() => new URL(explicitSource));
+  if (Result.isError(parsedUrl)) {
+    return explicitSource;
+  }
+
+  const host = parsedUrl.value.hostname.replace(/^www\./, '').toLowerCase();
+  if (host !== 'docs.google.com') {
+    return explicitSource;
+  }
+
+  const sheetIdMatch = parsedUrl.value.pathname.match(/^\/spreadsheets\/d\/([^/]+)/);
+  const sheetId = normalizeDisplayText(sheetIdMatch?.[1] ?? '');
+  if (sheetId.length === 0) {
+    return explicitSource;
+  }
+
+  const gidFromQuery = normalizeDisplayText(parsedUrl.value.searchParams.get('gid') ?? '');
+  const gidFromHash = extractGidFromHash(parsedUrl.value.hash);
+  const gid = gidFromQuery || gidFromHash || fallbackGid;
+
+  return buildSheetCsvExportUrl(sheetId, gid);
+}
+
 function normalizeCsv(input: string): string {
   return input
     .replace(/^\uFEFF/, '')
@@ -177,8 +230,8 @@ export async function fetchSheetCsv(env: WorkerEnv): Promise<Result<{ sourceUrl:
 
   const sourceUrl =
     explicitUrl.length > 0
-      ? explicitUrl
-      : `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`;
+      ? resolveExplicitSheetSourceToCsvUrl(explicitUrl, gid)
+      : buildSheetCsvExportUrl(sheetId, gid);
 
   const responseResult = await Result.tryPromise(() =>
     fetch(sourceUrl, {

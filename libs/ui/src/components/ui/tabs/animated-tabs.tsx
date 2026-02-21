@@ -3,6 +3,7 @@ import * as m from "motion/react-m";
 import { type ReactNode } from "react";
 
 import { cn } from "../../../utils";
+import { Button } from "../button";
 
 type AnimatedTabsOption<T extends string> = {
   value: T;
@@ -36,19 +37,21 @@ export function AnimatedTabs<T extends string>({
   return (
     <div
       data-slot="animated-tabs"
-      className={cn("bg-muted/50 relative flex items-center rounded-lg p-0.5", className)}
+      className={cn("bg-muted relative flex items-center rounded-lg p-0.5", className)}
     >
       {options.map((option) => {
         const isActive = value === option.value;
 
         return (
-          <button
+          <Button
             key={option.value}
             type="button"
+            variant="ghost"
+            size="sm"
             data-slot="animated-tabs-trigger"
             data-active={isActive || undefined}
             onClick={() => onChange(option.value)}
-            className="text-foreground-muted data-[active]:text-foreground hover:text-foreground relative z-10 flex-1 cursor-pointer px-3 py-1.5 text-center text-sm font-medium transition-colors sm:flex-none sm:text-left"
+            className="text-foreground-muted data-[active]:text-foreground hover:bg-muted-hover hover:text-foreground data-[active]:hover:bg-transparent relative z-10 h-auto min-h-0 flex-1 cursor-pointer border-0 bg-transparent px-3 py-1.5 text-center text-sm font-medium transition-colors sm:flex-none sm:text-left"
           >
             {/* Animated indicator - skipped for reduced motion users */}
             {isActive && shouldReduceMotion !== true && (
@@ -68,7 +71,7 @@ export function AnimatedTabs<T extends string>({
               />
             )}
             {option.label}
-          </button>
+          </Button>
         );
       })}
     </div>

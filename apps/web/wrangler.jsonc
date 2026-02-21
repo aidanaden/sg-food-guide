@@ -1,6 +1,7 @@
 {
   "$schema": "../../node_modules/wrangler/config-schema.json",
   "name": "sg-food-guide",
+  "account_id": "7eabd3e4dab6d4da3d90cc7cd6d9e8d1",
   "compatibility_date": "2025-09-27",
   "compatibility_flags": ["nodejs_compat"],
   "main": "./worker-entry.ts",
@@ -8,14 +9,14 @@
     {
       "binding": "STALLS_DB",
       "database_name": "sg-food-guide-stalls",
-      "database_id": "00000000-0000-0000-0000-000000000000"
+      "database_id": "36a8c75a-ea06-4f3c-b5d3-978899c46af8"
     }
   ],
   "vars": {
     "FOOD_GUIDE_SHEET_ID": "1UMOZE2SM3_y5oUHafwJFEB9RrPDMqBbWjWnMGkO4gGg",
     "FOOD_GUIDE_SHEET_GID": "1935025317",
-    "YOUTUBE_CHANNEL_USERNAME": "Alderic",
-    "YOUTUBE_CHANNEL_FEED_URL": "https://www.youtube.com/feeds/videos.xml?user=Alderic",
+    "FOOD_GUIDE_SHEET_CSV_URL": "https://docs.google.com/spreadsheets/d/1UMOZE2SM3_y5oUHafwJFEB9RrPDMqBbWjWnMGkO4gGg/edit?gid=1935025317#gid=1935025317",
+    "YOUTUBE_CHANNEL_ID": "UCH-dJYvV8UiemFsLZRO0X4A",
     "STALL_SYNC_MODE": "dry-run",
     "STALL_SYNC_MAX_CHANGE_RATIO": "0.5",
     "STALL_SYNC_ALERT_MODE": "all"

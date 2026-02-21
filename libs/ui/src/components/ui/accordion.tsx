@@ -35,7 +35,7 @@ const AccordionTrigger: React.FC<AccordionPrimitive.Trigger.Props> = ({
       <AccordionPrimitive.Trigger
         data-slot="accordion-trigger"
         className={cn(
-          "focus-visible:ring-ring/50 focus-visible:border-ring focus-visible:after:border-ring **:data-[slot=accordion-trigger-icon]:text-foreground-muted group/accordion-trigger relative flex flex-1 cursor-pointer items-center justify-between rounded-lg border border-transparent py-2.5 text-left text-sm font-medium transition-all outline-none focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50 **:data-[slot=accordion-trigger-icon]:ml-auto **:data-[slot=accordion-trigger-icon]:size-4",
+          "focus-visible:ring-ring focus-visible:border-ring focus-visible:after:border-ring hover:bg-muted hover:text-foreground **:data-[slot=accordion-trigger-icon]:text-foreground-muted group/accordion-trigger relative flex flex-1 cursor-pointer items-center justify-between rounded-lg border border-transparent py-2.5 text-left text-sm font-medium transition-all outline-none focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50 **:data-[slot=accordion-trigger-icon]:ml-auto **:data-[slot=accordion-trigger-icon]:size-4",
           className,
         )}
         {...props}
@@ -44,12 +44,12 @@ const AccordionTrigger: React.FC<AccordionPrimitive.Trigger.Props> = ({
         <span
           aria-hidden="true"
           data-slot="accordion-trigger-icon"
-          className="iconify ph--caret-down pointer-events-none shrink-0 group-aria-expanded/accordion-trigger:hidden"
+          className="iconify ph--caret-down pointer-events-none shrink-0 group-hover/accordion-trigger:text-foreground group-aria-expanded/accordion-trigger:hidden"
         />
         <span
           aria-hidden="true"
           data-slot="accordion-trigger-icon"
-          className="iconify ph--caret-up pointer-events-none hidden shrink-0 group-aria-expanded/accordion-trigger:inline"
+          className="iconify ph--caret-up pointer-events-none hidden shrink-0 group-hover/accordion-trigger:text-foreground group-aria-expanded/accordion-trigger:inline"
         />
       </AccordionPrimitive.Trigger>
     </AccordionPrimitive.Header>

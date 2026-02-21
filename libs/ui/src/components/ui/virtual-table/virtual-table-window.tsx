@@ -15,6 +15,7 @@ import {
 import { WindowVirtualizer, type WindowVirtualizerHandle } from "virtua";
 
 import { cn, getPagePadding } from "../../../utils";
+import { Button } from "../button";
 import { Collapsible } from "../collapsible";
 import { Spinner } from "../spinner";
 import type { VirtualTableBaseProps, VirtualTableHandle, ColumnDef } from "./types";
@@ -139,9 +140,9 @@ const TableRowInner = <T,>({
   );
 
   const rowClassName = cn(
-    "hover:bg-muted/30 grid w-full items-center transition-colors",
+    "hover:bg-muted-hover grid w-full items-center transition-colors",
     (onRowClick != null || isExpandable) && "cursor-pointer",
-    isExpanded && "bg-muted/20",
+    isExpanded && "bg-muted",
   );
   const rowStyle = { gridTemplateColumns, minHeight: rowHeight };
   const rowCells = (
@@ -276,19 +277,21 @@ const VirtualTableWindowHeaderInner = <T,>({
 
       if (column.enableSorting === true) {
         return (
-          <button
+          <Button
             key={column.id}
             type="button"
+            variant="ghost"
+            size="sm"
             aria-sort={getWindowColumnAriaSortValue(column, sorting)}
             className={cn(
               headerClassName,
-              "hover:text-foreground focus-visible:ring-ring cursor-pointer select-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
+              "hover:text-foreground focus-visible:ring-ring h-auto min-h-0 w-full cursor-pointer select-none border-0 bg-transparent hover:bg-transparent focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
             )}
             style={cellStyle}
             onClick={() => onHeaderClick(column)}
           >
             {content}
-          </button>
+          </Button>
         );
       }
 

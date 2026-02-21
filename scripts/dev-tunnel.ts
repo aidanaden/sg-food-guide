@@ -26,6 +26,7 @@ const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = resolve(SCRIPT_DIR, "..");
 const WEB_DIR = resolve(ROOT_DIR, "apps/web");
 const PROJECT_NAME = basename(ROOT_DIR);
+const LOCAL_BIND_HOST = "127.0.0.1";
 
 const DEFAULT_DOMAIN_SUFFIX = "aidanaden.com";
 const DEFAULT_TUNNEL_NAME = `${sanitizeDnsLabel(PROJECT_NAME) || PROJECT_NAME}-dev`;
@@ -334,8 +335,8 @@ async function statusSession(): Promise<void> {
     return;
   }
 
-  const localCode = await getStatusCode(`http://localhost:${state.port}`);
-  console.log(`Local http://localhost:${state.port}: ${localCode}`);
+  const localCode = await getStatusCode(`http://${LOCAL_BIND_HOST}:${state.port}`);
+  console.log(`Local http://${LOCAL_BIND_HOST}:${state.port}: ${localCode}`);
 
   const edgeCode = getEdgeStatusCode(state.hostname);
   console.log(`Edge https://${state.hostname}: ${edgeCode}`);
@@ -395,8 +396,8 @@ async function startSession(): Promise<void> {
   }
   writeFileSync(tokenFile, `${tunnelToken}\n`, { encoding: "utf8", mode: 0o600 });
 
-  const localCommand = `cd ${shellQuote(WEB_DIR)} && while true; do bun run vite dev --port ${shellQuote(String(port))} >>${shellQuote(localLog)} 2>&1; echo '[local exited]' >>${shellQuote(localLog)}; sleep 1; done`;
-  const tunnelCommand = `while ! curl -fsS --max-time 2 http://localhost:${port} >/dev/null 2>&1; do sleep 0.2; done; while true; do cloudflared tunnel --url ${shellQuote(`http://localhost:${port}`)} --http-host-header ${shellQuote(`localhost:${port}`)} --no-autoupdate run --token-file ${shellQuote(tokenFile)} >>${shellQuote(tunnelLog)} 2>&1; echo '[tunnel exited]' >>${shellQuote(tunnelLog)}; sleep 2; done`;
+  const localCommand = `cd ${shellQuote(WEB_DIR)} && while true; do bun run vite dev --force --host ${shellQuote(LOCAL_BIND_HOST)} --port ${shellQuote(String(port))} >>${shellQuote(localLog)} 2>&1; echo '[local exited]' >>${shellQuote(localLog)}; sleep 1; done`;
+  const tunnelCommand = `while ! curl -fsS --max-time 2 http://${LOCAL_BIND_HOST}:${port} >/dev/null 2>&1; do sleep 0.2; done; while true; do cloudflared tunnel --url ${shellQuote(`http://${LOCAL_BIND_HOST}:${port}`)} --http-host-header ${shellQuote(`localhost:${port}`)} --no-autoupdate run --token-file ${shellQuote(tokenFile)} >>${shellQuote(tunnelLog)} 2>&1; echo '[tunnel exited]' >>${shellQuote(tunnelLog)}; sleep 2; done`;
 
   writeFileSync(localLog, "", "utf8");
   writeFileSync(tunnelLog, "", "utf8");
@@ -418,7 +419,7 @@ async function startSession(): Promise<void> {
   console.log(`Started ${SESSION}`);
   console.log(`Public URL: https://${hostname}`);
   console.log(`Using tunnel: ${tunnelName}`);
-  console.log(`Local URL: http://localhost:${port}`);
+  console.log(`Local URL: http://${LOCAL_BIND_HOST}:${port}`);
   console.log(`Token file: ${tokenFile}`);
   console.log(`Local log: ${localLog}`);
   console.log(`Tunnel log: ${tunnelLog}`);

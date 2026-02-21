@@ -21,25 +21,25 @@ export function hexToRgbObj(hex: string): Rgb {
 }
 
 /**
- * Convert hex color to CSS `rgb()` format with opacity.
+ * Convert hex color to CSS `rgb()` format.
  *
  * @example
- * hexToRgb('#ff0000', 0.5) // → 'rgb(255 0 0 / 0.5)'
+ * hexToRgb('#ff0000') // → 'rgb(255 0 0)'
  */
-export function hexToRgb(hex: string, opacity = 1): string {
+export function hexToRgb(hex: string): string {
   const { r, g, b } = hexToRgbObj(hex);
-  return `rgb(${r} ${g} ${b} / ${opacity})`;
+  return `rgb(${r} ${g} ${b})`;
 }
 
 /**
- * Convert hex color to CSS `rgba()` format with opacity.
+ * Convert hex color to CSS `rgb()` format.
+ * Kept for API compatibility with previous naming.
  *
  * @example
- * hexToRgba('#ff0000', 0.5) // → 'rgba(255, 0, 0, 0.5)'
+ * hexToRgba('#ff0000') // → 'rgb(255 0 0)'
  */
-export function hexToRgba(hex: string, opacity = 1): string {
-  const { r, g, b } = hexToRgbObj(hex);
-  return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+export function hexToRgba(hex: string, _opacity = 1): string {
+  return hexToRgb(hex);
 }
 
 /**
@@ -159,9 +159,9 @@ export class HslaColor {
     );
   }
 
-  /** Convert to CSS `rgba()` string. */
+  /** Convert to CSS `rgb()` string. */
   toRgbaCss(): string {
-    const [r, g, b, a] = this.toRgba();
-    return `rgba(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)}, ${a.toFixed(2)})`;
+    const [r, g, b] = this.toRgba();
+    return `rgb(${Math.round(r)} ${Math.round(g)} ${Math.round(b)})`;
   }
 }

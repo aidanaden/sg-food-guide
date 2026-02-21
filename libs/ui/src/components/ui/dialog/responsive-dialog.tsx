@@ -71,7 +71,7 @@ const ResponsiveDialog: FC<ResponsiveDialogProps> = ({
   if (isMobile) {
     return (
       <ResponsiveDialogContext.Provider value={contextValue}>
-        <Drawer open={open} onOpenChange={setOpen}>
+        <Drawer open={open} onOpenChange={setOpen} modal={true}>
           {children}
         </Drawer>
       </ResponsiveDialogContext.Provider>
@@ -80,7 +80,7 @@ const ResponsiveDialog: FC<ResponsiveDialogProps> = ({
 
   return (
     <ResponsiveDialogContext.Provider value={contextValue}>
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={setOpen} modal={true}>
         {children}
       </Dialog>
     </ResponsiveDialogContext.Provider>
@@ -96,9 +96,14 @@ const ResponsiveDialogTrigger: FC<ResponsiveDialogTriggerProps> = ({ children, c
   const { setOpen } = useResponsiveDialog();
 
   return (
-    <button type="button" className={className} onClick={() => setOpen(true)}>
+    <Button
+      type="button"
+      variant="ghost"
+      className={cn("h-auto min-h-0 border-0 bg-transparent p-0 font-inherit hover:bg-transparent", className)}
+      onClick={() => setOpen(true)}
+    >
       {children}
-    </button>
+    </Button>
   );
 };
 
@@ -179,7 +184,7 @@ const ResponsiveDialogTitle: FC<ResponsiveDialogTitleProps> = ({ children, class
   const { isMobile } = useResponsiveDialog();
 
   if (isMobile) {
-    return <DrawerTitle className={className}>{children}</DrawerTitle>;
+    return <DrawerTitle className={cn("px-4", className)}>{children}</DrawerTitle>;
   }
 
   return <DialogTitle className={className}>{children}</DialogTitle>;
@@ -208,16 +213,17 @@ const ResponsiveDialogClose: FC<{
   render?: ComponentProps<typeof DrawerClose>["render"];
   /** Accessible label for the close button when children is not text */
   "aria-label"?: string;
-}> = ({ children, render, "aria-label": ariaLabel }) => {
+}> = ({ children, render: _render, "aria-label": ariaLabel }) => {
   const { setOpen, isMobile } = useResponsiveDialog();
 
   if (isMobile) {
-    return <DrawerClose render={render}>{children}</DrawerClose>;
+    return null;
   }
 
   return (
     <button
       type="button"
+      className="border-border-input hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-ring inline-flex size-7 items-center justify-center rounded-md border border-transparent text-foreground-muted transition-colors outline-none focus-visible:ring-2"
       aria-label={ariaLabel ?? (typeof children !== "string" ? "Close dialog" : undefined)}
       onClick={() => setOpen(false)}
     >

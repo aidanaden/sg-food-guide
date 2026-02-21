@@ -36,6 +36,7 @@ import { VList, type VListHandle } from "virtua";
 
 import { cn } from "../../../utils";
 import { getItemIndexById, getReorderIndices } from "../../sortable/reorder";
+import { Button } from "../button";
 import { Collapsible } from "../collapsible";
 import { Spinner } from "../spinner";
 import type { ColumnDef, VirtualTableBaseProps, VirtualTableHandle } from "./types";
@@ -155,9 +156,9 @@ const TableRowInner = <T,>({
   );
 
   const rowClassName = cn(
-    "hover:bg-muted/30 grid w-full items-center transition-colors",
+    "hover:bg-muted-hover grid w-full items-center transition-colors",
     (onRowClick != null || isExpandable) && "cursor-pointer",
-    isExpanded && "bg-muted/20",
+    isExpanded && "bg-muted",
     isDragging && "opacity-50",
   );
   const rowStyle = { gridTemplateColumns, height: rowHeight };
@@ -165,17 +166,19 @@ const TableRowInner = <T,>({
     <>
       {/* Reorder handle */}
       <div className="flex items-center justify-center px-1">
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon-xs"
           aria-label={handleLabel}
-          className="text-foreground-subtle hover:text-foreground cursor-grab touch-none rounded p-1"
+          className="text-foreground-subtle hover:text-foreground size-auto min-h-0 min-w-0 cursor-grab touch-none rounded border-0 bg-transparent p-1 hover:bg-transparent"
           onClick={(e) => e.stopPropagation()}
           onKeyDown={(e) => e.stopPropagation()}
           {...attributes}
           {...listeners}
         >
           <span aria-hidden="true" className="iconify ph--dots-six-vertical size-4" />
-        </button>
+        </Button>
       </div>
 
       {columns.map((column) => (
@@ -492,7 +495,7 @@ function SortableVirtualTableContainerInner<T>(
   return (
     <div className="relative">
       {isReordering && (
-        <div className="bg-background/50 absolute inset-0 z-10 flex items-center justify-center">
+        <div className="bg-background absolute inset-0 z-10 flex items-center justify-center">
           <div className="text-foreground-muted flex items-center gap-2 text-sm">
             <Spinner size="sm" />
             <span>Saving order...</span>

@@ -60,10 +60,10 @@ function StallPage() {
 
   return (
     <div className="min-h-screen">
-      <nav className="border-b border-warm-800/40">
+      <nav className="border-b border-border-hover">
         <div className="mx-auto flex max-w-3xl items-center gap-4 px-4 py-3">
-          <Link to="/" className="text-sm text-ink-faint hover:text-flame-400">← All stalls</Link>
-          <Link to="/cuisine/$cuisine" params={{ cuisine: stall.cuisine }} className="text-sm text-ink-faint hover:text-flame-400">
+          <Link to="/" className="text-sm text-foreground-faint hover:text-primary">← All stalls</Link>
+          <Link to="/cuisine/$cuisine" params={{ cuisine: stall.cuisine }} className="text-sm text-foreground-faint hover:text-primary">
             {stall.cuisineLabel}
           </Link>
         </div>
@@ -74,8 +74,8 @@ function StallPage() {
 
         <div className="mt-4 flex flex-wrap items-center gap-4">
           <p className={`text-base font-semibold ${ratingVariant}`}>{normalizedRating === null ? 'Unrated' : `${normalizedRating}/3 ${ratingLabel}`}</p>
-          <p className="font-mono text-2xl font-bold text-flame-400">${stall.price.toFixed(stall.price % 1 ? 1 : 0)}</p>
-          <p className="text-sm text-ink-faint">{area}</p>
+          <p className="font-mono text-2xl font-bold text-primary">${stall.price.toFixed(stall.price % 1 ? 1 : 0)}</p>
+          <p className="text-sm text-foreground-faint">{area}</p>
         </div>
 
         <div className="mt-4 flex gap-2">
@@ -83,46 +83,46 @@ function StallPage() {
             type="button"
             variant="outline"
             onClick={() => setVisitedSet(toggleVisited(stall.slug))}
-            className="border-warm-700/50 bg-transparent px-3 py-2 text-sm"
+            className="border-border bg-transparent px-3 py-2 text-sm"
           >
-            <span className={isVisited ? 'i-ph-check-circle-fill text-jade-400' : 'i-ph-eye'} />
+            <span className={isVisited ? 'iconify ph--check-circle-fill text-success-text' : 'iconify ph--eye'} />
             {isVisited ? 'Visited' : 'Mark visited'}
           </Button>
           <Button
             type="button"
             variant="outline"
             onClick={() => setFavoriteSet(toggleFavorite(stall.slug))}
-            className="border-warm-700/50 bg-transparent px-3 py-2 text-sm"
+            className="border-border bg-transparent px-3 py-2 text-sm"
           >
-            <span className={isFavorite ? 'i-ph-heart-fill text-flame-400' : 'i-ph-heart'} />
+            <span className={isFavorite ? 'iconify ph--heart-fill text-primary' : 'iconify ph--heart'} />
             Favourite
           </Button>
         </div>
 
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <InfoCard title="Dish" icon="i-ph-bowl-food" value={stall.dishName} />
-          <InfoCard title="Area" icon="i-ph-map-trifold" value={area} />
-          <InfoCard title="Address" icon="i-ph-map-pin" value={stall.address} />
-          <InfoCard title="Opening Times" icon="i-ph-clock" value={stall.openingTimes} />
+          <InfoCard title="Dish" icon="iconify ph--bowl-food" value={stall.dishName} />
+          <InfoCard title="Area" icon="iconify ph--map-trifold" value={area} />
+          <InfoCard title="Address" icon="iconify ph--map-pin" value={stall.address} />
+          <InfoCard title="Opening Times" icon="iconify ph--clock" value={stall.openingTimes} />
         </div>
 
         {stall.hits.length > 0 ? (
-          <section className="mt-6 rounded-xl border border-jade-500/20 bg-jade-500/5 p-4">
-            <h2 className="mb-2 text-sm font-semibold text-jade-400">Hits</h2>
-            <ul className="space-y-1 text-sm text-ink-muted">
+          <section className="mt-6 rounded-xl border border-success bg-success-surface p-4">
+            <h2 className="mb-2 text-sm font-semibold text-success-text">Hits</h2>
+            <ul className="space-y-1 text-sm text-foreground-muted">
               {stall.hits.map((item: string) => (
-                <li key={item} className="flex items-start gap-2"><span className="i-ph-check text-jade-500/70 mt-0.5 text-xs" />{item}</li>
+                <li key={item} className="flex items-start gap-2"><span className="iconify ph--check text-success mt-0.5 text-xs" />{item}</li>
               ))}
             </ul>
           </section>
         ) : null}
 
         {stall.misses.length > 0 ? (
-          <section className="mt-4 rounded-xl border border-flame-500/20 bg-flame-500/5 p-4">
-            <h2 className="mb-2 text-sm font-semibold text-flame-400">Misses</h2>
-            <ul className="space-y-1 text-sm text-ink-muted">
+          <section className="mt-4 rounded-xl border border-destructive bg-destructive-surface p-4">
+            <h2 className="mb-2 text-sm font-semibold text-destructive-text">Misses</h2>
+            <ul className="space-y-1 text-sm text-foreground-muted">
               {stall.misses.map((item: string) => (
-                <li key={item} className="flex items-start gap-2"><span className="i-ph-x text-flame-500/70 mt-0.5 text-xs" />{item}</li>
+                <li key={item} className="flex items-start gap-2"><span className="iconify ph--x text-destructive-text mt-0.5 text-xs" />{item}</li>
               ))}
             </ul>
           </section>
@@ -130,7 +130,7 @@ function StallPage() {
 
         <section className="mt-8">
           <h2 className="mb-3 font-display text-sm font-bold">Location</h2>
-          <div className="overflow-hidden rounded-xl border border-warm-800/50">
+          <div className="overflow-hidden rounded-xl border border-border">
             <iframe
               src={mapsSearchEmbedUrl}
               width="100%"
@@ -141,8 +141,8 @@ function StallPage() {
               className="h-64 w-full"
             />
           </div>
-          <a href={mapsUrl} target="_blank" rel="noopener" className="mt-2 inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-warm-700/50 px-3 py-2 text-sm hover:text-flame-400">
-            <span className="i-ph-arrow-square-out text-xs" />
+          <a href={mapsUrl} target="_blank" rel="noopener" className="mt-2 inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm hover:text-primary">
+            <span className="iconify ph--arrow-square-out text-xs" />
             Open in Google Maps
           </a>
         </section>
@@ -151,7 +151,7 @@ function StallPage() {
           <section className="mt-8">
             <h2 className="mb-3 font-display text-sm font-bold">Video Review</h2>
             {youtubeEmbedUrl ? (
-              <div className="aspect-video overflow-hidden rounded-xl border border-warm-800/50 bg-surface-card">
+              <div className="aspect-video overflow-hidden rounded-xl border border-border bg-surface-card">
                 <iframe
                   src={`${youtubeEmbedUrl}?rel=0`}
                   width="100%"
@@ -164,12 +164,12 @@ function StallPage() {
                 />
               </div>
             ) : (
-              <div className="rounded-xl border border-warm-800/50 bg-surface-card p-6 text-sm text-ink-muted">
+              <div className="rounded-xl border border-border bg-surface-card p-6 text-sm text-foreground-muted">
                 In-app preview unavailable for this stall.
               </div>
             )}
-            <a href={youtubeUrl} target="_blank" rel="noopener" className="mt-2 inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-warm-700/50 px-3 py-2 text-sm hover:text-flame-400">
-              <span className="i-ph-arrow-square-out text-xs" />
+            <a href={youtubeUrl} target="_blank" rel="noopener" className="mt-2 inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm hover:text-primary">
+              <span className="iconify ph--arrow-square-out text-xs" />
               Open on YouTube
             </a>
           </section>
@@ -181,12 +181,12 @@ function StallPage() {
 
 function InfoCard({ title, icon, value }: { title: string; icon: string; value: string }) {
   return (
-    <div className="rounded-xl border border-warm-800/50 bg-surface-card p-4">
+    <div className="rounded-xl border border-border bg-surface-card p-4">
       <div className="mb-2 flex items-center gap-2">
-        <span className={`${icon} text-flame-400`} />
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-ink-faint">{title}</h3>
+        <span className={`${icon} text-primary`} />
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground-faint">{title}</h3>
       </div>
-      <p className="text-sm text-ink">{value}</p>
+      <p className="text-sm text-foreground">{value}</p>
     </div>
   );
 }

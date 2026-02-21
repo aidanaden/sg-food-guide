@@ -43,7 +43,7 @@ const SliderThumb: React.FC<SliderPrimitive.Thumb.Props> = ({ className, ...prop
   <SliderPrimitive.Thumb
     data-slot="slider-thumb"
     className={cn(
-      "border-ring ring-ring/50 relative block size-5 shrink-0 cursor-grab rounded-full border bg-white transition-colors transition-shadow select-none after:absolute after:-inset-2 hover:ring-2 focus-visible:ring-2 focus-visible:outline-hidden active:ring-2 disabled:pointer-events-none disabled:opacity-50 data-[dragging]:cursor-grabbing",
+      "border-ring ring-ring relative block size-5 shrink-0 cursor-grab rounded-full border bg-primary-foreground transition-colors transition-shadow select-none after:absolute after:-inset-2 hover:ring-2 focus-visible:ring-2 focus-visible:outline-hidden active:ring-2 disabled:pointer-events-none disabled:opacity-50 data-[dragging]:cursor-grabbing",
       className,
     )}
     {...props}

@@ -8,7 +8,7 @@
   },
   "scripts": {
     "transit": "echo transit",
-    "dev": "vite dev",
+    "dev": "vite dev --force",
     "routes:gen": "bun scripts/generate-route-tree.ts",
     "build": "vite build",
     "preview": "vite preview",
@@ -42,6 +42,7 @@
     "@tanstack/react-router-devtools": "catalog:tanstack",
     "@tanstack/react-router-ssr-query": "catalog:tanstack",
     "@tanstack/react-start": "catalog:tanstack",
+    "@tanstack/start-storage-context": "catalog:tanstack",
     "@tanstack/router-plugin": "catalog:tanstack",
     "better-result": "catalog:toolkit",
     "clsx": "catalog:ui",
@@ -53,7 +54,6 @@
     "zod": "catalog:toolkit"
   },
   "devDependencies": {
-    "@egoist/tailwindcss-icons": "^1.9.2",
     "@iconify-json/ph": "^1.2.2",
     "@sg-food-guide/tsconfig": "workspace:*",
     "@tanstack/devtools-vite": "catalog:tanstack",

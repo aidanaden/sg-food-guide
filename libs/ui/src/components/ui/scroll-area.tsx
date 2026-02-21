@@ -16,7 +16,7 @@ const ScrollArea: React.FC<ScrollAreaPrimitive.Root.Props> = ({
     >
       <ScrollAreaPrimitive.Viewport
         data-slot="scroll-area-viewport"
-        className="focus-visible:ring-ring/50 size-full transition-colors transition-shadow outline-none focus-visible:ring-2 focus-visible:outline-1"
+        className="focus-visible:ring-ring size-full transition-colors transition-shadow outline-none focus-visible:ring-2 focus-visible:outline-1"
         style={{ borderRadius: "inherit" }}
       >
         {children}
@@ -45,7 +45,7 @@ const ScrollBar: React.FC<ScrollAreaPrimitive.Scrollbar.Props> = ({
     >
       <ScrollAreaPrimitive.Thumb
         data-slot="scroll-area-thumb"
-        className="bg-border relative flex-1 rounded-full"
+        className="bg-border hover:bg-border-hover relative flex-1 rounded-full transition-colors"
       />
     </ScrollAreaPrimitive.Scrollbar>
   );

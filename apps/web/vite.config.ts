@@ -26,6 +26,11 @@ export default defineConfig({
     tanstackStart(),
     viteReact(),
   ],
+  optimizeDeps: {
+    // Avoid prebundling React Query for SSR. When optimized separately it can
+    // load a different React module instance and trigger invalid hook calls.
+    exclude: ['@tanstack/react-query', '@tanstack/react-query-devtools'],
+  },
   resolve: {
     dedupe: ['react', 'react-dom'],
     alias: {
@@ -33,6 +38,12 @@ export default defineConfig({
       'react-dom': resolvePath(webNodeModules, 'react-dom'),
       'react/jsx-runtime': resolvePath(webNodeModules, 'react/jsx-runtime.js'),
       'react/jsx-dev-runtime': resolvePath(webNodeModules, 'react/jsx-dev-runtime.js'),
+    },
+  },
+  ssr: {
+    optimizeDeps: {
+      // Scan app source eagerly so SSR prebundling settles before first request.
+      entries: ['src/**/*.ts', 'src/**/*.tsx'],
     },
   },
   server: {

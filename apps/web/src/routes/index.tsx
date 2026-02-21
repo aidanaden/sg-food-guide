@@ -7,6 +7,7 @@ import {
   Input,
   Label,
   ResponsiveDialog,
+  ResponsiveDialogClose,
   ResponsiveDialogContent,
   ResponsiveDialogHeader,
   ResponsiveDialogTitle,
@@ -62,7 +63,9 @@ function HomePage() {
   const [favoriteSet, setFavoriteSet] = useState<Set<string>>(() => new Set<string>());
   const [visitedSet, setVisitedSet] = useState<Set<string>>(() => new Set<string>());
   const filterSelectTriggerClass =
-    "h-11 w-full border-warm-700/50 bg-surface-raised text-ink data-[placeholder]:text-ink-faint";
+    "h-11 w-full border-border bg-surface-raised text-foreground data-[placeholder]:text-foreground-faint";
+  const filterButtonClass =
+    "border-border bg-surface-raised text-foreground-muted hover:border-primary hover:text-primary relative z-20 h-11 flex-none touch-manipulation px-3 text-base sm:text-sm";
 
   useEffect(() => {
     setFavoriteSet(getFavorites());
@@ -207,12 +210,12 @@ function HomePage() {
 
   return (
     <div className="min-h-screen">
-      <header className="border-warm-800/60 bg-surface/90 border-b px-4 py-8">
+      <header className="border-border bg-surface border-b px-4 py-8">
         <div className="mx-auto max-w-6xl">
           <h1 className="font-display text-4xl font-black tracking-tight">
-            <span className="text-flame-400">SG</span> Food Guide
+            <span className="text-primary">SG</span> Food Guide
           </h1>
-          <p className="text-ink-muted mt-2">
+          <p className="text-foreground-muted mt-2">
             {stalls.length} stalls ranked, mapped, and reviewed.
           </p>
         </div>
@@ -227,7 +230,7 @@ function HomePage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search stalls, dishes, areas..."
-                className="border-warm-700/50 bg-surface-raised relative z-0 h-11 w-full px-3 text-base sm:text-sm"
+                className="border-border bg-surface-raised relative z-0 h-11 w-full px-3 text-base sm:text-sm"
               />
             </div>
 
@@ -235,22 +238,27 @@ function HomePage() {
               type="button"
               variant="outline"
               onClick={() => setIsFiltersOpen(true)}
-              className="border-warm-700/50 bg-surface-raised text-ink-muted hover:border-flame-500/40 hover:text-flame-400 relative z-20 min-h-11 flex-none touch-manipulation px-3 text-sm"
+              className={filterButtonClass}
             >
-              <span className="i-ph-sliders-horizontal text-sm" />
+              <span className="iconify ph--sliders-horizontal text-sm" />
               Filters
             </Button>
 
             <ResponsiveDialog open={isFiltersOpen} onOpenChange={setIsFiltersOpen}>
-              <ResponsiveDialogContent className="pt-0 sm:max-w-2xl">
-                <ResponsiveDialogHeader className="border-warm-800/50 border-b pb-3">
-                  <ResponsiveDialogTitle className="font-display text-lg font-bold">
-                    Filters
-                  </ResponsiveDialogTitle>
+              <ResponsiveDialogContent showCloseButton={false} className="pt-0 sm:max-w-2xl sm:gap-0">
+                <ResponsiveDialogHeader className="border-border -mx-4 border-b px-4 pb-3 sm:pt-3 sm:pb-2">
+                  <div className="flex items-center justify-between">
+                    <ResponsiveDialogTitle className="font-display text-lg font-bold">
+                      Filters
+                    </ResponsiveDialogTitle>
+                    <ResponsiveDialogClose aria-label="Close filters">
+                      <span aria-hidden="true" className="iconify ph--x-bold text-foreground-muted size-4 shrink-0" />
+                    </ResponsiveDialogClose>
+                  </div>
                 </ResponsiveDialogHeader>
 
-                <div className="grid grid-cols-1 gap-3 px-4 pt-3 sm:grid-cols-2 sm:px-0">
-                  <label className="text-ink-faint space-y-1 text-xs">
+                <div className="grid grid-cols-1 gap-3 px-4 pt-3 sm:grid-cols-2 sm:px-0 sm:pt-3">
+                  <label className="text-foreground-faint space-y-1 text-xs">
                     <span>Area</span>
                     <Select
                       disabled={!hasAreaOptions}
@@ -290,7 +298,7 @@ function HomePage() {
                     </Select>
                   </label>
 
-                  <label className="text-ink-faint space-y-1 text-xs">
+                  <label className="text-foreground-faint space-y-1 text-xs">
                     <span>Cuisine</span>
                     <Select
                       disabled={!hasCuisineOptions}
@@ -331,7 +339,7 @@ function HomePage() {
                     </Select>
                   </label>
 
-                  <label className="text-ink-faint space-y-1 text-xs">
+                  <label className="text-foreground-faint space-y-1 text-xs">
                     <span>Country</span>
                     <Select
                       disabled={!hasCountryOptions}
@@ -372,7 +380,7 @@ function HomePage() {
                     </Select>
                   </label>
 
-                  <label className="text-ink-faint space-y-1 text-xs">
+                  <label className="text-foreground-faint space-y-1 text-xs">
                     <span>Hours</span>
                     <Select
                       disabled={!hasTimeCategoryOptions}
@@ -440,7 +448,7 @@ function HomePage() {
                     </Select>
                   </label>
 
-                  <label className="text-ink-faint space-y-1 text-xs sm:col-span-2">
+                  <label className="text-foreground-faint space-y-1 text-xs sm:col-span-2">
                     <span>Sort</span>
                     <Select
                       value={sortBy}
@@ -469,7 +477,7 @@ function HomePage() {
                 </div>
 
                 <div className="mt-4 space-y-2 px-4 pb-4 sm:px-0 sm:pb-0">
-                  <Label className="border-warm-700/50 bg-surface-raised min-h-11 w-full rounded-lg border px-3 text-sm font-normal">
+                  <Label className="border-border bg-surface-raised min-h-11 w-full rounded-lg border px-3 text-sm font-normal">
                     <Checkbox
                       variant="tick"
                       checked={favoritesOnly}
@@ -478,7 +486,7 @@ function HomePage() {
                     Favourites only
                   </Label>
 
-                  <Label className="border-warm-700/50 bg-surface-raised min-h-11 w-full rounded-lg border px-3 text-sm font-normal">
+                  <Label className="border-border bg-surface-raised min-h-11 w-full rounded-lg border px-3 text-sm font-normal">
                     <Checkbox
                       variant="tick"
                       checked={hideVisited}
@@ -492,7 +500,7 @@ function HomePage() {
           </div>
         </section>
 
-        <p className="text-ink-faint mb-4 text-xs">Showing {filtered.length} stalls</p>
+        <p className="text-foreground-faint mb-4 text-xs">Showing {filtered.length} stalls</p>
 
         <section className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
           {filtered.map((stall: Stall) => (

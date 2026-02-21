@@ -21,11 +21,11 @@ export const timeCategoryLabels: Record<TimeCategory, string> = {
 };
 
 export const timeCategoryIcons: Record<TimeCategory, string> = {
-  'early-morning': 'i-ph-sun-horizon',
-  'lunch': 'i-ph-sun',
-  'dinner': 'i-ph-moon-stars',
-  'late-night': 'i-ph-moon',
-  'all-day': 'i-ph-clock',
+  'early-morning': 'iconify ph--sun-horizon',
+  'lunch': 'iconify ph--sun',
+  'dinner': 'iconify ph--moon-stars',
+  'late-night': 'iconify ph--moon',
+  'all-day': 'iconify ph--clock',
 };
 
 export interface Stall {
