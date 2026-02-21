@@ -194,7 +194,7 @@ const Toaster: React.FC<ToasterProps> = ({
 
 const useToast = ToastPrimitive.useToastManager;
 
-export const adminToast = {
+export const toast = {
   success: ({ id, title, description }: ToastProps) =>
     addToast({ id, title, description, type: "success", timeout: DEFAULT_TOAST_DURATION }),
   error: ({ id, title, description }: ToastProps) =>
