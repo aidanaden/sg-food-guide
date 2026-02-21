@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   ResponsiveDialog,
@@ -46,10 +46,15 @@ function HomePage() {
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [hideVisited, setHideVisited] = useState(false);
   const [sortBy, setSortBy] = useState("rating-desc");
-  const [favoriteSet, setFavoriteSet] = useState<Set<string>>(() => getFavorites());
-  const [visitedSet, setVisitedSet] = useState<Set<string>>(() => getVisited());
+  const [favoriteSet, setFavoriteSet] = useState<Set<string>>(() => new Set<string>());
+  const [visitedSet, setVisitedSet] = useState<Set<string>>(() => new Set<string>());
   const filterSelectTriggerClass =
     "h-11 w-full border-warm-700/50 bg-surface-raised text-ink data-[placeholder]:text-ink-faint";
+
+  useEffect(() => {
+    setFavoriteSet(getFavorites());
+    setVisitedSet(getVisited());
+  }, []);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();

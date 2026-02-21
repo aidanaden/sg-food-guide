@@ -1,5 +1,5 @@
 import { Link, createFileRoute, notFound } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { z } from "zod";
 
 import {
@@ -68,10 +68,15 @@ function CuisinePage() {
   const [area, setArea] = useState("");
   const [country, setCountry] = useState("");
   const [timeCategory, setTimeCategory] = useState("");
-  const [favoriteSet, setFavoriteSet] = useState<Set<string>>(() => getFavorites());
-  const [visitedSet, setVisitedSet] = useState<Set<string>>(() => getVisited());
+  const [favoriteSet, setFavoriteSet] = useState<Set<string>>(() => new Set<string>());
+  const [visitedSet, setVisitedSet] = useState<Set<string>>(() => new Set<string>());
   const filterSelectTriggerClass =
     "h-11 w-full border-warm-700/50 bg-surface-raised text-ink data-[placeholder]:text-ink-faint";
+
+  useEffect(() => {
+    setFavoriteSet(getFavorites());
+    setVisitedSet(getVisited());
+  }, []);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();

@@ -31,8 +31,12 @@ export const Route = createFileRoute('/stall/$slug')({
 
 function StallPage() {
   const { stall } = Route.useLoaderData();
-  const [favoriteSet, setFavoriteSet] = useState<Set<string>>(() => getFavorites());
-  const [visitedSet, setVisitedSet] = useState<Set<string>>(() => getVisited());
+  const [favoriteSet, setFavoriteSet] = useState<Set<string>>(() => new Set<string>());
+  const [visitedSet, setVisitedSet] = useState<Set<string>>(() => new Set<string>());
+
+  useEffect(() => {
+    setFavoriteSet(getFavorites());
+  }, []);
 
   useEffect(() => {
     setVisitedSet(markVisited(stall.slug));

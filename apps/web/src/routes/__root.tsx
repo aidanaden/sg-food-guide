@@ -14,7 +14,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: 'description',
         content:
-          "The definitive guide to Singapore's best hawker food — 170+ stalls ranked, mapped, and reviewed across 10 cuisines.",
+          "The definitive guide to Singapore's best hawker food - 170+ stalls ranked, mapped, and reviewed across 10 cuisines.",
       },
       { property: 'og:site_name', content: 'SG Food Guide' },
       { property: 'og:locale', content: 'en_SG' },
@@ -31,7 +31,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="bg-surface text-ink antialiased">
+    <html lang="en" className="bg-surface text-ink antialiased" suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>

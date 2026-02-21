@@ -41,7 +41,7 @@ export function StallCard({
         </div>
 
         <div className="text-right">
-          <p className={`text-sm font-semibold ${ratingVariant}`}>{rating === null ? '—' : `${rating}/3`}</p>
+          <p className={`text-sm font-semibold ${ratingVariant}`}>{rating === null ? 'N/A' : `${rating}/3`}</p>
           <p className="text-xs text-ink-faint">{ratingLabel}</p>
           <p className="mt-1 text-sm font-mono text-flame-400">${stall.price.toFixed(stall.price % 1 ? 1 : 0)}</p>
         </div>
