@@ -98,18 +98,10 @@ const ResponsiveDialogTrigger: FC<ResponsiveDialogTriggerProps> = ({ children, c
   const { isMobile } = useResponsiveDialog();
 
   if (isMobile) {
-    return (
-      <DrawerTrigger render={<button type="button" className={className} />}>
-        {children}
-      </DrawerTrigger>
-    );
+    return <DrawerTrigger className={className}>{children}</DrawerTrigger>;
   }
 
-  return (
-    <DialogTrigger render={<button type="button" className={className} />}>
-      {children}
-    </DialogTrigger>
-  );
+  return <DialogTrigger className={className}>{children}</DialogTrigger>;
 };
 
 type ResponsiveDialogContentProps = {
