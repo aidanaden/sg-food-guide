@@ -27,6 +27,13 @@ import {
 import { getFavorites, getVisited, toggleFavorite, toggleVisited } from "../lib/preferences";
 
 const ALL_FILTER_VALUE = "__all__";
+const sortLabelByValue: Record<string, string> = {
+  "rating-desc": "Highest Rated",
+  "rating-asc": "Lowest Rated",
+  "price-asc": "Cheapest First",
+  "price-desc": "Priciest First",
+  "episode-asc": "Episode Order",
+};
 
 export const Route = createFileRoute("/")({
   component: HomePage,
@@ -234,7 +241,16 @@ function HomePage() {
                       }
                     >
                       <SelectTrigger aria-label="Area" className={filterSelectTriggerClass}>
-                        <SelectValue />
+                        <SelectValue>
+                          {(value) => {
+                            const stringValue = typeof value === "string" ? value : "";
+                            if (!stringValue || stringValue === ALL_FILTER_VALUE) {
+                              return "All Areas";
+                            }
+
+                            return areaOptions.includes(stringValue) ? stringValue : "All Areas";
+                          }}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent align="start" className="max-h-72">
                         <SelectItem value={ALL_FILTER_VALUE}>All Areas</SelectItem>
@@ -256,7 +272,17 @@ function HomePage() {
                       }
                     >
                       <SelectTrigger aria-label="Cuisine" className={filterSelectTriggerClass}>
-                        <SelectValue />
+                        <SelectValue>
+                          {(value) => {
+                            const stringValue = typeof value === "string" ? value : "";
+                            if (!stringValue || stringValue === ALL_FILTER_VALUE) {
+                              return "All Cuisines";
+                            }
+
+                            const option = cuisineOptions.find((item) => item.id === stringValue);
+                            return option ? `${option.label} (${option.count})` : "All Cuisines";
+                          }}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent align="start" className="max-h-72">
                         <SelectItem value={ALL_FILTER_VALUE}>All Cuisines</SelectItem>
@@ -278,7 +304,17 @@ function HomePage() {
                       }
                     >
                       <SelectTrigger aria-label="Country" className={filterSelectTriggerClass}>
-                        <SelectValue />
+                        <SelectValue>
+                          {(value) => {
+                            const stringValue = typeof value === "string" ? value : "";
+                            if (!stringValue || stringValue === ALL_FILTER_VALUE) {
+                              return "All Countries";
+                            }
+
+                            return countryLabels[stringValue as keyof typeof countryLabels] ??
+                              "All Countries";
+                          }}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent align="start" className="max-h-72">
                         <SelectItem value={ALL_FILTER_VALUE}>All Countries</SelectItem>
@@ -300,7 +336,18 @@ function HomePage() {
                       }
                     >
                       <SelectTrigger aria-label="Hours" className={filterSelectTriggerClass}>
-                        <SelectValue />
+                        <SelectValue>
+                          {(value) => {
+                            const stringValue = typeof value === "string" ? value : "";
+                            if (!stringValue || stringValue === ALL_FILTER_VALUE) {
+                              return "All Hours";
+                            }
+
+                            return timeCategoryLabels[
+                              stringValue as keyof typeof timeCategoryLabels
+                            ] ?? "All Hours";
+                          }}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent align="start" className="max-h-72">
                         <SelectItem value={ALL_FILTER_VALUE}>All Hours</SelectItem>
@@ -323,7 +370,12 @@ function HomePage() {
                       }}
                     >
                       <SelectTrigger aria-label="Sort" className={filterSelectTriggerClass}>
-                        <SelectValue />
+                        <SelectValue>
+                          {(value) => {
+                            const stringValue = typeof value === "string" ? value : "";
+                            return sortLabelByValue[stringValue] ?? sortLabelByValue["rating-desc"];
+                          }}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent align="start" className="max-h-72">
                         <SelectItem value="rating-desc">Highest Rated</SelectItem>

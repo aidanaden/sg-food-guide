@@ -207,7 +207,16 @@ function CuisinePage() {
                       }
                     >
                       <SelectTrigger aria-label="Area" className={filterSelectTriggerClass}>
-                        <SelectValue />
+                        <SelectValue>
+                          {(value) => {
+                            const stringValue = typeof value === "string" ? value : "";
+                            if (!stringValue || stringValue === ALL_FILTER_VALUE) {
+                              return "All Areas";
+                            }
+
+                            return areaOptions.includes(stringValue) ? stringValue : "All Areas";
+                          }}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent align="start" className="max-h-72">
                         <SelectItem value={ALL_FILTER_VALUE}>All Areas</SelectItem>
@@ -229,7 +238,17 @@ function CuisinePage() {
                       }
                     >
                       <SelectTrigger aria-label="Country" className={filterSelectTriggerClass}>
-                        <SelectValue />
+                        <SelectValue>
+                          {(value) => {
+                            const stringValue = typeof value === "string" ? value : "";
+                            if (!stringValue || stringValue === ALL_FILTER_VALUE) {
+                              return "All Countries";
+                            }
+
+                            return countryLabels[stringValue as keyof typeof countryLabels] ??
+                              "All Countries";
+                          }}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent align="start" className="max-h-72">
                         <SelectItem value={ALL_FILTER_VALUE}>All Countries</SelectItem>
@@ -251,7 +270,18 @@ function CuisinePage() {
                       }
                     >
                       <SelectTrigger aria-label="Hours" className={filterSelectTriggerClass}>
-                        <SelectValue />
+                        <SelectValue>
+                          {(value) => {
+                            const stringValue = typeof value === "string" ? value : "";
+                            if (!stringValue || stringValue === ALL_FILTER_VALUE) {
+                              return "All Hours";
+                            }
+
+                            return timeCategoryLabels[
+                              stringValue as keyof typeof timeCategoryLabels
+                            ] ?? "All Hours";
+                          }}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent align="start" className="max-h-72">
                         <SelectItem value={ALL_FILTER_VALUE}>All Hours</SelectItem>
