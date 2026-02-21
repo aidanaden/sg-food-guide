@@ -99,9 +99,16 @@ type ResponsiveDialogTriggerProps = {
  */
 const ResponsiveDialogTrigger: FC<ResponsiveDialogTriggerProps> = ({ children, className }) => {
   const { setOpen } = useResponsiveDialog();
+  const openDialog = () => setOpen(true);
 
   return (
-    <button type="button" className={className} onClick={() => setOpen(true)}>
+    <button
+      type="button"
+      className={className}
+      onClick={openDialog}
+      onPointerDown={openDialog}
+      onTouchEnd={openDialog}
+    >
       {children}
     </button>
   );

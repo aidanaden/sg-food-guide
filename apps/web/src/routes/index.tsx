@@ -124,17 +124,19 @@ function HomePage() {
 
       <main className="mx-auto max-w-6xl px-4 py-6">
         <section className="mb-6">
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search stalls, dishes, areas..."
-              className="border-warm-700/50 bg-surface-raised min-h-11 min-w-0 flex-1 rounded-lg border px-3 text-base sm:text-sm"
-            />
+          <div className="isolate grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+            <div className="min-w-0">
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search stalls, dishes, areas..."
+                className="border-warm-700/50 bg-surface-raised relative z-0 min-h-11 w-full rounded-lg border px-3 text-base sm:text-sm"
+              />
+            </div>
 
             <ResponsiveDialog>
-              <ResponsiveDialogTrigger className="border-warm-700/50 bg-surface-raised text-ink-muted hover:border-flame-500/40 hover:text-flame-400 inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg border px-3 text-sm">
+              <ResponsiveDialogTrigger className="border-warm-700/50 bg-surface-raised text-ink-muted hover:border-flame-500/40 hover:text-flame-400 relative z-20 inline-flex min-h-11 flex-none touch-manipulation items-center gap-1.5 rounded-lg border px-3 text-sm">
                 <span className="i-ph-sliders-horizontal text-sm" />
                 Filters
               </ResponsiveDialogTrigger>
