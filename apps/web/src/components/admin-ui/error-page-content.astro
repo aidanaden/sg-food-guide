@@ -1,6 +1,0 @@
----
-import type { HTMLAttributes } from "astro/types";
-import { cn } from "./utils";
-const { class: className, ...attrs } = Astro.props as HTMLAttributes<"div">;
----
-<div data-slot="error-page-content" class={cn("flex flex-col gap-1", className)} {...attrs}><slot /></div>

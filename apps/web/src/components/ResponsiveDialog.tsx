@@ -8,7 +8,7 @@ type ResponsiveDialogProps = {
   children: React.ReactNode;
 };
 
-export function ResponsiveDislog({
+export function ResponsiveDialog({
   open,
   onOpenChange,
   title,
@@ -77,5 +77,3 @@ export function ResponsiveDislog({
     </>
   );
 }
-
-export const ResponsiveDialog = ResponsiveDislog;

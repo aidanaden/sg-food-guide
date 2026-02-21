@@ -1,6 +1,0 @@
----
-import type { HTMLAttributes } from "astro/types";
-import { cn } from "../utils";
-const { class: className, ...attrs } = Astro.props as HTMLAttributes<"p">;
----
-<p data-slot="field-description" class={cn("text-foreground-muted text-sm", className)} {...attrs}><slot /></p>

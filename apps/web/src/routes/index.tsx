@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { createFileRoute } from '@tanstack/react-router';
 
-import { ResponsiveDislog } from '../components/ResponsiveDialog';
+import { ResponsiveDialog } from '../components/ResponsiveDialog';
 import { StallCard } from '../components/StallCard';
 import { getFavorites, getVisited, toggleFavorite, toggleVisited } from '../lib/preferences';
 import {
@@ -95,7 +95,7 @@ function HomePage() {
               className="w-full min-h-11 rounded-lg border border-warm-700/50 bg-surface-raised px-3 text-base sm:text-sm"
             />
 
-            <ResponsiveDislog
+            <ResponsiveDialog
               open={isFiltersOpen}
               onOpenChange={setIsFiltersOpen}
               title="Filters"
@@ -165,7 +165,7 @@ function HomePage() {
                   Hide visited
                 </label>
               </div>
-            </ResponsiveDislog>
+            </ResponsiveDialog>
           </div>
         </section>
 

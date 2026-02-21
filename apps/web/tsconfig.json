@@ -9,9 +9,6 @@
   "include": ["src/**/*.ts", "src/**/*.tsx", "scripts/generate-route-tree.ts"],
   "exclude": [
     "node_modules",
-    "dist",
-    "src/components/admin-ui/**",
-    "src/pages/**",
-    "src/scripts/**"
+    "dist"
   ]
 }

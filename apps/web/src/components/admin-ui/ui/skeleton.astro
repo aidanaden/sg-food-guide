@@ -1,7 +1,0 @@
----
-import type { HTMLAttributes } from "astro/types";
-import { cn } from "../utils";
-const { class: className, ...attrs } = Astro.props as HTMLAttributes<"div">;
----
-
-<div data-slot="skeleton" class={cn("bg-muted animate-pulse rounded-md", className)} {...attrs} />
