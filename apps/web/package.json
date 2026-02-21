@@ -8,7 +8,7 @@
   },
   "scripts": {
     "transit": "echo transit",
-    "dev": "vite dev",
+    "dev": "vite dev --force",
     "routes:gen": "bun scripts/generate-route-tree.ts",
     "build": "vite build",
     "preview": "vite preview",

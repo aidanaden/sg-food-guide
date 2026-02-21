@@ -1,5 +1,5 @@
-import type { Stall } from '../stalls';
-import { slugify } from '../stalls';
+import type { Stall } from '../shared';
+import { slugify } from '../shared';
 
 export const bakChorMeeStalls: Stall[] = [
   // Ep1 West

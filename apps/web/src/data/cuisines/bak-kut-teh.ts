@@ -1,5 +1,5 @@
-import type { Stall } from '../stalls';
-import { slugify } from '../stalls';
+import type { Stall } from '../shared';
+import { slugify } from '../shared';
 
 export const bakKutTehStalls: Stall[] = [
   // Episode 1 - West SG VS Penang

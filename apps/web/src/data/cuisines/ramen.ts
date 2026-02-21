@@ -1,5 +1,5 @@
-import type { Stall } from '../stalls';
-import { slugify, parseTimeCategories } from '../stalls';
+import type { Stall } from '../shared';
+import { slugify, parseTimeCategories } from '../shared';
 
 export const ramenStalls: Stall[] = [
   // Ep 1
