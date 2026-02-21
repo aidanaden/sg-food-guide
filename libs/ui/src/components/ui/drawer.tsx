@@ -25,10 +25,7 @@ const DrawerClose: React.FC<DialogPrimitive.Close.Props> = (props) => (
   <DialogPrimitive.Close data-slot="drawer-close" {...props} />
 );
 
-const DrawerOverlay: React.FC<DialogPrimitive.Backdrop.Props> = ({
-  className,
-  ...props
-}) => (
+const DrawerOverlay: React.FC<DialogPrimitive.Backdrop.Props> = ({ className, ...props }) => (
   <DialogPrimitive.Backdrop
     data-slot="drawer-overlay"
     className={cn(
@@ -49,7 +46,7 @@ const DrawerContent: React.FC<DialogPrimitive.Popup.Props> = ({
     <DialogPrimitive.Popup
       data-slot="drawer-content"
       className={cn(
-        "bg-background data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto max-h-[85dvh] flex-col rounded-t-xl border p-0 outline-none duration-100",
+        "bg-background data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-open:slide-in-from-bottom-2 data-closed:slide-out-to-bottom-2 fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto max-h-[85dvh] flex-col rounded-t-xl border p-0 duration-150 outline-none",
         className,
       )}
       {...props}
@@ -76,10 +73,7 @@ const DrawerFooter: React.FC<React.ComponentProps<"div">> = ({ className, ...pro
   />
 );
 
-const DrawerTitle: React.FC<DialogPrimitive.Title.Props> = ({
-  className,
-  ...props
-}) => (
+const DrawerTitle: React.FC<DialogPrimitive.Title.Props> = ({ className, ...props }) => (
   <DialogPrimitive.Title
     data-slot="drawer-title"
     className={cn("text-lg leading-none font-semibold tracking-tight", className)}
