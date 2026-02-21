@@ -57,13 +57,25 @@ const DrawerOverlay: React.FC<DialogPrimitive.Backdrop.Props> = ({
   <DialogPrimitive.Backdrop
     data-slot="drawer-overlay"
     className={cn("fixed inset-0 z-50 bg-black/60", className)}
-    style={(state) => ({
-      ...resolveStyleProp(style, state),
-      opacity: state.open && state.transitionStatus !== "starting" ? 1 : 0,
-      transitionProperty: "opacity",
-      transitionDuration: `${DRAWER_CLOSE_ANIMATION_DURATION_MS}ms`,
-      transitionTimingFunction: "cubic-bezier(0, 0, 0.2, 1)",
-    })}
+    style={(state) => {
+      const animationName =
+        state.transitionStatus === "starting"
+          ? "sg-drawer-overlay-in"
+          : !state.open
+            ? "sg-drawer-overlay-out"
+            : undefined;
+
+      return {
+        ...resolveStyleProp(style, state),
+        opacity: state.open ? 1 : 0,
+        animationName,
+        animationDuration: animationName
+          ? `${DRAWER_CLOSE_ANIMATION_DURATION_MS}ms`
+          : undefined,
+        animationTimingFunction: animationName ? "cubic-bezier(0, 0, 0.2, 1)" : undefined,
+        animationFillMode: animationName ? "both" : undefined,
+      };
+    }}
     {...props}
   />
 );
@@ -228,23 +240,29 @@ const DrawerContent: React.FC<DialogPrimitive.Popup.Props> = ({
   const getContentStyle = React.useCallback(
     (state: DialogPrimitive.Popup.State): React.CSSProperties => {
       const resolvedStyle = resolveStyleProp(style, state);
-      const shouldHide =
-        !state.open || state.transitionStatus === "starting" || state.transitionStatus === "ending";
-      const transform =
-        dragOffset > 0
-          ? `translateY(${dragOffset}px)`
-          : shouldHide
-            ? "translateY(100%)"
-            : "translateY(0)";
+      const isOpen = state.open && state.transitionStatus !== "starting";
+      const animationName = isDragging
+        ? undefined
+        : state.transitionStatus === "starting"
+          ? "sg-drawer-content-in"
+          : !state.open
+            ? "sg-drawer-content-out"
+            : undefined;
+      const transform = dragOffset > 0
+        ? `translateY(${dragOffset}px)`
+        : isOpen
+          ? "translateY(0)"
+          : "translateY(100%)";
 
       return {
         ...resolvedStyle,
         maxHeight: "85dvh",
-        opacity: shouldHide ? 0 : 1,
+        opacity: isOpen ? 1 : 0,
         transform,
-        transitionProperty: isDragging ? "none" : "transform, opacity",
-        transitionDuration: isDragging ? undefined : `${DRAWER_CLOSE_ANIMATION_DURATION_MS}ms`,
-        transitionTimingFunction: isDragging ? undefined : "cubic-bezier(0, 0, 0.2, 1)",
+        animationName,
+        animationDuration: animationName ? `${DRAWER_CLOSE_ANIMATION_DURATION_MS}ms` : undefined,
+        animationTimingFunction: animationName ? "cubic-bezier(0, 0, 0.2, 1)" : undefined,
+        animationFillMode: animationName ? "both" : undefined,
       };
     },
     [dragOffset, isDragging, style],

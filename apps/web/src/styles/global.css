@@ -65,3 +65,43 @@
 .rating-border-1 { border-color: color-mix(in srgb, var(--color-flame-400) 30%, transparent); }
 .rating-border-2 { border-color: color-mix(in srgb, var(--color-gold-400) 30%, transparent); }
 .rating-border-3 { border-color: color-mix(in srgb, var(--color-jade-400) 30%, transparent); }
+
+@keyframes sg-drawer-overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes sg-drawer-overlay-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes sg-drawer-content-in {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes sg-drawer-content-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+}
