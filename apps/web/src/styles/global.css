@@ -39,6 +39,71 @@
   --color-ink: #f5ebe0;
   --color-ink-muted: #b8a896;
   --color-ink-faint: #7a6e62;
+
+  /* Compatibility tokens used by libs/ui primitives */
+  --color-background: var(--color-surface-raised);
+  --color-foreground: var(--color-ink);
+  --color-foreground-muted: var(--color-ink-muted);
+  --color-foreground-faint: var(--color-ink-faint);
+  --color-muted: var(--color-surface-overlay);
+  --color-border: var(--color-warm-700);
+  --color-border-input: var(--color-warm-700);
+  --color-ring: var(--color-flame-400);
+  --color-primary: var(--color-flame-400);
+  --color-primary-foreground: var(--color-surface);
+}
+
+@layer components {
+  [data-slot="dialog-content"],
+  [data-slot="drawer-content"] {
+    background-color: var(--color-background);
+  }
+
+  [data-slot="dialog-overlay"],
+  [data-slot="drawer-overlay"] {
+    opacity: 0;
+    transition: opacity 120ms ease;
+  }
+
+  [data-slot="dialog-overlay"][data-open],
+  [data-slot="drawer-overlay"][data-open] {
+    opacity: 1;
+  }
+
+  [data-slot="dialog-content"],
+  [data-slot="drawer-content"] {
+    opacity: 0;
+    transition:
+      transform 150ms ease,
+      opacity 120ms ease,
+      filter 150ms ease;
+  }
+
+  [data-slot="dialog-content"][data-open] {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+    filter: blur(0);
+  }
+
+  [data-slot="dialog-content"][data-closed] {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.95);
+    filter: blur(0.125rem);
+  }
+
+  [data-slot="drawer-content"][data-open] {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  [data-slot="drawer-content"][data-closed] {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+
+  [data-slot="drawer-content"] > :not([data-slot="drawer-header"]):not([data-slot="drawer-footer"]) {
+    padding-inline: 1rem;
+  }
 }
 
 /* Rating colors */
