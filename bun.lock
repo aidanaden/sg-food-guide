@@ -76,6 +76,7 @@
       "version": "0.0.0",
       "dependencies": {
         "better-result": "catalog:toolkit",
+        "date-fns": "catalog:toolkit",
         "zod": "catalog:toolkit",
       },
       "devDependencies": {

@@ -4,7 +4,6 @@ import { Button } from '@sg-food-guide/ui';
 import {
   type Stall,
   formatRelativeStallTimestamp,
-  formatStallTimestamp,
   getRatingLabel,
   getRatingVariant,
   getStallArea,
@@ -32,8 +31,7 @@ export function StallCard({
   const rating = stall.ratingModerated;
   const ratingVariant = getRatingVariant(rating);
   const ratingLabel = getRatingLabel(rating);
-  const addedAt = formatStallTimestamp(stall.addedAt);
-  const lastScrapedAt = formatRelativeStallTimestamp(stall.lastScrapedAt, { now: relativeNow });
+  const lastUpdatedAt = formatRelativeStallTimestamp(stall.lastScrapedAt, { now: relativeNow });
 
   return (
     <article className="group relative rounded-xl border border-border bg-surface-card p-4 shadow-sm">
@@ -61,7 +59,7 @@ export function StallCard({
       </div>
 
       <p className="mb-3 text-sm text-foreground-muted">{stall.dishName}</p>
-      <p className="mb-3 text-xs text-foreground-faint">Added {addedAt} · Last scraped {lastScrapedAt}</p>
+      <p className="mb-3 text-xs text-foreground-faint">Last updated {lastUpdatedAt}</p>
 
       <div className="relative z-20 flex items-center gap-2">
         <Button

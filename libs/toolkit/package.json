@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "better-result": "catalog:toolkit",
+    "date-fns": "catalog:toolkit",
     "zod": "catalog:toolkit"
   },
   "devDependencies": {

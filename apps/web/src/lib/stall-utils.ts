@@ -1,4 +1,5 @@
 import { Result } from 'better-result';
+import { _IntlDate, formatAge } from '@sg-food-guide/toolkit';
 
 import {
   type Country,
@@ -42,10 +43,9 @@ export function getYouTubeSearchUrl(title: string): string {
 
 const YOUTUBE_VIDEO_ID_RE = /^[A-Za-z0-9_-]{11}$/;
 const SQLITE_TIMESTAMP_RE = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
-const relativeTimeFormatter = new Intl.RelativeTimeFormat('en', {
-  style: 'narrow',
-  numeric: 'always',
-});
+const SG_TIMEZONE = 'Asia/Singapore';
+const FALLBACK_TIMESTAMP_LABEL = 'Unknown';
+const stallDate = new _IntlDate('en-SG');
 
 type RelativeTimestampOptions = {
   now?: string | number | Date;
@@ -111,22 +111,31 @@ function parseTimestampValue(value: string | null | undefined): Date | null {
   return parsed;
 }
 
-function toSignedRelativeValue(diffMs: number, unitMs: number): number {
-  const magnitude = Math.max(1, Math.round(Math.abs(diffMs) / unitMs));
-  return diffMs < 0 ? -magnitude : magnitude;
+function parseNowValue(value: string | number | Date | undefined): Date {
+  const referenceDate = value instanceof Date ? value : new Date(value ?? Date.now());
+  return Number.isNaN(referenceDate.getTime()) ? new Date() : referenceDate;
+}
+
+export function formatStallDate(value: string | null | undefined): string {
+  const parsed = parseTimestampValue(value);
+  if (!parsed) return FALLBACK_TIMESTAMP_LABEL;
+
+  return stallDate.format(parsed, {
+    timezone: SG_TIMEZONE,
+    withoutTime: true,
+  });
 }
 
 export function formatStallTimestamp(value: string | null | undefined): string {
   const parsed = parseTimestampValue(value);
-  if (!parsed) return 'Unknown';
+  if (!parsed) return FALLBACK_TIMESTAMP_LABEL;
 
-  const year = parsed.getUTCFullYear();
-  const month = String(parsed.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(parsed.getUTCDate()).padStart(2, '0');
-  const hour = String(parsed.getUTCHours()).padStart(2, '0');
-  const minute = String(parsed.getUTCMinutes()).padStart(2, '0');
-
-  return `${year}-${month}-${day} ${hour}:${minute} UTC`;
+  return stallDate.format(parsed, {
+    timezone: SG_TIMEZONE,
+    withoutSeconds: true,
+    withTimezone: true,
+    hour12: false,
+  });
 }
 
 export function formatRelativeStallTimestamp(
@@ -134,44 +143,17 @@ export function formatRelativeStallTimestamp(
   options?: RelativeTimestampOptions
 ): string {
   const parsed = parseTimestampValue(value);
-  if (!parsed) return 'Unknown';
+  if (!parsed) return FALLBACK_TIMESTAMP_LABEL;
 
-  const rawNow = options?.now ?? Date.now();
-  const referenceDate = rawNow instanceof Date ? rawNow : new Date(rawNow);
-  const now = Number.isNaN(referenceDate.getTime()) ? new Date() : referenceDate;
+  const now = parseNowValue(options?.now);
 
   const diffMs = parsed.getTime() - now.getTime();
-  const absMs = Math.abs(diffMs);
-  if (absMs < 30_000) return 'now';
+  if (Math.abs(diffMs) < 30_000) return 'just now';
 
-  const secondMs = 1_000;
-  const minuteMs = 60 * secondMs;
-  const hourMs = 60 * minuteMs;
-  const dayMs = 24 * hourMs;
-  const weekMs = 7 * dayMs;
-  const monthMs = 30 * dayMs;
-  const yearMs = 365 * dayMs;
+  const relativeValue = formatAge(parsed, now);
+  if (relativeValue === '-' || !relativeValue) return FALLBACK_TIMESTAMP_LABEL;
 
-  if (absMs >= yearMs) {
-    return relativeTimeFormatter.format(toSignedRelativeValue(diffMs, yearMs), 'year');
-  }
-  if (absMs >= monthMs) {
-    return relativeTimeFormatter.format(toSignedRelativeValue(diffMs, monthMs), 'month');
-  }
-  if (absMs >= weekMs) {
-    return relativeTimeFormatter.format(toSignedRelativeValue(diffMs, weekMs), 'week');
-  }
-  if (absMs >= dayMs) {
-    return relativeTimeFormatter.format(toSignedRelativeValue(diffMs, dayMs), 'day');
-  }
-  if (absMs >= hourMs) {
-    return relativeTimeFormatter.format(toSignedRelativeValue(diffMs, hourMs), 'hour');
-  }
-  if (absMs >= minuteMs) {
-    return relativeTimeFormatter.format(toSignedRelativeValue(diffMs, minuteMs), 'minute');
-  }
-
-  return relativeTimeFormatter.format(toSignedRelativeValue(diffMs, secondMs), 'second');
+  return diffMs <= 0 ? `${relativeValue} ago` : `in ${relativeValue}`;
 }
 
 export function getStallArea(stall: Stall): string {

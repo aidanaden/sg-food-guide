@@ -5,7 +5,6 @@ import { z } from 'zod';
 
 import {
   formatRelativeStallTimestamp,
-  formatStallTimestamp,
   getGoogleMapsUrl,
   getYouTubeEmbedUrl,
   getYouTubeSearchUrl,
@@ -60,8 +59,7 @@ function StallPage() {
     getYouTubeWatchUrl(stall.youtubeVideoUrl) ?? getYouTubeWatchUrl(stall.youtubeVideoId);
   const youtubeUrl = youtubeWatchUrl ?? getYouTubeSearchUrl(youtubeQuery);
   const youtubeEmbedUrl = youtubeVideoId ? getYouTubeEmbedUrl(youtubeVideoId) : null;
-  const addedAt = formatStallTimestamp(stall.addedAt);
-  const lastScrapedAt = formatRelativeStallTimestamp(stall.lastScrapedAt, { now: generatedAt });
+  const lastUpdatedAt = formatRelativeStallTimestamp(stall.lastScrapedAt, { now: generatedAt });
   const mapsEmbedQuery = encodeURIComponent(`${stall.googleMapsName} ${stall.address}`);
   const mapsSearchEmbedUrl = `https://maps.google.com/maps?q=${mapsEmbedQuery}&output=embed`;
 
@@ -111,8 +109,7 @@ function StallPage() {
           <InfoCard title="Area" icon="iconify ph--map-trifold" value={area} />
           <InfoCard title="Address" icon="iconify ph--map-pin" value={stall.address} />
           <InfoCard title="Opening Times" icon="iconify ph--clock" value={stall.openingTimes} />
-          <InfoCard title="Added" icon="iconify ph--calendar-plus" value={addedAt} />
-          <InfoCard title="Last Scraped" icon="iconify ph--arrow-clockwise" value={lastScrapedAt} />
+          <InfoCard title="Last Updated" icon="iconify ph--arrow-clockwise" value={lastUpdatedAt} />
         </div>
 
         {stall.hits.length > 0 ? (
