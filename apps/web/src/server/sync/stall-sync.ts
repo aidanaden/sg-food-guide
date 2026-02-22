@@ -13,6 +13,7 @@ import {
   getActiveStallIndex,
   insertSyncRun,
 } from '../stalls/repository';
+import { enrichOpeningTimesFromGoogleMaps } from './google-maps-hours';
 import { fetchSheetCsv, parseSheetRows, type SheetStallRow } from './sheet-source';
 import { buildCanonicalStallsFromStaticData } from './static-seed';
 import {
@@ -511,8 +512,18 @@ export async function runStallSync(args: RunStallSyncArgs): Promise<StallSyncSum
       throw sheetRowsResult.error;
     }
 
-    const sheetRows = sheetRowsResult.value;
+    let sheetRows = sheetRowsResult.value;
     const pipelineWarnings: string[] = [];
+
+    const mapsHoursResult = await enrichOpeningTimesFromGoogleMaps(sheetRows, args.env);
+    if (Result.isError(mapsHoursResult)) {
+      pipelineWarnings.push('Google Maps hours enrichment failed unexpectedly; proceeding with raw sheet opening times.');
+    } else {
+      sheetRows = mapsHoursResult.value.rows;
+      if (mapsHoursResult.value.warnings.length > 0) {
+        pipelineWarnings.push(...mapsHoursResult.value.warnings);
+      }
+    }
 
     let youtubeEntries: YouTubeVideoEntry[] = [];
     const youtubeFetchResult = await fetchYouTubeFeed(args.env);

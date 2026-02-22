@@ -23,6 +23,7 @@ const workerEnvSchema = z.object({
   FOOD_GUIDE_SHEET_ID: z.optional(z.string()),
   FOOD_GUIDE_SHEET_GID: z.optional(z.string()),
   FOOD_GUIDE_SHEET_CSV_URL: z.optional(z.string()),
+  GOOGLE_PLACES_API_KEY: z.optional(z.string()),
   YOUTUBE_CHANNEL_ID: z.optional(z.string()),
   YOUTUBE_CHANNEL_FEED_URL: z.optional(z.string()),
   STALL_SYNC_MODE: z.optional(modeSchema),
@@ -57,6 +58,7 @@ export interface WorkerEnv {
   FOOD_GUIDE_SHEET_ID?: string;
   FOOD_GUIDE_SHEET_GID?: string;
   FOOD_GUIDE_SHEET_CSV_URL?: string;
+  GOOGLE_PLACES_API_KEY?: string;
   YOUTUBE_CHANNEL_ID?: string;
   YOUTUBE_CHANNEL_FEED_URL?: string;
   STALL_SYNC_MODE?: 'dry-run' | 'apply';

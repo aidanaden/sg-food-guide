@@ -19,6 +19,7 @@ export interface SheetStallRow {
   ratingOriginal: number | null;
   ratingModerated: number | null;
   openingTimes: string;
+  googleMapsUrl: string | null;
   youtubeVideoUrl: string | null;
   youtubeTitle: string;
   awards: string[];
@@ -198,6 +199,41 @@ function parseAwards(value: string): string[] {
     .filter((award) => award.length > 0);
 }
 
+function normalizeGoogleMapsUrl(value: string): string | null {
+  const normalized = normalizeDisplayText(value);
+  if (normalized.length === 0) {
+    return null;
+  }
+
+  const withProtocol = /^https?:\/\//i.test(normalized) ? normalized : `https://${normalized}`;
+  const parsedUrlResult = Result.try(() => new URL(withProtocol));
+  if (Result.isError(parsedUrlResult)) {
+    return null;
+  }
+
+  const url = parsedUrlResult.value;
+  const hostname = url.hostname.replace(/^www\./, '').toLowerCase();
+  const isGoogleMapsHost =
+    hostname === 'google.com' ||
+    hostname.endsWith('.google.com') ||
+    hostname === 'maps.app.goo.gl' ||
+    hostname.endsWith('.maps.app.goo.gl') ||
+    hostname === 'goo.gl';
+
+  if (!isGoogleMapsHost) {
+    return null;
+  }
+
+  if (hostname.endsWith('google.com')) {
+    const pathname = url.pathname.toLowerCase();
+    if (!(pathname.startsWith('/maps') || pathname.startsWith('/search'))) {
+      return null;
+    }
+  }
+
+  return url.toString();
+}
+
 function normalizeCuisine(rawCuisine: string, fallbackDishName: string): { cuisine: string; cuisineLabel: string } {
   const label = normalizeDisplayText(rawCuisine || fallbackDishName || 'Unknown');
   const cuisine = label
@@ -299,6 +335,19 @@ export function parseSheetRows(csv: string): Result<SheetStallRow[], Error> {
   const priceCol = findOptionalColumn(headers, (header) => header === 'price');
   const ratingOriginalCol = findOptionalColumn(headers, (header) => header.includes('at time of shoot'));
   const ratingModeratedCol = findOptionalColumn(headers, (header) => header.includes('rating (moderated)'));
+  const googleMapsUrlCol = findOptionalColumn(
+    headers,
+    (header) =>
+      header === 'google maps' ||
+      header === 'google maps url' ||
+      header === 'google map url' ||
+      header === 'maps url' ||
+      header === 'map url' ||
+      header === 'maps link' ||
+      header === 'google maps link' ||
+      header === 'google map link' ||
+      (header.includes('google maps') && (header.includes('url') || header.includes('link')))
+  );
   const youtubeVideoLinkCol = findOptionalColumn(headers, (header) => header.includes('youtube video link'));
   const youtubeTitleCol = findOptionalColumn(headers, (header) => header === 'youtube title' || header === 'video title');
   const awardsCol = findOptionalColumn(headers, (header) => header === 'awards');
@@ -333,12 +382,15 @@ export function parseSheetRows(csv: string): Result<SheetStallRow[], Error> {
     const ratingOriginal = parseNumber(readCell(row, ratingOriginalCol));
     const ratingModerated = parseNumber(readCell(row, ratingModeratedCol));
     const openingTimes = readCell(row, openingTimesCol);
+    const googleMapsUrl = normalizeGoogleMapsUrl(readCell(row, googleMapsUrlCol));
     const youtubeVideoUrl = rawYoutube || lastYoutubeUrl;
     const youtubeTitle = readCell(row, youtubeTitleCol);
     const awards = parseAwards(readCell(row, awardsCol));
-    const sourceRowKey = `sheet-row-${makeStableHash(
-      `${name}|${address}|${country}|${cuisine.cuisine}|${dishName}|${episodeNumber ?? ''}|${youtubeVideoUrl ?? ''}`
-    ).slice(0, 24)}`;
+    const sourceRowIdentity =
+      googleMapsUrl && googleMapsUrl.length > 0
+        ? `${name}|${address}|${country}|${cuisine.cuisine}|${dishName}|${episodeNumber ?? ''}|${googleMapsUrl}|${youtubeVideoUrl ?? ''}`
+        : `${name}|${address}|${country}|${cuisine.cuisine}|${dishName}|${episodeNumber ?? ''}|${youtubeVideoUrl ?? ''}`;
+    const sourceRowKey = `sheet-row-${makeStableHash(sourceRowIdentity).slice(0, 24)}`;
 
     parsedRows.push({
       sourceRow: rowIndex + 1,
@@ -354,6 +406,7 @@ export function parseSheetRows(csv: string): Result<SheetStallRow[], Error> {
       ratingOriginal,
       ratingModerated,
       openingTimes,
+      googleMapsUrl,
       youtubeVideoUrl,
       youtubeTitle,
       awards,

@@ -26,6 +26,7 @@ Set via `wrangler.jsonc` vars and/or secrets:
 - `FOOD_GUIDE_SHEET_ID`
 - `FOOD_GUIDE_SHEET_GID`
 - `FOOD_GUIDE_SHEET_CSV_URL` (optional direct override; accepts Google Sheet edit URL and auto-converts to CSV export)
+- `GOOGLE_PLACES_API_KEY` (optional; used to enrich missing opening hours via Google Places lookups and Google Maps URL/query fallback)
 - `YOUTUBE_CHANNEL_ID` (recommended source, e.g. `UCH-dJYvV8UiemFsLZRO0X4A`)
 - `YOUTUBE_CHANNEL_FEED_URL` (optional direct override, e.g. `https://www.youtube.com/feeds/videos.xml?channel_id=...`)
 - `STALL_SYNC_MODE` (`dry-run` or `apply`)
