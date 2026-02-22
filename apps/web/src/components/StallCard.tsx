@@ -58,7 +58,7 @@ export function StallCard({
       </div>
 
       <p className="mb-3 text-sm text-foreground-muted">{stall.dishName}</p>
-      <p className="mb-3 text-xs text-foreground-faint">Added {addedAt} · Scraped {lastScrapedAt}</p>
+      <p className="mb-3 text-xs text-foreground-faint">Added {addedAt} · Last scraped {lastScrapedAt}</p>
 
       <div className="relative z-20 flex items-center gap-2">
         <Button
