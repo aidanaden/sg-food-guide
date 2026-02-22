@@ -52,6 +52,8 @@ export interface Stall {
   awards: string[];
   lat: number;
   lng: number;
+  addedAt?: string;
+  lastScrapedAt?: string;
 }
 
 export function slugify(name: string): string {

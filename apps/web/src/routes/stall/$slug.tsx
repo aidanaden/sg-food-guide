@@ -4,6 +4,7 @@ import { Button } from '@sg-food-guide/ui';
 import { z } from 'zod';
 
 import {
+  formatStallTimestamp,
   getGoogleMapsUrl,
   getYouTubeEmbedUrl,
   getYouTubeSearchUrl,
@@ -55,6 +56,8 @@ function StallPage() {
   const youtubeUrl = getYouTubeSearchUrl(youtubeQuery);
   const youtubeVideoId = normalizeYouTubeVideoId(stall.youtubeVideoId);
   const youtubeEmbedUrl = youtubeVideoId ? getYouTubeEmbedUrl(youtubeVideoId) : null;
+  const addedAt = formatStallTimestamp(stall.addedAt);
+  const lastScrapedAt = formatStallTimestamp(stall.lastScrapedAt);
   const mapsEmbedQuery = encodeURIComponent(`${stall.googleMapsName} ${stall.address}`);
   const mapsSearchEmbedUrl = `https://maps.google.com/maps?q=${mapsEmbedQuery}&output=embed`;
 
@@ -104,6 +107,8 @@ function StallPage() {
           <InfoCard title="Area" icon="iconify ph--map-trifold" value={area} />
           <InfoCard title="Address" icon="iconify ph--map-pin" value={stall.address} />
           <InfoCard title="Opening Times" icon="iconify ph--clock" value={stall.openingTimes} />
+          <InfoCard title="Added" icon="iconify ph--calendar-plus" value={addedAt} />
+          <InfoCard title="Last Scraped" icon="iconify ph--arrow-clockwise" value={lastScrapedAt} />
         </div>
 
         {stall.hits.length > 0 ? (

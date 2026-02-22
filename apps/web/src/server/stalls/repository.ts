@@ -143,6 +143,7 @@ export async function listActiveStalls(db: D1Database) {
       source_rank,
       source_sheet_hash,
       source_youtube_hash,
+      created_at,
       last_synced_at
     FROM stalls
     WHERE status = 'active'
@@ -201,6 +202,7 @@ export async function listActiveStallsByCuisine(db: D1Database, cuisine: string)
       source_rank,
       source_sheet_hash,
       source_youtube_hash,
+      created_at,
       last_synced_at
     FROM stalls
     WHERE status = 'active' AND cuisine = ?
@@ -259,6 +261,7 @@ export async function getActiveStallBySlug(db: D1Database, slug: string) {
       source_rank,
       source_sheet_hash,
       source_youtube_hash,
+      created_at,
       last_synced_at
     FROM stalls
     WHERE status = 'active' AND slug = ?

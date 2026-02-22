@@ -102,6 +102,7 @@ const dbStallRowSchema = z.object({
   source_rank: z.union([z.number(), z.string()]),
   source_sheet_hash: z.optional(z.union([z.string(), z.null()])),
   source_youtube_hash: z.optional(z.union([z.string(), z.null()])),
+  created_at: z.string(),
   last_synced_at: z.string(),
 });
 
@@ -205,5 +206,7 @@ export function mapDbRowToStall(row: unknown): Result<Stall, Error> {
     awards: awardsResult.value,
     lat,
     lng,
+    addedAt: rowValue.created_at,
+    lastScrapedAt: rowValue.last_synced_at,
   });
 }

@@ -41,6 +41,7 @@ export function getYouTubeSearchUrl(title: string): string {
 }
 
 const YOUTUBE_VIDEO_ID_RE = /^[A-Za-z0-9_-]{11}$/;
+const SQLITE_TIMESTAMP_RE = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
 
 function isAllowedYouTubeHostname(hostname: string): boolean {
   return (
@@ -83,6 +84,23 @@ export function getYouTubeEmbedUrl(videoId: string): string {
   const normalized = normalizeYouTubeVideoId(videoId);
   if (!normalized) return '';
   return `https://www.youtube-nocookie.com/embed/${normalized}`;
+}
+
+export function formatStallTimestamp(value: string | null | undefined): string {
+  const input = value?.trim();
+  if (!input) return 'Unknown';
+
+  const normalized = SQLITE_TIMESTAMP_RE.test(input) ? `${input.replace(' ', 'T')}Z` : input;
+  const parsed = new Date(normalized);
+  if (Number.isNaN(parsed.getTime())) return 'Unknown';
+
+  const year = parsed.getUTCFullYear();
+  const month = String(parsed.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(parsed.getUTCDate()).padStart(2, '0');
+  const hour = String(parsed.getUTCHours()).padStart(2, '0');
+  const minute = String(parsed.getUTCMinutes()).padStart(2, '0');
+
+  return `${year}-${month}-${day} ${hour}:${minute} UTC`;
 }
 
 export function getStallArea(stall: Stall): string {

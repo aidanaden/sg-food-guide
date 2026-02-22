@@ -1,7 +1,13 @@
 import { Link } from '@tanstack/react-router';
 import { Button } from '@sg-food-guide/ui';
 
-import { type Stall, getRatingLabel, getRatingVariant, getStallArea } from '../lib/stall-utils';
+import {
+  type Stall,
+  formatStallTimestamp,
+  getRatingLabel,
+  getRatingVariant,
+  getStallArea,
+} from '../lib/stall-utils';
 
 type StallCardProps = {
   stall: Stall;
@@ -23,6 +29,8 @@ export function StallCard({
   const rating = stall.ratingModerated;
   const ratingVariant = getRatingVariant(rating);
   const ratingLabel = getRatingLabel(rating);
+  const addedAt = formatStallTimestamp(stall.addedAt);
+  const lastScrapedAt = formatStallTimestamp(stall.lastScrapedAt);
 
   return (
     <article className="group relative rounded-xl border border-border bg-surface-card p-4 shadow-sm">
@@ -50,6 +58,7 @@ export function StallCard({
       </div>
 
       <p className="mb-3 text-sm text-foreground-muted">{stall.dishName}</p>
+      <p className="mb-3 text-xs text-foreground-faint">Added {addedAt} · Scraped {lastScrapedAt}</p>
 
       <div className="relative z-20 flex items-center gap-2">
         <Button
