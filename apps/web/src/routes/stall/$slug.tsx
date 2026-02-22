@@ -4,6 +4,7 @@ import { Button } from '@sg-food-guide/ui';
 import { z } from 'zod';
 
 import {
+  formatRelativeStallTimestamp,
   formatStallTimestamp,
   getGoogleMapsUrl,
   getYouTubeEmbedUrl,
@@ -27,13 +28,13 @@ export const Route = createFileRoute('/stall/$slug')({
     const stall = await getStallBySlug({ data: { slug: parsed.data.slug } });
     if (!stall) throw notFound();
 
-    return { stall };
+    return { stall, generatedAt: new Date().toISOString() };
   },
   component: StallPage,
 });
 
 function StallPage() {
-  const { stall } = Route.useLoaderData();
+  const { stall, generatedAt } = Route.useLoaderData();
   const [favoriteSet, setFavoriteSet] = useState<Set<string>>(() => new Set<string>());
   const [visitedSet, setVisitedSet] = useState<Set<string>>(() => new Set<string>());
 
@@ -60,7 +61,7 @@ function StallPage() {
   const youtubeUrl = youtubeWatchUrl ?? getYouTubeSearchUrl(youtubeQuery);
   const youtubeEmbedUrl = youtubeVideoId ? getYouTubeEmbedUrl(youtubeVideoId) : null;
   const addedAt = formatStallTimestamp(stall.addedAt);
-  const lastScrapedAt = formatStallTimestamp(stall.lastScrapedAt);
+  const lastScrapedAt = formatRelativeStallTimestamp(stall.lastScrapedAt, { now: generatedAt });
   const mapsEmbedQuery = encodeURIComponent(`${stall.googleMapsName} ${stall.address}`);
   const mapsSearchEmbedUrl = `https://maps.google.com/maps?q=${mapsEmbedQuery}&output=embed`;
 

@@ -54,13 +54,14 @@ export const Route = createFileRoute("/cuisine/$cuisine")({
       cuisineId: parsed.data.cuisine,
       cuisineLabel: firstStall.cuisineLabel,
       cuisineStalls,
+      generatedAt: new Date().toISOString(),
     };
   },
   component: CuisinePage,
 });
 
 function CuisinePage() {
-  const { cuisineLabel, cuisineStalls } = Route.useLoaderData();
+  const { cuisineLabel, cuisineStalls, generatedAt } = Route.useLoaderData();
 
   const [search, setSearch] = useState("");
   const [area, setArea] = useState("");
@@ -379,6 +380,7 @@ function CuisinePage() {
               stall={stall}
               isFavorite={favoriteSet.has(stall.slug)}
               isVisited={visitedSet.has(stall.slug)}
+              relativeNow={generatedAt}
               onToggleFavorite={(slug) => setFavoriteSet(toggleFavorite(slug))}
               onToggleVisited={(slug) => setVisitedSet(toggleVisited(slug))}
             />

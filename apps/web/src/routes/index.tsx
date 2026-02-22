@@ -44,13 +44,13 @@ const sortLabelByValue: Record<string, string> = {
 export const Route = createFileRoute("/")({
   loader: async () => {
     const loadedStalls = await getAllStalls();
-    return { stalls: loadedStalls };
+    return { stalls: loadedStalls, generatedAt: new Date().toISOString() };
   },
   component: HomePage,
 });
 
 function HomePage() {
-  const { stalls } = Route.useLoaderData();
+  const { stalls, generatedAt } = Route.useLoaderData();
   const [search, setSearch] = useState("");
   const [area, setArea] = useState("");
   const [cuisine, setCuisine] = useState("");
@@ -510,6 +510,7 @@ function HomePage() {
               showCuisine
               isFavorite={favoriteSet.has(stall.slug)}
               isVisited={visitedSet.has(stall.slug)}
+              relativeNow={generatedAt}
               onToggleFavorite={(slug) => setFavoriteSet(toggleFavorite(slug))}
               onToggleVisited={(slug) => setVisitedSet(toggleVisited(slug))}
             />

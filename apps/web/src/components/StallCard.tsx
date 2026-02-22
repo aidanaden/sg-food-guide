@@ -3,6 +3,7 @@ import { Button } from '@sg-food-guide/ui';
 
 import {
   type Stall,
+  formatRelativeStallTimestamp,
   formatStallTimestamp,
   getRatingLabel,
   getRatingVariant,
@@ -14,6 +15,7 @@ type StallCardProps = {
   showCuisine?: boolean;
   isFavorite: boolean;
   isVisited: boolean;
+  relativeNow: string;
   onToggleFavorite: (slug: string) => void;
   onToggleVisited: (slug: string) => void;
 };
@@ -23,6 +25,7 @@ export function StallCard({
   showCuisine = false,
   isFavorite,
   isVisited,
+  relativeNow,
   onToggleFavorite,
   onToggleVisited,
 }: StallCardProps) {
@@ -30,7 +33,7 @@ export function StallCard({
   const ratingVariant = getRatingVariant(rating);
   const ratingLabel = getRatingLabel(rating);
   const addedAt = formatStallTimestamp(stall.addedAt);
-  const lastScrapedAt = formatStallTimestamp(stall.lastScrapedAt);
+  const lastScrapedAt = formatRelativeStallTimestamp(stall.lastScrapedAt, { now: relativeNow });
 
   return (
     <article className="group relative rounded-xl border border-border bg-surface-card p-4 shadow-sm">

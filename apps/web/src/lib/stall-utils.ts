@@ -42,6 +42,14 @@ export function getYouTubeSearchUrl(title: string): string {
 
 const YOUTUBE_VIDEO_ID_RE = /^[A-Za-z0-9_-]{11}$/;
 const SQLITE_TIMESTAMP_RE = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
+const relativeTimeFormatter = new Intl.RelativeTimeFormat('en', {
+  style: 'narrow',
+  numeric: 'always',
+});
+
+type RelativeTimestampOptions = {
+  now?: string | number | Date;
+};
 
 function isAllowedYouTubeHostname(hostname: string): boolean {
   return (
@@ -92,13 +100,25 @@ export function getYouTubeWatchUrl(videoIdOrUrl: string | null | undefined): str
   return `https://www.youtube.com/watch?v=${normalized}`;
 }
 
-export function formatStallTimestamp(value: string | null | undefined): string {
+function parseTimestampValue(value: string | null | undefined): Date | null {
   const input = value?.trim();
-  if (!input) return 'Unknown';
+  if (!input) return null;
 
   const normalized = SQLITE_TIMESTAMP_RE.test(input) ? `${input.replace(' ', 'T')}Z` : input;
   const parsed = new Date(normalized);
-  if (Number.isNaN(parsed.getTime())) return 'Unknown';
+  if (Number.isNaN(parsed.getTime())) return null;
+
+  return parsed;
+}
+
+function toSignedRelativeValue(diffMs: number, unitMs: number): number {
+  const magnitude = Math.max(1, Math.round(Math.abs(diffMs) / unitMs));
+  return diffMs < 0 ? -magnitude : magnitude;
+}
+
+export function formatStallTimestamp(value: string | null | undefined): string {
+  const parsed = parseTimestampValue(value);
+  if (!parsed) return 'Unknown';
 
   const year = parsed.getUTCFullYear();
   const month = String(parsed.getUTCMonth() + 1).padStart(2, '0');
@@ -107,6 +127,51 @@ export function formatStallTimestamp(value: string | null | undefined): string {
   const minute = String(parsed.getUTCMinutes()).padStart(2, '0');
 
   return `${year}-${month}-${day} ${hour}:${minute} UTC`;
+}
+
+export function formatRelativeStallTimestamp(
+  value: string | null | undefined,
+  options?: RelativeTimestampOptions
+): string {
+  const parsed = parseTimestampValue(value);
+  if (!parsed) return 'Unknown';
+
+  const rawNow = options?.now ?? Date.now();
+  const referenceDate = rawNow instanceof Date ? rawNow : new Date(rawNow);
+  const now = Number.isNaN(referenceDate.getTime()) ? new Date() : referenceDate;
+
+  const diffMs = parsed.getTime() - now.getTime();
+  const absMs = Math.abs(diffMs);
+  if (absMs < 30_000) return 'now';
+
+  const secondMs = 1_000;
+  const minuteMs = 60 * secondMs;
+  const hourMs = 60 * minuteMs;
+  const dayMs = 24 * hourMs;
+  const weekMs = 7 * dayMs;
+  const monthMs = 30 * dayMs;
+  const yearMs = 365 * dayMs;
+
+  if (absMs >= yearMs) {
+    return relativeTimeFormatter.format(toSignedRelativeValue(diffMs, yearMs), 'year');
+  }
+  if (absMs >= monthMs) {
+    return relativeTimeFormatter.format(toSignedRelativeValue(diffMs, monthMs), 'month');
+  }
+  if (absMs >= weekMs) {
+    return relativeTimeFormatter.format(toSignedRelativeValue(diffMs, weekMs), 'week');
+  }
+  if (absMs >= dayMs) {
+    return relativeTimeFormatter.format(toSignedRelativeValue(diffMs, dayMs), 'day');
+  }
+  if (absMs >= hourMs) {
+    return relativeTimeFormatter.format(toSignedRelativeValue(diffMs, hourMs), 'hour');
+  }
+  if (absMs >= minuteMs) {
+    return relativeTimeFormatter.format(toSignedRelativeValue(diffMs, minuteMs), 'minute');
+  }
+
+  return relativeTimeFormatter.format(toSignedRelativeValue(diffMs, secondMs), 'second');
 }
 
 export function getStallArea(stall: Stall): string {
