@@ -18,6 +18,7 @@
     "test": "vitest run --passWithNoTests",
     "track:sheet": "bun scripts/track-food-guide-sheet.ts",
     "populate:youtube-ids": "bun scripts/populate-youtube-ids.ts",
+    "backfill:youtube-urls": "bun scripts/backfill-missing-youtube-urls.ts",
     "check:ratings": "bun scripts/validate-ratings.mjs",
     "d1:migrate:local": "wrangler d1 execute sg-food-guide-stalls --local --file ./data/d1/migrations/0001_init.sql",
     "d1:migrate:remote": "wrangler d1 execute sg-food-guide-stalls --remote --file ./data/d1/migrations/0001_init.sql",
