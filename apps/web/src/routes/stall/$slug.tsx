@@ -8,6 +8,7 @@ import {
   getGoogleMapsUrl,
   getYouTubeEmbedUrl,
   getYouTubeSearchUrl,
+  getYouTubeWatchUrl,
   normalizeYouTubeVideoId,
   getStallArea,
   getRatingLabel,
@@ -53,8 +54,10 @@ function StallPage() {
   const area = getStallArea(stall);
   const mapsUrl = getGoogleMapsUrl(stall.googleMapsName, stall.address);
   const youtubeQuery = stall.youtubeTitle || `${stall.name} review`;
-  const youtubeUrl = getYouTubeSearchUrl(youtubeQuery);
-  const youtubeVideoId = normalizeYouTubeVideoId(stall.youtubeVideoId);
+  const youtubeVideoId = normalizeYouTubeVideoId(stall.youtubeVideoId ?? stall.youtubeVideoUrl);
+  const youtubeWatchUrl =
+    getYouTubeWatchUrl(stall.youtubeVideoUrl) ?? getYouTubeWatchUrl(stall.youtubeVideoId);
+  const youtubeUrl = youtubeWatchUrl ?? getYouTubeSearchUrl(youtubeQuery);
   const youtubeEmbedUrl = youtubeVideoId ? getYouTubeEmbedUrl(youtubeVideoId) : null;
   const addedAt = formatStallTimestamp(stall.addedAt);
   const lastScrapedAt = formatStallTimestamp(stall.lastScrapedAt);
@@ -152,7 +155,7 @@ function StallPage() {
           </a>
         </section>
 
-        {stall.youtubeTitle || stall.youtubeVideoId ? (
+        {stall.youtubeTitle || stall.youtubeVideoId || stall.youtubeVideoUrl ? (
           <section className="mt-8">
             <h2 className="mb-3 font-display text-sm font-bold">Video Review</h2>
             {youtubeEmbedUrl ? (

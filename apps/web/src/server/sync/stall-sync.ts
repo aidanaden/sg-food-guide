@@ -132,7 +132,7 @@ function computeRowScore(row: SheetStallRow): number {
   return infoScore({
     openingTimes: row.openingTimes,
     dishName: row.dishName,
-    youtubeVideoUrl: row.youtubeVideoUrl,
+    youtubeVideoUrl: buildYouTubeVideoUrl(row.youtubeVideoUrl),
     hits: [],
     misses: [],
     awards: row.awards,
@@ -141,7 +141,53 @@ function computeRowScore(row: SheetStallRow): number {
   });
 }
 
+function findBestYoutubeMatchByReference(
+  reference: string | null | undefined,
+  videos: YouTubeVideoEntry[]
+): YouTubeVideoEntry | null {
+  const normalizedReference = normalizeComparableText(reference ?? '');
+  if (!normalizedReference) {
+    return null;
+  }
+
+  const referenceTokens = normalizedReference.split(/\s+/).filter((token) => token.length >= 3);
+  const episodeTokenMatch = normalizedReference.match(/\bepisode\s+\d+\b/);
+  const episodeToken = episodeTokenMatch?.[0] ?? null;
+
+  let best: YouTubeVideoEntry | null = null;
+  let bestScore = -1;
+
+  for (const video of videos) {
+    const normalizedTitle = normalizeComparableText(video.title);
+    if (!normalizedTitle) {
+      continue;
+    }
+
+    let score = 0;
+    if (normalizedTitle === normalizedReference) score += 10;
+    if (normalizedTitle.includes(normalizedReference)) score += 7;
+    if (normalizedReference.includes(normalizedTitle)) score += 3;
+    if (episodeToken && normalizedTitle.includes(episodeToken)) score += 5;
+
+    const matchingTokens = referenceTokens.filter((token) => normalizedTitle.includes(token));
+    score += matchingTokens.length;
+
+    if (score > bestScore) {
+      bestScore = score;
+      best = video;
+    }
+  }
+
+  return bestScore >= 6 ? best : null;
+}
+
 function findBestYoutubeMatch(row: SheetStallRow, videos: YouTubeVideoEntry[]): YouTubeVideoEntry | null {
+  const byReference = findBestYoutubeMatchByReference(row.youtubeVideoUrl, videos);
+  if (byReference) return byReference;
+
+  const byTitle = findBestYoutubeMatchByReference(row.youtubeTitle, videos);
+  if (byTitle) return byTitle;
+
   const normalizedName = normalizeComparableText(row.name);
   if (!normalizedName) return null;
 
@@ -186,7 +232,7 @@ function buildCanonicalFromSources(
       const locationMap = new Map<string, { address: string; youtubeVideoUrl: string | null }>();
       locationMap.set(address.toLowerCase(), {
         address,
-        youtubeVideoUrl: row.youtubeVideoUrl,
+        youtubeVideoUrl: buildYouTubeVideoUrl(row.youtubeVideoUrl),
       });
 
       groups.set(sourceKey, {
@@ -204,7 +250,7 @@ function buildCanonicalFromSources(
     if (!existing.locations.has(address.toLowerCase())) {
       existing.locations.set(address.toLowerCase(), {
         address,
-        youtubeVideoUrl: row.youtubeVideoUrl,
+        youtubeVideoUrl: buildYouTubeVideoUrl(row.youtubeVideoUrl),
       });
     }
 

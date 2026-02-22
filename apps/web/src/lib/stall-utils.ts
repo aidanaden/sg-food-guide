@@ -86,6 +86,12 @@ export function getYouTubeEmbedUrl(videoId: string): string {
   return `https://www.youtube-nocookie.com/embed/${normalized}`;
 }
 
+export function getYouTubeWatchUrl(videoIdOrUrl: string | null | undefined): string | null {
+  const normalized = normalizeYouTubeVideoId(videoIdOrUrl);
+  if (!normalized) return null;
+  return `https://www.youtube.com/watch?v=${normalized}`;
+}
+
 export function formatStallTimestamp(value: string | null | undefined): string {
   const input = value?.trim();
   if (!input) return 'Unknown';

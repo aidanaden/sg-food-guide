@@ -47,6 +47,7 @@ export interface Stall {
   hits: string[];
   misses: string[];
   youtubeTitle: string;
+  youtubeVideoUrl?: string;
   youtubeVideoId?: string;
   googleMapsName: string;
   awards: string[];

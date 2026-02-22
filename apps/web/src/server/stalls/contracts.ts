@@ -201,6 +201,7 @@ export function mapDbRowToStall(row: unknown): Result<Stall, Error> {
     hits: hitsResult.value,
     misses: missesResult.value,
     youtubeTitle: rowValue.youtube_title,
+    youtubeVideoUrl: rowValue.youtube_video_url || undefined,
     youtubeVideoId: rowValue.youtube_video_id || undefined,
     googleMapsName: rowValue.google_maps_name,
     awards: awardsResult.value,
