@@ -12,6 +12,9 @@
       "database_id": "36a8c75a-ea06-4f3c-b5d3-978899c46af8"
     }
   ],
+  "ai": {
+    "binding": "AI"
+  },
   "vars": {
     "FOOD_GUIDE_SHEET_ID": "1UMOZE2SM3_y5oUHafwJFEB9RrPDMqBbWjWnMGkO4gGg",
     "FOOD_GUIDE_SHEET_GID": "1935025317,1044192284,0,913918732,1491689747,1468657282,1136105343,1150004859,1906548174,1147413423",
@@ -25,7 +28,8 @@
     "COMMENT_SYNC_TOP_LEVEL_LIMIT": "50",
     "COMMENT_SYNC_MIN_LIKES": "2",
     "COMMENT_SYNC_HIGH_CONFIDENCE_THRESHOLD": "80",
-    "COMMENT_SYNC_LLM_MAX_COMMENTS_PER_RUN": "25"
+    "COMMENT_SYNC_LLM_MAX_COMMENTS_PER_RUN": "25",
+    "WORKERS_AI_MODEL": "@cf/meta/llama-3.1-8b-instruct-fast"
   },
   "triggers": {
     "crons": ["0 0 * * *"]

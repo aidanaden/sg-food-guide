@@ -50,7 +50,7 @@ const SELF_PROMO_PATTERNS = [/\bmy\s+channel\b/i, /\bcheck\s+out\s+my\b/i, /\bi\
 const MAPS_URL_PATTERN =
   /(https?:\/\/(?:maps\.app\.goo\.gl\/[^\s]+|goo\.gl\/maps\/[^\s]+|(?:www\.)?google\.com\/maps[^\s]*))/gi;
 
-const llmResponseSchema = z.object({
+const openAiResponseSchema = z.object({
   choices: z.array(
     z.object({
       message: z.object({
@@ -63,6 +63,11 @@ const llmResponseSchema = z.object({
 const llmJsonPayloadSchema = z.object({
   stalls: z.array(z.string()),
 });
+
+const DEFAULT_WORKERS_AI_MODEL = '@cf/meta/llama-3.1-8b-instruct-fast';
+const DEFAULT_OPENAI_MODEL = 'gpt-4o-mini';
+const LLM_SYSTEM_PROMPT =
+  'Extract food stall names from user text. Return strict JSON: {"stalls": string[]} with no explanation. Keep only plausible stall/place names.';
 
 export type CommentModerationFlag = 'spam' | 'profanity' | 'self-promo' | 'insufficient-signal';
 
@@ -258,13 +263,125 @@ function scoreSuggestion(
   return clampScore(score);
 }
 
-async function extractNamesWithLlm(env: WorkerEnv, commentText: string): Promise<Result<string[], Error>> {
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function normalizeLlmCandidates(candidates: string[]): string[] {
+  return [...new Set(candidates.map((name) => normalizeCandidateName(name)).filter((name) => isLikelyStallName(name)))];
+}
+
+function parseLlmPayloadObject(payload: unknown): Result<string[], Error> {
+  const parsedPayload = llmJsonPayloadSchema.safeParse(payload);
+  if (!parsedPayload.success) {
+    return Result.err(new Error('LLM extraction JSON payload did not match schema.'));
+  }
+
+  return Result.ok(normalizeLlmCandidates(parsedPayload.data.stalls));
+}
+
+function parseLlmJsonString(rawContent: string): Result<string[], Error> {
+  const normalizedContent = normalizeDisplayText(rawContent);
+  if (!normalizedContent) {
+    return Result.ok([]);
+  }
+
+  const parsedJson = Result.try(() => JSON.parse(normalizedContent));
+  if (!Result.isError(parsedJson)) {
+    return parseLlmPayloadObject(parsedJson.value);
+  }
+
+  const objectStart = normalizedContent.indexOf('{');
+  const objectEnd = normalizedContent.lastIndexOf('}');
+  if (objectStart === -1 || objectEnd <= objectStart) {
+    return Result.err(new Error('LLM extraction response was not valid JSON.'));
+  }
+
+  const slicedJson = normalizedContent.slice(objectStart, objectEnd + 1);
+  const parsedSlicedJson = Result.try(() => JSON.parse(slicedJson));
+  if (Result.isError(parsedSlicedJson)) {
+    return Result.err(new Error('LLM extraction response was not valid JSON.'));
+  }
+
+  return parseLlmPayloadObject(parsedSlicedJson.value);
+}
+
+function parseNamesFromLlmPayload(payload: unknown): Result<string[], Error> {
+  const queue: unknown[] = [payload];
+  const visited = new Set<unknown>();
+
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (current === undefined || current === null || visited.has(current)) {
+      continue;
+    }
+    visited.add(current);
+
+    if (typeof current === 'string') {
+      const parsedStringPayload = parseLlmJsonString(current);
+      if (!Result.isError(parsedStringPayload)) {
+        return parsedStringPayload;
+      }
+      continue;
+    }
+
+    const parsedObjectPayload = parseLlmPayloadObject(current);
+    if (!Result.isError(parsedObjectPayload)) {
+      return parsedObjectPayload;
+    }
+
+    if (!isRecord(current)) {
+      continue;
+    }
+
+    queue.push(current.response);
+    queue.push(current.result);
+    queue.push(current.output_text);
+    queue.push(current.content);
+  }
+
+  return Result.err(new Error('LLM response did not contain a valid stalls payload.'));
+}
+
+async function extractNamesWithWorkersAi(env: WorkerEnv, commentText: string): Promise<Result<string[], Error>> {
+  const aiBinding = env.AI;
+  if (!aiBinding) {
+    return Result.ok([]);
+  }
+
+  const model = normalizeDisplayText(env.WORKERS_AI_MODEL ?? DEFAULT_WORKERS_AI_MODEL) || DEFAULT_WORKERS_AI_MODEL;
+
+  const responseResult = await Result.tryPromise(() =>
+    aiBinding.run(model, {
+      temperature: 0,
+      max_tokens: 192,
+      messages: [
+        {
+          role: 'system',
+          content: LLM_SYSTEM_PROMPT,
+        },
+        {
+          role: 'user',
+          content: commentText,
+        },
+      ],
+    })
+  );
+
+  if (Result.isError(responseResult)) {
+    return Result.err(new Error('Failed to call Workers AI for comment extraction.'));
+  }
+
+  return parseNamesFromLlmPayload(responseResult.value);
+}
+
+async function extractNamesWithOpenAi(env: WorkerEnv, commentText: string): Promise<Result<string[], Error>> {
   const apiKey = normalizeDisplayText(env.OPENAI_API_KEY ?? '');
   if (!apiKey) {
     return Result.ok([]);
   }
 
-  const model = normalizeDisplayText(env.OPENAI_MODEL ?? 'gpt-4o-mini') || 'gpt-4o-mini';
+  const model = normalizeDisplayText(env.OPENAI_MODEL ?? DEFAULT_OPENAI_MODEL) || DEFAULT_OPENAI_MODEL;
 
   const responseResult = await Result.tryPromise(() =>
     fetch('https://api.openai.com/v1/chat/completions', {
@@ -279,8 +396,7 @@ async function extractNamesWithLlm(env: WorkerEnv, commentText: string): Promise
         messages: [
           {
             role: 'system',
-            content:
-              'Extract food stall names from user text. Return strict JSON: {"stalls": string[]} with no explanation. Keep only plausible stall/place names.',
+            content: LLM_SYSTEM_PROMPT,
           },
           {
             role: 'user',
@@ -304,7 +420,7 @@ async function extractNamesWithLlm(env: WorkerEnv, commentText: string): Promise
     return Result.err(new Error('Failed to parse OpenAI extraction response JSON.'));
   }
 
-  const parsedResponse = llmResponseSchema.safeParse(payloadResult.value);
+  const parsedResponse = openAiResponseSchema.safeParse(payloadResult.value);
   if (!parsedResponse.success) {
     return Result.err(new Error('Invalid OpenAI extraction response shape.'));
   }
@@ -314,21 +430,30 @@ async function extractNamesWithLlm(env: WorkerEnv, commentText: string): Promise
     return Result.ok([]);
   }
 
-  const llmJsonResult = Result.try(() => JSON.parse(rawContent));
-  if (Result.isError(llmJsonResult)) {
-    return Result.err(new Error('OpenAI extraction response was not valid JSON.'));
+  const parsedNames = parseNamesFromLlmPayload(rawContent);
+  if (Result.isError(parsedNames)) {
+    return Result.err(new Error('Invalid OpenAI extraction JSON payload.'));
   }
 
-  const parsedLlmJson = llmJsonPayloadSchema.safeParse(llmJsonResult.value);
-  if (!parsedLlmJson.success) {
-    return Result.err(new Error('OpenAI extraction JSON payload did not match schema.'));
+  return Result.ok(parsedNames.value);
+}
+
+async function extractNamesWithLlm(env: WorkerEnv, commentText: string): Promise<Result<string[], Error>> {
+  if (env.AI) {
+    const workersAiResult = await extractNamesWithWorkersAi(env, commentText);
+    if (!Result.isError(workersAiResult)) {
+      return workersAiResult;
+    }
+
+    const openAiFallbackResult = await extractNamesWithOpenAi(env, commentText);
+    if (!Result.isError(openAiFallbackResult)) {
+      return openAiFallbackResult;
+    }
+
+    return workersAiResult;
   }
 
-  const candidates = parsedLlmJson.data.stalls
-    .map((name) => normalizeCandidateName(name))
-    .filter((name) => isLikelyStallName(name));
-
-  return Result.ok([...new Set(candidates)]);
+  return extractNamesWithOpenAi(env, commentText);
 }
 
 export async function extractStallSuggestionsFromComment(

@@ -177,7 +177,9 @@ function resolveLlmMaxCommentsPerRun(env: WorkerEnv): number {
 }
 
 function resolveLlmEnabled(env: WorkerEnv): boolean {
-  const fallback = Boolean(normalizeDisplayText(env.OPENAI_API_KEY ?? ''));
+  const hasWorkersAi = Boolean(env.AI && typeof env.AI.run === 'function');
+  const hasOpenAi = Boolean(normalizeDisplayText(env.OPENAI_API_KEY ?? ''));
+  const fallback = hasWorkersAi || hasOpenAi;
   return boolFromValue(env.COMMENT_SYNC_LLM_ENABLED, fallback);
 }
 

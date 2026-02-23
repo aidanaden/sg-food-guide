@@ -7,6 +7,7 @@ import {
   getCommentSuggestionAdminData,
   reviewCommentSuggestionDraft,
 } from '../../server/comment-suggestions/admin.functions';
+import type { CommentSuggestionDraft } from '../../server/comment-suggestions/contracts';
 
 type DraftStatusFilter = 'all' | 'new' | 'reviewed' | 'approved' | 'rejected';
 
@@ -85,7 +86,7 @@ function AdminCommentDraftsPage() {
     }
 
     const normalizedQuery = query.trim().toLowerCase();
-    return loaderData.payload.drafts.filter((draft) => {
+    return loaderData.payload.drafts.filter((draft: CommentSuggestionDraft) => {
       if (statusFilter !== 'all' && draft.status !== statusFilter) {
         return false;
       }
@@ -212,7 +213,7 @@ function AdminCommentDraftsPage() {
         {actionMessage ? <p className="mb-3 text-sm text-primary">{actionMessage}</p> : null}
 
         <section className="space-y-3">
-          {filteredDrafts.map((draft) => {
+          {filteredDrafts.map((draft: CommentSuggestionDraft) => {
             const edit = edits[draft.id] ?? {
               editedName: draft.displayName,
               editedCountry: draft.country,

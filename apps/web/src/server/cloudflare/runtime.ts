@@ -15,11 +15,16 @@ export interface D1Database {
   exec(query: string): Promise<{ success: boolean }>;
 }
 
+export interface WorkersAiBinding {
+  run(model: string, inputs: Record<string, unknown>): Promise<unknown>;
+}
+
 const modeSchema = z.union([z.literal('dry-run'), z.literal('apply')]);
 const alertModeSchema = z.union([z.literal('all'), z.literal('failed')]);
 
 const workerEnvSchema = z.object({
   STALLS_DB: z.unknown(),
+  AI: z.optional(z.unknown()),
   FOOD_GUIDE_SHEET_ID: z.optional(z.string()),
   FOOD_GUIDE_SHEET_GID: z.optional(z.string()),
   FOOD_GUIDE_SHEET_CSV_URL: z.optional(z.string()),
@@ -39,6 +44,7 @@ const workerEnvSchema = z.object({
   COMMENT_SYNC_LLM_ENABLED: z.optional(z.union([z.string(), z.number(), z.boolean()])),
   COMMENT_SYNC_LLM_MAX_COMMENTS_PER_RUN: z.optional(z.union([z.string(), z.number()])),
   CLOUDFLARE_ACCESS_ADMIN_EMAILS: z.optional(z.string()),
+  WORKERS_AI_MODEL: z.optional(z.string()),
   OPENAI_API_KEY: z.optional(z.string()),
   OPENAI_MODEL: z.optional(z.string()),
   SYNC_ADMIN_TOKEN: z.optional(z.string()),
@@ -66,6 +72,7 @@ export interface WorkerExecutionContextLike {
 
 export interface WorkerEnv {
   STALLS_DB: D1Database;
+  AI?: WorkersAiBinding;
   FOOD_GUIDE_SHEET_ID?: string;
   FOOD_GUIDE_SHEET_GID?: string;
   FOOD_GUIDE_SHEET_CSV_URL?: string;
@@ -85,6 +92,7 @@ export interface WorkerEnv {
   COMMENT_SYNC_LLM_ENABLED?: string | number | boolean;
   COMMENT_SYNC_LLM_MAX_COMMENTS_PER_RUN?: string | number;
   CLOUDFLARE_ACCESS_ADMIN_EMAILS?: string;
+  WORKERS_AI_MODEL?: string;
   OPENAI_API_KEY?: string;
   OPENAI_MODEL?: string;
   SYNC_ADMIN_TOKEN?: string;
@@ -142,6 +150,15 @@ export function isD1Database(value: unknown): value is D1Database {
   );
 }
 
+function isWorkersAiBinding(value: unknown): value is WorkersAiBinding {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+
+  const candidate = value as Partial<WorkersAiBinding>;
+  return typeof candidate.run === 'function';
+}
+
 export function parseWorkerEnv(input: unknown): Result<WorkerEnv, Error> {
   const parsed = workerEnvSchema.safeParse(input);
   if (!parsed.success) {
@@ -152,9 +169,16 @@ export function parseWorkerEnv(input: unknown): Result<WorkerEnv, Error> {
     return Result.err(new Error('Missing required D1 binding "STALLS_DB".'));
   }
 
+  if (parsed.data.AI !== undefined && !isWorkersAiBinding(parsed.data.AI)) {
+    return Result.err(new Error('Invalid optional AI binding "AI".'));
+  }
+
+  const aiBinding = parsed.data.AI as WorkersAiBinding | undefined;
+
   return Result.ok({
     ...parsed.data,
     STALLS_DB: parsed.data.STALLS_DB,
+    AI: aiBinding,
   });
 }
 

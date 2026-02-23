@@ -1,6 +1,7 @@
 import { Link, createFileRoute } from '@tanstack/react-router';
 
 import { getPublicCommentSourceStalls } from '../../server/comment-suggestions/admin.functions';
+import type { ApprovedCommentSourceStall } from '../../server/comment-suggestions/contracts';
 
 export const Route = createFileRoute('/community/stalls')({
   loader: async () => {
@@ -45,7 +46,7 @@ function CommunityStallsPage() {
         </p>
 
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {stalls.map((stall) => (
+          {stalls.map((stall: ApprovedCommentSourceStall) => (
             <article key={stall.id} className="border-border bg-surface-card rounded-xl border p-4">
               <header className="mb-3">
                 <h2 className="font-display text-lg font-bold">{stall.name}</h2>
