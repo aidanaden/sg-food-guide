@@ -31,10 +31,14 @@ const workerEnvSchema = z.object({
   GOOGLE_PLACES_API_KEY: z.optional(z.string()),
   YOUTUBE_CHANNEL_ID: z.optional(z.string()),
   YOUTUBE_DATA_API_KEY: z.optional(z.string()),
+  ONEMAP_EMAIL: z.optional(z.string()),
+  ONEMAP_PASSWORD: z.optional(z.string()),
+  LTA_ACCOUNT_KEY: z.optional(z.string()),
   STALL_SYNC_MODE: z.optional(modeSchema),
   STALL_SYNC_MAX_CHANGE_RATIO: z.optional(z.union([z.string(), z.number()])),
   STALL_SYNC_ALERT_MODE: z.optional(alertModeSchema),
   STALL_SYNC_FORCE_APPLY: z.optional(z.union([z.string(), z.number()])),
+  STALL_SYNC_MANUAL_YOUTUBE_OVERRIDES_JSON: z.optional(z.string()),
   COMMENT_SYNC_MODE: z.optional(modeSchema),
   COMMENT_SYNC_FORCE_APPLY: z.optional(z.union([z.string(), z.number()])),
   COMMENT_SYNC_MAX_VIDEOS_PER_RUN: z.optional(z.union([z.string(), z.number()])),
@@ -52,20 +56,6 @@ const workerEnvSchema = z.object({
   TELEGRAM_CHAT_ID: z.optional(z.string()),
 });
 
-const requestContextSchema = z.object({
-  cloudflare: z.object({
-    env: z.unknown(),
-    executionCtx: z.optional(z.unknown()),
-    request: z.optional(z.unknown()),
-  }),
-});
-
-const cloudflareContextSchema = z.object({
-  env: z.unknown(),
-  executionCtx: z.optional(z.unknown()),
-  request: z.optional(z.unknown()),
-});
-
 export interface WorkerExecutionContextLike {
   waitUntil(promise: Promise<unknown>): void;
 }
@@ -79,10 +69,14 @@ export interface WorkerEnv {
   GOOGLE_PLACES_API_KEY?: string;
   YOUTUBE_CHANNEL_ID?: string;
   YOUTUBE_DATA_API_KEY?: string;
+  ONEMAP_EMAIL?: string;
+  ONEMAP_PASSWORD?: string;
+  LTA_ACCOUNT_KEY?: string;
   STALL_SYNC_MODE?: 'dry-run' | 'apply';
   STALL_SYNC_MAX_CHANGE_RATIO?: string | number;
   STALL_SYNC_ALERT_MODE?: 'all' | 'failed';
   STALL_SYNC_FORCE_APPLY?: string | number;
+  STALL_SYNC_MANUAL_YOUTUBE_OVERRIDES_JSON?: string;
   COMMENT_SYNC_MODE?: 'dry-run' | 'apply';
   COMMENT_SYNC_FORCE_APPLY?: string | number;
   COMMENT_SYNC_MAX_VIDEOS_PER_RUN?: string | number;
@@ -108,29 +102,86 @@ export interface WorkerRequestContext {
   };
 }
 
-function resolveCloudflareContext(context: unknown): Result<z.infer<typeof cloudflareContextSchema>, Error> {
-  const parsedContext = requestContextSchema.safeParse(context);
-  if (parsedContext.success) {
-    return Result.ok(parsedContext.data.cloudflare);
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+interface CloudflareContextPayload {
+  env: unknown;
+  executionCtx?: unknown;
+  request?: unknown;
+}
+
+function toCloudflareContextPayload(input: unknown): CloudflareContextPayload | null {
+  if (!isRecord(input)) {
+    return null;
   }
 
-  const parsedDirectContext = cloudflareContextSchema.safeParse(context);
-  if (parsedDirectContext.success) {
-    return Result.ok(parsedDirectContext.data);
+  if (input.env === undefined) {
+    return null;
+  }
+
+  return {
+    env: input.env,
+    executionCtx: input.executionCtx,
+    request: input.request,
+  };
+}
+
+function tryParseCloudflareContext(input: unknown, depth = 0): CloudflareContextPayload | null {
+  if (depth > 3) {
+    return null;
+  }
+
+  const directContext = toCloudflareContextPayload(input);
+  if (directContext) {
+    return directContext;
+  }
+
+  if (!isRecord(input)) {
+    return null;
+  }
+
+  const directCloudflare = input.cloudflare;
+  if (directCloudflare !== undefined) {
+    const parsedDirectCloudflare = toCloudflareContextPayload(directCloudflare);
+    if (parsedDirectCloudflare) {
+      return parsedDirectCloudflare;
+    }
+  }
+
+  const nestedRequestContext = input.requestContext;
+  if (nestedRequestContext !== undefined) {
+    const parsedNestedRequestContext = tryParseCloudflareContext(nestedRequestContext, depth + 1);
+    if (parsedNestedRequestContext) {
+      return parsedNestedRequestContext;
+    }
+  }
+
+  const nestedContext = input.context;
+  if (nestedContext !== undefined) {
+    const parsedNestedContext = tryParseCloudflareContext(nestedContext, depth + 1);
+    if (parsedNestedContext) {
+      return parsedNestedContext;
+    }
+  }
+
+  return null;
+}
+
+function resolveCloudflareContext(context: unknown): Result<CloudflareContextPayload, Error> {
+  const parsedContext = tryParseCloudflareContext(context);
+  if (parsedContext) {
+    return Result.ok(parsedContext);
   }
 
   const startContextResult = Result.try(() => getStartContext({ throwIfNotFound: false }));
   if (!Result.isError(startContextResult)) {
     const globalContext = startContextResult.value?.contextAfterGlobalMiddlewares;
 
-    const parsedGlobalContext = requestContextSchema.safeParse(globalContext);
-    if (parsedGlobalContext.success) {
-      return Result.ok(parsedGlobalContext.data.cloudflare);
-    }
-
-    const parsedGlobalDirectContext = cloudflareContextSchema.safeParse(globalContext);
-    if (parsedGlobalDirectContext.success) {
-      return Result.ok(parsedGlobalDirectContext.data);
+    const parsedGlobalContext = tryParseCloudflareContext(globalContext);
+    if (parsedGlobalContext) {
+      return Result.ok(parsedGlobalContext);
     }
   }
 

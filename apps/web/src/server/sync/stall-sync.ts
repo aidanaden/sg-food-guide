@@ -39,6 +39,7 @@ import {
   searchYouTubeChannelVideoIdsByQuery,
   type YouTubeVideoEntry,
 } from './youtube-source';
+import { loadManualYouTubeOverrides, type ManualYouTubeOverride } from './youtube-manual-overrides';
 
 export type StallSyncMode = 'dry-run' | 'apply';
 export type StallSyncStatus = 'success' | 'failed' | 'guarded';
@@ -349,6 +350,56 @@ function dedupeYouTubeEntries(entries: YouTubeVideoEntry[]): YouTubeVideoEntry[]
     }
   }
   return [...byVideoId.values()];
+}
+
+function applyManualYouTubeOverrides(
+  stalls: CanonicalStall[],
+  overrides: ManualYouTubeOverride[]
+): { appliedCount: number; unusedSourceKeys: string[] } {
+  if (overrides.length === 0 || stalls.length === 0) {
+    return {
+      appliedCount: 0,
+      unusedSourceKeys: overrides.map((override) => override.sourceStallKey),
+    };
+  }
+
+  const bySourceKey = new Map(overrides.map((override) => [override.sourceStallKey, override]));
+  const usedSourceKeys = new Set<string>();
+  let appliedCount = 0;
+
+  for (const stall of stalls) {
+    const override = bySourceKey.get(stall.sourceStallKey);
+    if (!override) {
+      continue;
+    }
+
+    usedSourceKeys.add(override.sourceStallKey);
+    const title = override.youtubeTitle || stall.youtubeTitle;
+    const changed =
+      stall.youtubeVideoUrl !== override.youtubeVideoUrl ||
+      stall.youtubeVideoId !== override.youtubeVideoId ||
+      stall.youtubeTitle !== title;
+
+    stall.youtubeVideoUrl = override.youtubeVideoUrl;
+    stall.youtubeVideoId = override.youtubeVideoId;
+    stall.youtubeTitle = title;
+    stall.sourceYoutubeHash = override.youtubeVideoId ?? override.youtubeVideoUrl;
+
+    for (const location of stall.locations) {
+      location.youtubeVideoUrl = override.youtubeVideoUrl;
+    }
+
+    if (changed) {
+      appliedCount += 1;
+    }
+  }
+
+  const unusedSourceKeys = [...bySourceKey.keys()].filter((sourceKey) => !usedSourceKeys.has(sourceKey));
+
+  return {
+    appliedCount,
+    unusedSourceKeys,
+  };
 }
 
 function buildCanonicalFromSources(
@@ -800,6 +851,26 @@ export async function runStallSync(args: RunStallSyncArgs): Promise<StallSyncSum
     if (canonical.length === 0) {
       canonical = buildCanonicalStallsFromStaticData(startedAt);
       usedStaticSeed = true;
+    }
+
+    const manualOverridesResult = loadManualYouTubeOverrides(args.env);
+    if (Result.isError(manualOverridesResult)) {
+      pipelineWarnings.push(
+        `Manual YouTube override parsing failed; continuing without overrides. Reason: ${sanitizeExternalErrorMessage(manualOverridesResult.error.message)}`
+      );
+    } else {
+      const manualOverrideApplyResult = applyManualYouTubeOverrides(canonical, manualOverridesResult.value);
+      if (manualOverrideApplyResult.appliedCount > 0) {
+        pipelineWarnings.push(
+          `Applied ${manualOverrideApplyResult.appliedCount} manual YouTube override(s) for unresolved/member-only mappings.`
+        );
+      }
+      if (manualOverrideApplyResult.unusedSourceKeys.length > 0) {
+        const examples = manualOverrideApplyResult.unusedSourceKeys.slice(0, 3).join(', ');
+        pipelineWarnings.push(
+          `Manual YouTube overrides unmatched: ${manualOverrideApplyResult.unusedSourceKeys.length}${examples ? ` (e.g. ${examples})` : ''}.`
+        );
+      }
     }
 
     const slugAdjustments = ensureUniqueCanonicalSlugs(canonical, existingSlugIndexResult.value);

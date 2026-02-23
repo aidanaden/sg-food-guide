@@ -34,11 +34,21 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
+function resolveWorkerEnv(primaryContext: unknown, fallbackContext: unknown) {
+  const primaryResult = getWorkerEnvFromServerContext(primaryContext);
+  if (!Result.isError(primaryResult)) {
+    return primaryResult;
+  }
+
+  return getWorkerEnvFromServerContext(fallbackContext);
+}
+
 export const Route = createFileRoute('/api/sync/stalls')({
   server: {
     handlers: {
-      POST: async ({ request, context }) => {
-        const envResult = getWorkerEnvFromServerContext(context);
+      POST: async (handlerContext) => {
+        const { request, context } = handlerContext;
+        const envResult = resolveWorkerEnv(context, handlerContext);
         if (Result.isError(envResult)) {
           return json({ error: 'Missing worker environment context.' }, 500);
         }
@@ -79,7 +89,8 @@ export const Route = createFileRoute('/api/sync/stalls')({
         const statusCode = summary.status === 'failed' ? 500 : 200;
         return json(summary, statusCode);
       },
-      GET: async ({ request, context }) => {
+      GET: async (handlerContext) => {
+        const { request, context } = handlerContext;
         const url = new URL(request.url);
         const payload = syncRequestSchema.safeParse({
           mode: url.searchParams.get('mode') ?? undefined,
@@ -91,7 +102,7 @@ export const Route = createFileRoute('/api/sync/stalls')({
           return json({ error: 'Invalid sync query payload.' }, 400);
         }
 
-        const envResult = getWorkerEnvFromServerContext(context);
+        const envResult = resolveWorkerEnv(context, handlerContext);
         if (Result.isError(envResult)) {
           return json({ error: 'Missing worker environment context.' }, 500);
         }

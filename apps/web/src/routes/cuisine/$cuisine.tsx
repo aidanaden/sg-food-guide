@@ -1,6 +1,5 @@
 import { Link, createFileRoute, notFound } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { z } from "zod";
 
 import {
   Button,
@@ -28,34 +27,17 @@ import {
   countryLabels,
 } from "../../lib/stall-utils";
 import { getFavorites, getVisited, toggleFavorite, toggleVisited } from "../../lib/preferences";
-import { getStallsByCuisine as getStallsByCuisineServer } from "../../server/stalls/read.functions";
+import { loadCuisineRouteData } from "../../lib/route-loaders";
 
 const ALL_FILTER_VALUE = "__all__";
 
-const paramsSchema = z.object({ cuisine: z.string().min(1) });
-
 export const Route = createFileRoute("/cuisine/$cuisine")({
   loader: async ({ params }) => {
-    const parsed = paramsSchema.safeParse(params);
-    if (!parsed.success) {
+    const data = await loadCuisineRouteData(params);
+    if (!data) {
       throw notFound();
     }
-
-    const cuisineStalls = await getStallsByCuisineServer({ data: { cuisine: parsed.data.cuisine } });
-    if (cuisineStalls.length === 0) {
-      throw notFound();
-    }
-    const firstStall = cuisineStalls[0];
-    if (!firstStall) {
-      throw notFound();
-    }
-
-    return {
-      cuisineId: parsed.data.cuisine,
-      cuisineLabel: firstStall.cuisineLabel,
-      cuisineStalls,
-      generatedAt: new Date().toISOString(),
-    };
+    return data;
   },
   component: CuisinePage,
 });

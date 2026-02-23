@@ -33,6 +33,7 @@ Set via `wrangler.jsonc` vars and/or secrets:
 - `STALL_SYNC_MAX_CHANGE_RATIO` (0..1)
 - `STALL_SYNC_ALERT_MODE` (`all` or `failed`)
 - `STALL_SYNC_FORCE_APPLY` (`1`/`0`, optional)
+- `STALL_SYNC_MANUAL_YOUTUBE_OVERRIDES_JSON` (optional JSON array of manual member-only YouTube overrides)
 - `COMMENT_SYNC_MODE` (`dry-run` or `apply`)
 - `COMMENT_SYNC_FORCE_APPLY` (`1`/`0`, optional)
 - `COMMENT_SYNC_MAX_VIDEOS_PER_RUN` (default `30`)
@@ -49,6 +50,30 @@ Set via `wrangler.jsonc` vars and/or secrets:
 - `SYNC_ADMIN_TOKEN` (optional token for `/api/sync/stalls` and `/api/sync/comment-suggestions`)
 - `TELEGRAM_BOT_TOKEN` (optional)
 - `TELEGRAM_CHAT_ID` (optional)
+
+### Manual YouTube Override Format
+
+When member-only videos are not discoverable via public YouTube APIs, set `STALL_SYNC_MANUAL_YOUTUBE_OVERRIDES_JSON`:
+
+```json
+[
+  {
+    "sourceStallKey": "bari uma|sg|japanese",
+    "youtubeVideoUrl": "https://www.youtube.com/watch?v=XXXXXXXXXXX",
+    "youtubeTitle": "Optional manual title"
+  }
+]
+```
+
+You can also provide `name`, `cuisine`, and `country` instead of `sourceStallKey`; the sync derives the stable key automatically.
+
+### Cloudflare Access Admin Onboarding
+
+1. Ensure Cloudflare Access policy for your app includes the admin identity.
+2. Set `CLOUDFLARE_ACCESS_ADMIN_EMAILS` in Wrangler vars/secrets (comma-separated, lowercase recommended).
+3. Verify access:
+   - authorized identity can load `/admin/comment-drafts`
+   - non-allowlisted identity receives admin access error
 
 ## Manual Trigger
 

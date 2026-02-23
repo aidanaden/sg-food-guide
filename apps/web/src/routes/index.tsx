@@ -30,7 +30,7 @@ import {
   countryLabels,
 } from "../lib/stall-utils";
 import { getFavorites, getVisited, toggleFavorite, toggleVisited } from "../lib/preferences";
-import { getAllStalls } from "../server/stalls/read.functions";
+import { loadHomeRouteData } from "../lib/route-loaders";
 
 const ALL_FILTER_VALUE = "__all__";
 const sortLabelByValue: Record<string, string> = {
@@ -42,10 +42,7 @@ const sortLabelByValue: Record<string, string> = {
 };
 
 export const Route = createFileRoute("/")({
-  loader: async () => {
-    const loadedStalls = await getAllStalls();
-    return { stalls: loadedStalls, generatedAt: new Date().toISOString() };
-  },
+  loader: async () => loadHomeRouteData(),
   component: HomePage,
 });
 

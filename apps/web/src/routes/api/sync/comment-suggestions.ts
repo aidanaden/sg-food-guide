@@ -37,11 +37,21 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
+function resolveWorkerEnv(primaryContext: unknown, fallbackContext: unknown) {
+  const primaryResult = getWorkerEnvFromServerContext(primaryContext);
+  if (!Result.isError(primaryResult)) {
+    return primaryResult;
+  }
+
+  return getWorkerEnvFromServerContext(fallbackContext);
+}
+
 export const Route = createFileRoute('/api/sync/comment-suggestions')({
   server: {
     handlers: {
-      POST: async ({ request, context }) => {
-        const envResult = getWorkerEnvFromServerContext(context);
+      POST: async (handlerContext) => {
+        const { request, context } = handlerContext;
+        const envResult = resolveWorkerEnv(context, handlerContext);
         if (Result.isError(envResult)) {
           return json({ error: 'Missing worker environment context.' }, 500);
         }
@@ -81,8 +91,9 @@ export const Route = createFileRoute('/api/sync/comment-suggestions')({
         const statusCode = summary.status === 'failed' ? 500 : 200;
         return json(summary, statusCode);
       },
-      GET: async ({ request, context }) => {
-        const envResult = getWorkerEnvFromServerContext(context);
+      GET: async (handlerContext) => {
+        const { request, context } = handlerContext;
+        const envResult = resolveWorkerEnv(context, handlerContext);
         if (Result.isError(envResult)) {
           return json({ error: 'Missing worker environment context.' }, 500);
         }

@@ -2,7 +2,7 @@
   "$schema": "../../node_modules/wrangler/config-schema.json",
   "name": "sg-food-guide",
   "account_id": "7eabd3e4dab6d4da3d90cc7cd6d9e8d1",
-  "compatibility_date": "2025-09-27",
+  "compatibility_date": "2026-02-23",
   "compatibility_flags": ["nodejs_compat"],
   "main": "./worker-entry.ts",
   "d1_databases": [
@@ -29,7 +29,8 @@
     "COMMENT_SYNC_MIN_LIKES": "2",
     "COMMENT_SYNC_HIGH_CONFIDENCE_THRESHOLD": "80",
     "COMMENT_SYNC_LLM_MAX_COMMENTS_PER_RUN": "25",
-    "WORKERS_AI_MODEL": "@cf/meta/llama-3.1-8b-instruct-fast"
+    "WORKERS_AI_MODEL": "@cf/meta/llama-3.1-8b-instruct-fast",
+    "CLOUDFLARE_ACCESS_ADMIN_EMAILS": "aidanaden@hotmail.com"
   },
   "triggers": {
     "crons": ["0 0 * * *"]
