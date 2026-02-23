@@ -589,16 +589,8 @@ export async function runStallSync(args: RunStallSyncArgs): Promise<StallSyncSum
     let sheetRows = parsedSheetRows;
     const pipelineWarnings: string[] = [];
 
-    const mapsHoursResult = await enrichOpeningTimesFromGoogleMaps(sheetRows, args.env);
-    if (Result.isError(mapsHoursResult)) {
-      pipelineWarnings.push('Google Maps hours enrichment failed unexpectedly; proceeding with raw sheet opening times.');
-    } else {
-      sheetRows = mapsHoursResult.value.rows;
-      if (mapsHoursResult.value.warnings.length > 0) {
-        pipelineWarnings.push(...mapsHoursResult.value.warnings);
-      }
-    }
-
+    // Fetch YouTube data before Maps enrichment so map lookups cannot exhaust
+    // subrequest budget and starve the YouTube sync step.
     let youtubeEntries: YouTubeVideoEntry[] = [];
     const youtubeFetchResult = await fetchYouTubeVideos(args.env);
     if (Result.isError(youtubeFetchResult)) {
@@ -608,6 +600,16 @@ export async function runStallSync(args: RunStallSyncArgs): Promise<StallSyncSum
       );
     } else {
       youtubeEntries = youtubeFetchResult.value;
+    }
+
+    const mapsHoursResult = await enrichOpeningTimesFromGoogleMaps(sheetRows, args.env);
+    if (Result.isError(mapsHoursResult)) {
+      pipelineWarnings.push('Google Maps hours enrichment failed unexpectedly; proceeding with raw sheet opening times.');
+    } else {
+      sheetRows = mapsHoursResult.value.rows;
+      if (mapsHoursResult.value.warnings.length > 0) {
+        pipelineWarnings.push(...mapsHoursResult.value.warnings);
+      }
     }
 
     let canonical = buildCanonicalFromSources(sheetRows, youtubeEntries, startedAt);

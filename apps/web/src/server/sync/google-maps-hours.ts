@@ -11,6 +11,7 @@ const GOOGLE_PLACES_DETAILS_FIELD_MASK =
   'id,displayName.text,formattedAddress,regularOpeningHours.weekdayDescriptions,currentOpeningHours.weekdayDescriptions';
 const GOOGLE_PLACES_TEXT_SEARCH_FIELD_MASK =
   'places.id,places.displayName.text,places.formattedAddress,places.regularOpeningHours.weekdayDescriptions,places.currentOpeningHours.weekdayDescriptions';
+const MAX_MAPS_LOOKUPS_PER_RUN = 10;
 
 const placeCandidateSchema = z.object({
   id: z.optional(z.string()),
@@ -584,22 +585,18 @@ export async function enrichOpeningTimesFromGoogleMaps(
   let failedLookupCount = 0;
   let sampleError: string | null = null;
 
-  const lookupEntries = [...lookupGroups.values()];
-  const lookupResults = await Promise.all(
-    lookupEntries.map(async (lookup) => ({
-      lookup,
-      lookupResult: await lookupOpeningHours({
-        apiKey,
-        mapsUrl: lookup.mapsUrl,
-        rowName: lookup.name,
-        rowAddress: lookup.address,
-        countryCode: lookup.countryCode,
-      }),
-    }))
-  );
+  const lookupEntries = [...lookupGroups.values()].sort((left, right) => right.rows.length - left.rows.length);
+  const limitedLookupEntries = lookupEntries.slice(0, MAX_MAPS_LOOKUPS_PER_RUN);
+  const skippedLookupCount = Math.max(lookupEntries.length - limitedLookupEntries.length, 0);
 
-  for (const entry of lookupResults) {
-    const { lookup, lookupResult } = entry;
+  for (const lookup of limitedLookupEntries) {
+    const lookupResult = await lookupOpeningHours({
+      apiKey,
+      mapsUrl: lookup.mapsUrl,
+      rowName: lookup.name,
+      rowAddress: lookup.address,
+      countryCode: lookup.countryCode,
+    });
 
     if (Result.isError(lookupResult)) {
       failedLookupCount += 1;
@@ -618,6 +615,12 @@ export async function enrichOpeningTimesFromGoogleMaps(
       row.openingTimes = openingTimes;
       enrichedRowsCount += 1;
     }
+  }
+
+  if (skippedLookupCount > 0) {
+    warnings.push(
+      `Google Maps hours enrichment skipped ${skippedLookupCount} lookup(s) to stay within Worker subrequest budget (max ${MAX_MAPS_LOOKUPS_PER_RUN} lookups per run).`
+    );
   }
 
   if (failedLookupCount > 0) {
