@@ -53,6 +53,7 @@ const playlistItemsResponseSchema = z.object({
 const DEFAULT_YOUTUBE_CHANNEL_ID = 'UCH-dJYvV8UiemFsLZRO0X4A';
 const YOUTUBE_DATA_API_BASE = 'https://www.googleapis.com/youtube/v3';
 const MAX_PLAYLIST_PAGES = 200;
+const YOUTUBE_VIDEO_ID_RE = /^[A-Za-z0-9_-]{11}$/;
 
 function resolveChannelId(env: WorkerEnv): string {
   return normalizeDisplayText(env.YOUTUBE_CHANNEL_ID ?? DEFAULT_YOUTUBE_CHANNEL_ID) || DEFAULT_YOUTUBE_CHANNEL_ID;
@@ -81,6 +82,24 @@ function truncateErrorPayload(value: string): string {
     return normalized;
   }
   return `${normalized.slice(0, 220)}...`;
+}
+
+function extractVideoIdsFromChannelSearchHtml(html: string, maxResults: number): string[] {
+  const ids: string[] = [];
+  const seen = new Set<string>();
+  const matches = html.matchAll(/"videoId":"([A-Za-z0-9_-]{11})"/g);
+  for (const match of matches) {
+    const id = normalizeYouTubeVideoId(match[1] ?? '');
+    if (!id || seen.has(id)) {
+      continue;
+    }
+    seen.add(id);
+    ids.push(id);
+    if (ids.length >= maxResults) {
+      break;
+    }
+  }
+  return ids;
 }
 
 async function fetchApiJson<TSchema extends z.ZodTypeAny>(
@@ -224,4 +243,47 @@ export async function fetchYouTubeVideos(env: WorkerEnv): Promise<Result<YouTube
   }
 
   return fetchUploadsPlaylistEntries(uploadsPlaylistResult.value, apiKeyResult.value);
+}
+
+export async function searchYouTubeChannelVideoIdsByQuery(
+  env: WorkerEnv,
+  query: string,
+  maxResults = 5
+): Promise<Result<string[], Error>> {
+  const normalizedQuery = normalizeDisplayText(query);
+  if (!normalizedQuery) {
+    return Result.ok([]);
+  }
+
+  const safeMaxResults = Number.isFinite(maxResults)
+    ? Math.max(1, Math.min(10, Math.trunc(maxResults)))
+    : 5;
+  const channelId = resolveChannelId(env);
+  const searchUrl = `https://www.youtube.com/channel/${channelId}/search?query=${encodeURIComponent(normalizedQuery)}`;
+  const responseResult = await Result.tryPromise(() =>
+    fetch(searchUrl, {
+      headers: {
+        'User-Agent': 'sg-food-guide-stall-sync/1.0',
+      },
+    })
+  );
+
+  if (Result.isError(responseResult)) {
+    return Result.err(new Error('Failed to query YouTube channel search page.'));
+  }
+  if (!responseResult.value.ok) {
+    return Result.err(
+      new Error(`YouTube channel search request failed with HTTP ${responseResult.value.status}.`)
+    );
+  }
+
+  const htmlResult = await Result.tryPromise(() => responseResult.value.text());
+  if (Result.isError(htmlResult)) {
+    return Result.err(new Error('Failed to read YouTube channel search response body.'));
+  }
+
+  const ids = extractVideoIdsFromChannelSearchHtml(htmlResult.value, safeMaxResults).filter((id) =>
+    YOUTUBE_VIDEO_ID_RE.test(id)
+  );
+  return Result.ok(ids);
 }

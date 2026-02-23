@@ -34,7 +34,11 @@ import {
   normalizeDisplayText,
   normalizeYouTubeVideoId,
 } from './normalize';
-import { fetchYouTubeVideos, type YouTubeVideoEntry } from './youtube-source';
+import {
+  fetchYouTubeVideos,
+  searchYouTubeChannelVideoIdsByQuery,
+  type YouTubeVideoEntry,
+} from './youtube-source';
 
 export type StallSyncMode = 'dry-run' | 'apply';
 export type StallSyncStatus = 'success' | 'failed' | 'guarded';
@@ -86,6 +90,46 @@ interface StallAccumulator {
   locations: Map<string, { address: string; youtubeVideoUrl: string | null }>;
   awards: Set<string>;
 }
+
+const GENERIC_YOUTUBE_MATCH_TOKENS = new Set([
+  'the',
+  'best',
+  'episode',
+  'ep',
+  'part',
+  'members',
+  'singapore',
+  'malaysia',
+  'thailand',
+  'hong',
+  'kong',
+  'bak',
+  'kut',
+  'teh',
+  'bakchor',
+  'chor',
+  'mee',
+  'wanton',
+  'wan',
+  'tan',
+  'mala',
+  'laksa',
+  'nasi',
+  'lemak',
+  'char',
+  'kway',
+  'teow',
+  'hokkien',
+  'prawn',
+  'soup',
+  'noodle',
+  'noodles',
+  'restaurant',
+  'stall',
+  'road',
+  'street',
+]);
+const MAX_YOUTUBE_SEARCH_FALLBACK_QUERIES_PER_RUN = 12;
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -160,6 +204,7 @@ function findBestYoutubeMatchByReference(
   const referenceTokens = normalizedReference.split(/\s+/).filter((token) => token.length >= 3);
   const episodeTokenMatch = normalizedReference.match(/\bepisode\s+\d+\b/);
   const episodeToken = episodeTokenMatch?.[0] ?? null;
+  const requiresMembersToken = normalizedReference.includes('members');
 
   let best: YouTubeVideoEntry | null = null;
   let bestScore = -1;
@@ -167,6 +212,9 @@ function findBestYoutubeMatchByReference(
   for (const video of videos) {
     const normalizedTitle = normalizeComparableText(video.title);
     if (!normalizedTitle) {
+      continue;
+    }
+    if (requiresMembersToken && !normalizedTitle.includes('members')) {
       continue;
     }
 
@@ -188,38 +236,119 @@ function findBestYoutubeMatchByReference(
   return bestScore >= 6 ? best : null;
 }
 
-function findBestYoutubeMatch(row: SheetStallRow, videos: YouTubeVideoEntry[]): YouTubeVideoEntry | null {
-  const byReference = findBestYoutubeMatchByReference(row.youtubeVideoUrl, videos);
-  if (byReference) return byReference;
+function significantNameTokens(name: string): string[] {
+  return normalizeComparableText(name)
+    .split(/\s+/)
+    .filter((token) => token.length >= 4 && !GENERIC_YOUTUBE_MATCH_TOKENS.has(token));
+}
 
-  const byTitle = findBestYoutubeMatchByReference(row.youtubeTitle, videos);
-  if (byTitle) return byTitle;
+function collectReferenceCandidates(group: StallAccumulator): string[] {
+  const references = [
+    group.bestRow.youtubeVideoUrl,
+    group.bestRow.youtubeTitle,
+    ...group.rows.map((row) => row.youtubeVideoUrl),
+    ...group.rows.map((row) => row.youtubeTitle),
+  ];
 
+  const unique = new Set<string>();
+  for (const reference of references) {
+    const normalized = normalizeDisplayText(reference ?? '');
+    if (!normalized) {
+      continue;
+    }
+    unique.add(normalized);
+  }
+
+  return [...unique];
+}
+
+function findBestYoutubeMatchByName(row: SheetStallRow, videos: YouTubeVideoEntry[]): YouTubeVideoEntry | null {
   const normalizedName = normalizeComparableText(row.name);
   if (!normalizedName) return null;
+  const nameTokens = significantNameTokens(row.name);
+  if (nameTokens.length === 0) return null;
 
   let best: YouTubeVideoEntry | null = null;
   let bestScore = -1;
+  let secondBestScore = -1;
 
   for (const video of videos) {
     const normalizedTitle = normalizeComparableText(video.title);
     if (!normalizedTitle) continue;
 
     let score = 0;
-    if (normalizedTitle.includes(normalizedName)) score += 4;
-    if (normalizedName.includes(normalizedTitle)) score += 2;
-
-    const nameTokens = normalizedName.split(/\s+/).filter(Boolean);
-    const matchingTokens = nameTokens.filter((token) => token.length >= 3 && normalizedTitle.includes(token));
-    score += matchingTokens.length;
+    if (normalizedTitle.includes(normalizedName)) {
+      score += 10;
+    }
+    const matchingTokens = nameTokens.filter((token) => normalizedTitle.includes(token));
+    if (matchingTokens.length === 0) {
+      continue;
+    }
+    score += matchingTokens.length * 3;
+    if (matchingTokens.length >= 2) {
+      score += 2;
+    }
 
     if (score > bestScore) {
+      secondBestScore = bestScore;
       bestScore = score;
       best = video;
+      continue;
+    }
+    if (score > secondBestScore) {
+      secondBestScore = score;
     }
   }
 
-  return bestScore >= 3 ? best : null;
+  if (bestScore < 6) {
+    return null;
+  }
+  if (secondBestScore >= 0 && bestScore - secondBestScore < 2) {
+    return null;
+  }
+
+  return best;
+}
+
+function findBestYoutubeMatch(
+  row: SheetStallRow,
+  videos: YouTubeVideoEntry[],
+  referenceCandidates: string[]
+): YouTubeVideoEntry | null {
+  for (const reference of referenceCandidates) {
+    const byReference = findBestYoutubeMatchByReference(reference, videos);
+    if (byReference) {
+      return byReference;
+    }
+  }
+
+  return findBestYoutubeMatchByName(row, videos);
+}
+
+function inferYoutubeTitleFromReference(reference: string | null | undefined): string {
+  const normalized = normalizeDisplayText(reference ?? '');
+  if (!normalized) {
+    return '';
+  }
+  if (buildYouTubeVideoUrl(normalized)) {
+    return '';
+  }
+  return normalized;
+}
+
+function dedupeYouTubeEntries(entries: YouTubeVideoEntry[]): YouTubeVideoEntry[] {
+  const byVideoId = new Map<string, YouTubeVideoEntry>();
+  for (const entry of entries) {
+    const existing = byVideoId.get(entry.videoId);
+    if (!existing) {
+      byVideoId.set(entry.videoId, entry);
+      continue;
+    }
+    if (!existing.title && entry.title) {
+      byVideoId.set(entry.videoId, entry);
+    }
+  }
+  return [...byVideoId.values()];
 }
 
 function buildCanonicalFromSources(
@@ -278,10 +407,17 @@ function buildCanonicalFromSources(
     const sourceStallKey = group.sourceKey;
     const stallId = makeStallIdFromSourceKey(sourceStallKey);
 
-    const explicitVideoId = normalizeYouTubeVideoId(bestRow.youtubeVideoUrl);
-    const explicitVideoUrl = buildYouTubeVideoUrl(explicitVideoId ?? bestRow.youtubeVideoUrl);
+    const referenceCandidates = collectReferenceCandidates(group);
+    const explicitVideoId =
+      normalizeYouTubeVideoId(bestRow.youtubeVideoUrl) ??
+      group.rows.map((row) => normalizeYouTubeVideoId(row.youtubeVideoUrl)).find((id) => Boolean(id)) ??
+      null;
+    const explicitVideoUrl =
+      buildYouTubeVideoUrl(explicitVideoId ?? bestRow.youtubeVideoUrl) ??
+      group.rows.map((row) => buildYouTubeVideoUrl(row.youtubeVideoUrl)).find((url) => Boolean(url)) ??
+      null;
 
-    const matchedVideo = explicitVideoUrl ? null : findBestYoutubeMatch(bestRow, videos);
+    const matchedVideo = explicitVideoUrl ? null : findBestYoutubeMatch(bestRow, videos, referenceCandidates);
 
     const youtubeVideoId =
       explicitVideoId ?? normalizeYouTubeVideoId(matchedVideo?.videoId ?? matchedVideo?.videoUrl ?? null);
@@ -335,7 +471,9 @@ function buildCanonicalFromSources(
       timeCategories: parseTimeCategories(bestRow.openingTimes),
       hits: [],
       misses: [],
-      youtubeTitle: normalizeDisplayText(bestRow.youtubeTitle || matchedVideo?.title || ''),
+      youtubeTitle: normalizeDisplayText(
+        bestRow.youtubeTitle || matchedVideo?.title || inferYoutubeTitleFromReference(bestRow.youtubeVideoUrl)
+      ),
       youtubeVideoUrl,
       youtubeVideoId,
       googleMapsName: normalizeDisplayText(bestRow.name),
@@ -613,6 +751,50 @@ export async function runStallSync(args: RunStallSyncArgs): Promise<StallSyncSum
     }
 
     let canonical = buildCanonicalFromSources(sheetRows, youtubeEntries, startedAt);
+    const unresolvedSearchQueries = [
+      ...new Set(
+        canonical
+          .filter((stall) => !stall.youtubeVideoUrl)
+          .map((stall) => normalizeDisplayText(stall.youtubeTitle))
+          .filter((title) => title.length > 0 && !normalizeComparableText(title).includes('members'))
+      ),
+    ];
+    if (unresolvedSearchQueries.length > 0) {
+      const fallbackQueries = unresolvedSearchQueries.slice(0, MAX_YOUTUBE_SEARCH_FALLBACK_QUERIES_PER_RUN);
+      const fallbackEntries: YouTubeVideoEntry[] = [];
+
+      for (const query of fallbackQueries) {
+        const searchResult = await searchYouTubeChannelVideoIdsByQuery(args.env, query, 3);
+        if (Result.isError(searchResult)) {
+          const reason = sanitizeExternalErrorMessage(searchResult.error.message);
+          pipelineWarnings.push(`YouTube search fallback failed for query "${query}". Reason: ${reason}`);
+          continue;
+        }
+
+        const firstVideoId = searchResult.value[0] ?? '';
+        const fallbackUrl = buildYouTubeVideoUrl(firstVideoId);
+        if (!fallbackUrl) {
+          continue;
+        }
+
+        fallbackEntries.push({
+          videoId: firstVideoId,
+          videoUrl: fallbackUrl,
+          title: query,
+          publishedAt: new Date(0).toISOString(),
+        });
+      }
+
+      if (fallbackEntries.length > 0) {
+        youtubeEntries = dedupeYouTubeEntries([...youtubeEntries, ...fallbackEntries]);
+        canonical = buildCanonicalFromSources(sheetRows, youtubeEntries, startedAt);
+      }
+      if (unresolvedSearchQueries.length > fallbackQueries.length) {
+        pipelineWarnings.push(
+          `YouTube search fallback skipped ${unresolvedSearchQueries.length - fallbackQueries.length} unresolved title query(ies) to stay within per-run budget (${MAX_YOUTUBE_SEARCH_FALLBACK_QUERIES_PER_RUN}).`
+        );
+      }
+    }
     let usedStaticSeed = false;
 
     if (canonical.length === 0) {
