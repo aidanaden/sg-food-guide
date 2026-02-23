@@ -28,7 +28,7 @@ import {
   normalizeDisplayText,
   normalizeYouTubeVideoId,
 } from './normalize';
-import { fetchYouTubeFeed, parseYouTubeFeedEntries, type YouTubeVideoEntry } from './youtube-source';
+import { fetchYouTubeVideos, type YouTubeVideoEntry } from './youtube-source';
 
 export type StallSyncMode = 'dry-run' | 'apply';
 export type StallSyncStatus = 'success' | 'failed' | 'guarded';
@@ -526,16 +526,11 @@ export async function runStallSync(args: RunStallSyncArgs): Promise<StallSyncSum
     }
 
     let youtubeEntries: YouTubeVideoEntry[] = [];
-    const youtubeFetchResult = await fetchYouTubeFeed(args.env);
+    const youtubeFetchResult = await fetchYouTubeVideos(args.env);
     if (Result.isError(youtubeFetchResult)) {
-      pipelineWarnings.push('YouTube feed fetch failed; proceeding with sheet-only enrichment.');
+      pipelineWarnings.push('YouTube Data API fetch failed; proceeding with sheet-only enrichment.');
     } else {
-      const youtubeEntriesResult = parseYouTubeFeedEntries(youtubeFetchResult.value.xml);
-      if (Result.isError(youtubeEntriesResult)) {
-        pipelineWarnings.push('YouTube feed parse failed; proceeding with sheet-only enrichment.');
-      } else {
-        youtubeEntries = youtubeEntriesResult.value;
-      }
+      youtubeEntries = youtubeFetchResult.value;
     }
 
     let canonical = buildCanonicalFromSources(sheetRows, youtubeEntries, startedAt);

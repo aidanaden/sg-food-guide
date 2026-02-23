@@ -25,7 +25,7 @@ const workerEnvSchema = z.object({
   FOOD_GUIDE_SHEET_CSV_URL: z.optional(z.string()),
   GOOGLE_PLACES_API_KEY: z.optional(z.string()),
   YOUTUBE_CHANNEL_ID: z.optional(z.string()),
-  YOUTUBE_CHANNEL_FEED_URL: z.optional(z.string()),
+  YOUTUBE_DATA_API_KEY: z.optional(z.string()),
   STALL_SYNC_MODE: z.optional(modeSchema),
   STALL_SYNC_MAX_CHANGE_RATIO: z.optional(z.union([z.string(), z.number()])),
   STALL_SYNC_ALERT_MODE: z.optional(alertModeSchema),
@@ -60,7 +60,7 @@ export interface WorkerEnv {
   FOOD_GUIDE_SHEET_CSV_URL?: string;
   GOOGLE_PLACES_API_KEY?: string;
   YOUTUBE_CHANNEL_ID?: string;
-  YOUTUBE_CHANNEL_FEED_URL?: string;
+  YOUTUBE_DATA_API_KEY?: string;
   STALL_SYNC_MODE?: 'dry-run' | 'apply';
   STALL_SYNC_MAX_CHANGE_RATIO?: string | number;
   STALL_SYNC_ALERT_MODE?: 'all' | 'failed';

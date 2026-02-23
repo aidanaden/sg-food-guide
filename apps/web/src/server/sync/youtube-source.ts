@@ -4,11 +4,6 @@ import * as z from 'zod';
 import type { WorkerEnv } from '../cloudflare/runtime';
 import { buildYouTubeVideoUrl, normalizeDisplayText, normalizeYouTubeVideoId } from './normalize';
 
-const channelFeedSchema = z.object({
-  sourceUrl: z.string(),
-  xml: z.string(),
-});
-
 const videoEntrySchema = z.object({
   videoId: z.string().min(1),
   videoUrl: z.string().url(),
@@ -18,55 +13,83 @@ const videoEntrySchema = z.object({
 
 export type YouTubeVideoEntry = z.infer<typeof videoEntrySchema>;
 
+const channelListResponseSchema = z.object({
+  items: z.array(
+    z.object({
+      contentDetails: z.object({
+        relatedPlaylists: z.object({
+          uploads: z.string().min(1),
+        }),
+      }),
+    })
+  ),
+});
+
+const playlistItemSchema = z.object({
+  snippet: z
+    .object({
+      title: z.string().optional(),
+      publishedAt: z.string().optional(),
+      resourceId: z
+        .object({
+          videoId: z.string().optional(),
+        })
+        .optional(),
+    })
+    .optional(),
+  contentDetails: z
+    .object({
+      videoId: z.string().optional(),
+      videoPublishedAt: z.string().optional(),
+    })
+    .optional(),
+});
+
+const playlistItemsResponseSchema = z.object({
+  nextPageToken: z.string().optional(),
+  items: z.array(playlistItemSchema),
+});
+
 const DEFAULT_YOUTUBE_CHANNEL_ID = 'UCH-dJYvV8UiemFsLZRO0X4A';
+const YOUTUBE_DATA_API_BASE = 'https://www.googleapis.com/youtube/v3';
+const MAX_PLAYLIST_PAGES = 200;
 
-function decodeXmlEntities(value: string): string {
-  return value
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .trim();
+function resolveChannelId(env: WorkerEnv): string {
+  return normalizeDisplayText(env.YOUTUBE_CHANNEL_ID ?? DEFAULT_YOUTUBE_CHANNEL_ID) || DEFAULT_YOUTUBE_CHANNEL_ID;
 }
 
-function extractTagValue(source: string, tagName: string): string {
-  const pattern = new RegExp(`<${tagName}>([\\s\\S]*?)</${tagName}>`, 'i');
-  const match = source.match(pattern);
-  return match?.[1]?.trim() ?? '';
-}
-
-function extractAlternateLink(source: string): string {
-  const match = source.match(/<link[^>]*rel="alternate"[^>]*href="([^"]+)"[^>]*>/i);
-  return match?.[1]?.trim() ?? '';
-}
-
-function extractEntries(xml: string): string[] {
-  return [...xml.matchAll(/<entry>([\s\S]*?)<\/entry>/gi)]
-    .map((match) => match[1] ?? '')
-    .filter((value) => value.length > 0);
-}
-
-function buildFeedFromChannelId(channelId: string): string {
-  return `https://www.youtube.com/feeds/videos.xml?channel_id=${encodeURIComponent(channelId)}`;
-}
-
-function buildFeedUrl(env: WorkerEnv): string {
-  const explicitFeedUrl = normalizeDisplayText(env.YOUTUBE_CHANNEL_FEED_URL ?? '');
-  if (explicitFeedUrl.length > 0) {
-    return explicitFeedUrl;
+function resolveApiKey(env: WorkerEnv): Result<string, Error> {
+  const apiKey = normalizeDisplayText(env.YOUTUBE_DATA_API_KEY ?? '');
+  if (!apiKey) {
+    return Result.err(new Error('Missing YOUTUBE_DATA_API_KEY for YouTube Data API sync.'));
   }
 
-  const channelId =
-    normalizeDisplayText(env.YOUTUBE_CHANNEL_ID ?? DEFAULT_YOUTUBE_CHANNEL_ID) ||
-    DEFAULT_YOUTUBE_CHANNEL_ID;
-  return buildFeedFromChannelId(channelId);
+  return Result.ok(apiKey);
 }
 
-export async function fetchYouTubeFeed(env: WorkerEnv): Promise<Result<{ sourceUrl: string; xml: string }, Error>> {
-  const sourceUrl = buildFeedUrl(env);
+function buildApiUrl(pathname: string, params: Record<string, string>): string {
+  const url = new URL(`${YOUTUBE_DATA_API_BASE}/${pathname}`);
+  for (const [key, value] of Object.entries(params)) {
+    url.searchParams.set(key, value);
+  }
+  return url.toString();
+}
+
+function truncateErrorPayload(value: string): string {
+  const normalized = normalizeDisplayText(value);
+  if (normalized.length <= 220) {
+    return normalized;
+  }
+  return `${normalized.slice(0, 220)}...`;
+}
+
+async function fetchApiJson<TSchema extends z.ZodTypeAny>(
+  url: string,
+  schema: TSchema,
+  label: string
+): Promise<Result<z.infer<TSchema>, Error>> {
   const responseResult = await Result.tryPromise(() =>
-    fetch(sourceUrl, {
+    fetch(url, {
       headers: {
         'User-Agent': 'sg-food-guide-stall-sync/1.0',
       },
@@ -74,60 +97,126 @@ export async function fetchYouTubeFeed(env: WorkerEnv): Promise<Result<{ sourceU
   );
 
   if (Result.isError(responseResult)) {
-    return Result.err(new Error('Failed to fetch YouTube channel feed.'));
+    return Result.err(new Error(`Failed to fetch YouTube Data API ${label}.`));
   }
 
   if (!responseResult.value.ok) {
-    return Result.err(new Error(`YouTube feed fetch failed with HTTP ${responseResult.value.status}.`));
+    const bodyResult = await Result.tryPromise(() => responseResult.value.text());
+    const bodyText = Result.isError(bodyResult) ? '' : truncateErrorPayload(bodyResult.value);
+    const details = bodyText ? ` (${bodyText})` : '';
+    return Result.err(
+      new Error(`YouTube Data API ${label} request failed with HTTP ${responseResult.value.status}.${details}`)
+    );
   }
 
-  const textResult = await Result.tryPromise(() => responseResult.value.text());
-  if (Result.isError(textResult)) {
-    return Result.err(new Error('Failed reading YouTube feed response body.'));
+  const payloadResult = await Result.tryPromise(() => responseResult.value.json());
+  if (Result.isError(payloadResult)) {
+    return Result.err(new Error(`Failed to parse YouTube Data API ${label} response.`));
   }
 
-  const payload = channelFeedSchema.safeParse({
-    sourceUrl,
-    xml: textResult.value,
-  });
-
-  if (!payload.success) {
-    return Result.err(new Error('Invalid YouTube feed payload.'));
+  const parsed = schema.safeParse(payloadResult.value);
+  if (!parsed.success) {
+    return Result.err(new Error(`Invalid YouTube Data API ${label} response payload.`));
   }
 
-  return Result.ok(payload.data);
+  return Result.ok(parsed.data);
 }
 
-export function parseYouTubeFeedEntries(xml: string): Result<YouTubeVideoEntry[], Error> {
-  const entries = extractEntries(xml);
-  const parsedEntries: YouTubeVideoEntry[] = [];
+async function fetchUploadsPlaylistId(channelId: string, apiKey: string): Promise<Result<string, Error>> {
+  const sourceUrl = buildApiUrl('channels', {
+    part: 'contentDetails',
+    id: channelId,
+    maxResults: '1',
+    key: apiKey,
+  });
 
-  for (const entry of entries) {
-    const rawVideoId = extractTagValue(entry, 'yt:videoId') || extractTagValue(entry, 'videoId');
-    const rawLink = extractAlternateLink(entry);
-    const rawTitle = decodeXmlEntities(extractTagValue(entry, 'title'));
-    const rawPublished = extractTagValue(entry, 'published') || extractTagValue(entry, 'updated');
-
-    const videoId = normalizeYouTubeVideoId(rawVideoId) ?? normalizeYouTubeVideoId(rawLink);
-    const videoUrl = buildYouTubeVideoUrl(videoId ?? rawLink);
-
-    if (!videoId || !videoUrl) {
-      continue;
-    }
-
-    const candidate = videoEntrySchema.safeParse({
-      videoId,
-      videoUrl,
-      title: rawTitle,
-      publishedAt: rawPublished || new Date(0).toISOString(),
-    });
-
-    if (!candidate.success) {
-      return Result.err(new Error('Invalid YouTube feed entry payload.'));
-    }
-
-    parsedEntries.push(candidate.data);
+  const responseResult = await fetchApiJson(sourceUrl, channelListResponseSchema, 'channels.list');
+  if (Result.isError(responseResult)) {
+    return Result.err(responseResult.error);
   }
 
-  return Result.ok(parsedEntries);
+  const uploadsPlaylist = responseResult.value.items[0]?.contentDetails.relatedPlaylists.uploads ?? '';
+  if (!uploadsPlaylist) {
+    return Result.err(new Error(`No uploads playlist found for channel ${channelId}.`));
+  }
+
+  return Result.ok(uploadsPlaylist);
+}
+
+function parseVideoEntry(item: z.infer<typeof playlistItemSchema>): YouTubeVideoEntry | null {
+  const rawVideoId = item.contentDetails?.videoId ?? item.snippet?.resourceId?.videoId ?? '';
+  const videoId = normalizeYouTubeVideoId(rawVideoId);
+  const videoUrl = buildYouTubeVideoUrl(videoId);
+  if (!videoId || !videoUrl) {
+    return null;
+  }
+
+  const candidate = videoEntrySchema.safeParse({
+    videoId,
+    videoUrl,
+    title: normalizeDisplayText(item.snippet?.title ?? ''),
+    publishedAt:
+      item.contentDetails?.videoPublishedAt ?? item.snippet?.publishedAt ?? new Date(0).toISOString(),
+  });
+
+  if (!candidate.success) {
+    return null;
+  }
+
+  return candidate.data;
+}
+
+async function fetchUploadsPlaylistEntries(
+  uploadsPlaylistId: string,
+  apiKey: string
+): Promise<Result<YouTubeVideoEntry[], Error>> {
+  const entries: YouTubeVideoEntry[] = [];
+  const seenIds = new Set<string>();
+  let pageToken = '';
+
+  for (let pageIndex = 0; pageIndex < MAX_PLAYLIST_PAGES; pageIndex += 1) {
+    const sourceUrl = buildApiUrl('playlistItems', {
+      part: 'snippet,contentDetails',
+      playlistId: uploadsPlaylistId,
+      maxResults: '50',
+      key: apiKey,
+      ...(pageToken ? { pageToken } : {}),
+    });
+
+    const responseResult = await fetchApiJson(sourceUrl, playlistItemsResponseSchema, 'playlistItems.list');
+    if (Result.isError(responseResult)) {
+      return Result.err(responseResult.error);
+    }
+
+    for (const item of responseResult.value.items) {
+      const entry = parseVideoEntry(item);
+      if (!entry || seenIds.has(entry.videoId)) {
+        continue;
+      }
+      seenIds.add(entry.videoId);
+      entries.push(entry);
+    }
+
+    pageToken = responseResult.value.nextPageToken?.trim() ?? '';
+    if (!pageToken) {
+      return Result.ok(entries);
+    }
+  }
+
+  return Result.err(new Error('YouTube uploads pagination exceeded safety limit.'));
+}
+
+export async function fetchYouTubeVideos(env: WorkerEnv): Promise<Result<YouTubeVideoEntry[], Error>> {
+  const apiKeyResult = resolveApiKey(env);
+  if (Result.isError(apiKeyResult)) {
+    return Result.err(apiKeyResult.error);
+  }
+
+  const channelId = resolveChannelId(env);
+  const uploadsPlaylistResult = await fetchUploadsPlaylistId(channelId, apiKeyResult.value);
+  if (Result.isError(uploadsPlaylistResult)) {
+    return Result.err(uploadsPlaylistResult.error);
+  }
+
+  return fetchUploadsPlaylistEntries(uploadsPlaylistResult.value, apiKeyResult.value);
 }

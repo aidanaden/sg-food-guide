@@ -16,6 +16,7 @@ Add a Cloudflare scheduled/manual sync pipeline that ingests stall data from a s
 - Use Cloudflare Scheduled Worker trigger (daily, default `0 0 * * *` UTC) and allow manual trigger via Wrangler scheduled simulation.
 - Prod-only cron execution.
 - Source ingestion combines Google Sheet + YouTube channel feed.
+- Source ingestion combines Google Sheet + YouTube channel uploads via YouTube Data API.
 - Identity key: normalized `name + country + cuisine`.
 - Multiple addresses per stall are supported in DB; UI displays primary address only.
 - Source precedence: non-empty beats empty; if both non-empty, richer value wins.
@@ -24,7 +25,7 @@ Add a Cloudflare scheduled/manual sync pipeline that ingests stall data from a s
 - Partial upsert allowed; required active fields include `name`, `address`, `cuisine`, `country`, and valid YouTube URL.
 - Price handling: raw source preserved and canonical SGD parsed when present (no live FX conversion dependency).
 - Ratings preserve decimal values.
-- YouTube source: `https://m.youtube.com/@Alderic` (uploads), with matching by episode and title fallback.
+- YouTube source: channel uploads from `UCH-dJYvV8UiemFsLZRO0X4A` via YouTube Data API, with matching by episode and title fallback.
 - Geocoding provider path: OneMap/Nominatim fallback now, with request to add Google key ASAP.
 - Max-change safety guard enabled (default 50% threshold) and alert on trigger.
 - Telegram alerts enabled for all runs.
@@ -64,7 +65,7 @@ Add a Cloudflare scheduled/manual sync pipeline that ingests stall data from a s
   - `FOOD_GUIDE_SHEET_ID`
   - `FOOD_GUIDE_SHEET_GID`
   - `YOUTUBE_CHANNEL_USERNAME`
-  - `YOUTUBE_CHANNEL_FEED_URL`
+  - `YOUTUBE_DATA_API_KEY`
   - `SYNC_MODE` (`dry-run` | `apply`)
   - `SYNC_MAX_CHANGE_RATIO`
   - `TELEGRAM_BOT_TOKEN`
@@ -77,7 +78,7 @@ Add a Cloudflare scheduled/manual sync pipeline that ingests stall data from a s
 3. Add seed script that imports current hardcoded stalls into D1.
 4. Add source clients/parsers:
    - Google Sheet CSV ingest/parsing
-   - YouTube feed fetch + matching resolver
+   - YouTube Data API fetch + matching resolver
 5. Add sync reconciliation engine (identity, precedence, upsert, close, guardrails).
 6. Add scheduled handler + manual trigger path and structured run logging.
 7. Add Telegram notification utility for all run outcomes.

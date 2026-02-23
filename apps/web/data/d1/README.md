@@ -28,7 +28,7 @@ Set via `wrangler.jsonc` vars and/or secrets:
 - `FOOD_GUIDE_SHEET_CSV_URL` (optional direct override; accepts Google Sheet edit URL and auto-converts to CSV export)
 - `GOOGLE_PLACES_API_KEY` (optional; used to enrich missing opening hours via Google Places lookups and Google Maps URL/query fallback)
 - `YOUTUBE_CHANNEL_ID` (recommended source, e.g. `UCH-dJYvV8UiemFsLZRO0X4A`)
-- `YOUTUBE_CHANNEL_FEED_URL` (optional direct override, e.g. `https://www.youtube.com/feeds/videos.xml?channel_id=...`)
+- `YOUTUBE_DATA_API_KEY` (required for YouTube channel ingestion via YouTube Data API v3; set as a Wrangler secret)
 - `STALL_SYNC_MODE` (`dry-run` or `apply`)
 - `STALL_SYNC_MAX_CHANGE_RATIO` (0..1)
 - `STALL_SYNC_ALERT_MODE` (`all` or `failed`)
@@ -54,7 +54,7 @@ bun --filter @sg-food-guide/web sync:stalls:scheduled:dev
 
 ## Notes
 
-- Sync uses Google Sheet + YouTube channel feed data and writes to D1.
+- Sync uses Google Sheet + YouTube Data API channel uploads and writes to D1.
 - If sheet produces zero canonical stalls, sync falls back to static seed data.
 - Missing source rows are soft-closed (`status = 'closed'`).
 - All parsing uses zod schemas; thrown operations are wrapped with better-result.

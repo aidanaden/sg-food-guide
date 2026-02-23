@@ -1,12 +1,14 @@
 /**
  * Backfill missing stall YouTube URLs by reusing known episode mappings and
- * validating video IDs against the Alderic channel uploads.
+ * validating video IDs against Alderic channel uploads from YouTube Data API.
  *
  * Usage:
  *   bun scripts/backfill-missing-youtube-urls.ts               # dry-run (remote)
  *   bun scripts/backfill-missing-youtube-urls.ts --apply       # apply (remote)
  *   bun scripts/backfill-missing-youtube-urls.ts --local       # dry-run (local D1)
  *   bun scripts/backfill-missing-youtube-urls.ts --db <name>
+ *   bun scripts/backfill-missing-youtube-urls.ts --channel-id <id>
+ *   bun scripts/backfill-missing-youtube-urls.ts --youtube-api-key <key>
  */
 
 import { Result } from 'better-result';
@@ -18,7 +20,9 @@ import { promisify } from 'node:util';
 import * as z from 'zod';
 
 const DEFAULT_DB_NAME = 'sg-food-guide-stalls';
-const DEFAULT_CHANNEL_URL = 'https://www.youtube.com/@Alderic./videos';
+const DEFAULT_CHANNEL_ID = 'UCH-dJYvV8UiemFsLZRO0X4A';
+const YOUTUBE_DATA_API_BASE = 'https://www.googleapis.com/youtube/v3';
+const MAX_PLAYLIST_PAGES = 200;
 const VIDEO_ID_RE = /^[A-Za-z0-9_-]{11}$/;
 
 const execFileAsync = promisify(execFile);
@@ -53,11 +57,37 @@ const presentStallSchema = z.object({
   youtube_video_id: z.union([z.string(), z.null()]).optional(),
 });
 
-const ytDlpPayloadSchema = z.object({
-  entries: z.array(
+const youtubeChannelsResponseSchema = z.object({
+  items: z.array(
     z.object({
-      id: z.string(),
-      title: z.string(),
+      contentDetails: z.object({
+        relatedPlaylists: z.object({
+          uploads: z.string().min(1),
+        }),
+      }),
+    })
+  ),
+});
+
+const youtubePlaylistItemsResponseSchema = z.object({
+  nextPageToken: z.string().optional(),
+  items: z.array(
+    z.object({
+      snippet: z
+        .object({
+          title: z.string().optional(),
+          resourceId: z
+            .object({
+              videoId: z.string().optional(),
+            })
+            .optional(),
+        })
+        .optional(),
+      contentDetails: z
+        .object({
+          videoId: z.string().optional(),
+        })
+        .optional(),
     })
   ),
 });
@@ -66,7 +96,8 @@ interface CliOptions {
   apply: boolean;
   remote: boolean;
   dbName: string;
-  channelUrl: string;
+  channelId: string;
+  youtubeApiKey: string;
 }
 
 interface MissingStall {
@@ -100,7 +131,8 @@ function parseArgs(argv: string[]): CliOptions {
   let apply = false;
   let remote = true;
   let dbName = DEFAULT_DB_NAME;
-  let channelUrl = DEFAULT_CHANNEL_URL;
+  let channelId = DEFAULT_CHANNEL_ID;
+  let youtubeApiKey = process.env.YOUTUBE_DATA_API_KEY?.trim() ?? '';
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -123,17 +155,34 @@ function parseArgs(argv: string[]): CliOptions {
       i += 1;
       continue;
     }
-    if (arg === '--channel-url') {
+    if (arg === '--channel-id') {
       const value = argv[i + 1];
-      if (!value) throw new Error('Missing value for --channel-url');
-      channelUrl = value;
+      if (!value) throw new Error('Missing value for --channel-id');
+      channelId = value.trim();
+      i += 1;
+      continue;
+    }
+    if (arg === '--youtube-api-key') {
+      const value = argv[i + 1];
+      if (!value) throw new Error('Missing value for --youtube-api-key');
+      youtubeApiKey = value.trim();
       i += 1;
       continue;
     }
     throw new Error(`Unknown argument: ${arg}`);
   }
 
-  return { apply, remote, dbName, channelUrl };
+  if (!channelId) {
+    throw new Error('Missing YouTube channel ID. Provide --channel-id or set default.');
+  }
+
+  if (!youtubeApiKey) {
+    throw new Error(
+      'Missing YouTube Data API key. Set YOUTUBE_DATA_API_KEY or pass --youtube-api-key.'
+    );
+  }
+
+  return { apply, remote, dbName, channelId, youtubeApiKey };
 }
 
 function normalizeComparableText(value: string | null | undefined): string {
@@ -331,49 +380,135 @@ async function runD1SqlFile(
   return Result.ok();
 }
 
-async function fetchChannelVideoMap(
-  projectRoot: string,
-  channelUrl: string
-): Promise<Result<Map<string, string>, Error>> {
-  const candidateUrls = [channelUrl];
-  const normalizedUrl = channelUrl.replace(/\/+$/, '');
-  if (!normalizedUrl.endsWith('/videos')) {
-    candidateUrls.push(`${normalizedUrl}/videos`);
+function buildYouTubeApiUrl(pathname: string, params: Record<string, string>): string {
+  const url = new URL(`${YOUTUBE_DATA_API_BASE}/${pathname}`);
+  for (const [key, value] of Object.entries(params)) {
+    url.searchParams.set(key, value);
+  }
+  return url.toString();
+}
+
+function truncateApiErrorBody(value: string): string {
+  const normalized = normalizeComparableText(value);
+  if (normalized.length <= 220) {
+    return normalized;
+  }
+  return `${normalized.slice(0, 220)}...`;
+}
+
+async function fetchYouTubeApiJson<TSchema extends z.ZodTypeAny>(
+  sourceUrl: string,
+  schema: TSchema,
+  label: string
+): Promise<Result<z.infer<TSchema>, Error>> {
+  const responseResult = await Result.tryPromise(() =>
+    fetch(sourceUrl, {
+      headers: {
+        'User-Agent': 'sg-food-guide-stall-sync/1.0',
+      },
+    })
+  );
+
+  if (Result.isError(responseResult)) {
+    return Result.err(new Error(`Failed to fetch YouTube Data API ${label}.`));
   }
 
-  for (const candidateUrl of candidateUrls) {
-    const runResult = await runCommand(
-      'yt-dlp',
-      ['--flat-playlist', '--dump-single-json', candidateUrl],
-      projectRoot
+  if (!responseResult.value.ok) {
+    const bodyResult = await Result.tryPromise(() => responseResult.value.text());
+    const bodyText = Result.isError(bodyResult) ? '' : truncateApiErrorBody(bodyResult.value);
+    const details = bodyText ? ` (${bodyText})` : '';
+    return Result.err(
+      new Error(`YouTube Data API ${label} request failed with HTTP ${responseResult.value.status}.${details}`)
     );
-    if (Result.isError(runResult)) {
-      continue;
+  }
+
+  const payloadResult = await Result.tryPromise(() => responseResult.value.json());
+  if (Result.isError(payloadResult)) {
+    return Result.err(new Error(`Failed to parse YouTube Data API ${label} response.`));
+  }
+
+  const parsed = schema.safeParse(payloadResult.value);
+  if (!parsed.success) {
+    return Result.err(new Error(`Invalid YouTube Data API ${label} response payload.`));
+  }
+
+  return Result.ok(parsed.data);
+}
+
+async function fetchUploadsPlaylistId(
+  channelId: string,
+  youtubeApiKey: string
+): Promise<Result<string, Error>> {
+  const sourceUrl = buildYouTubeApiUrl('channels', {
+    part: 'contentDetails',
+    id: channelId,
+    maxResults: '1',
+    key: youtubeApiKey,
+  });
+
+  const responseResult = await fetchYouTubeApiJson(
+    sourceUrl,
+    youtubeChannelsResponseSchema,
+    'channels.list'
+  );
+  if (Result.isError(responseResult)) {
+    return Result.err(responseResult.error);
+  }
+
+  const uploadsPlaylistId = responseResult.value.items[0]?.contentDetails.relatedPlaylists.uploads ?? '';
+  if (!uploadsPlaylistId) {
+    return Result.err(new Error(`No uploads playlist found for channel ${channelId}.`));
+  }
+
+  return Result.ok(uploadsPlaylistId);
+}
+
+async function fetchChannelVideoMap(
+  channelId: string,
+  youtubeApiKey: string
+): Promise<Result<Map<string, string>, Error>> {
+  const uploadsPlaylistResult = await fetchUploadsPlaylistId(channelId, youtubeApiKey);
+  if (Result.isError(uploadsPlaylistResult)) {
+    return Result.err(uploadsPlaylistResult.error);
+  }
+
+  const map = new Map<string, string>();
+  let pageToken = '';
+
+  for (let pageIndex = 0; pageIndex < MAX_PLAYLIST_PAGES; pageIndex += 1) {
+    const sourceUrl = buildYouTubeApiUrl('playlistItems', {
+      part: 'snippet,contentDetails',
+      playlistId: uploadsPlaylistResult.value,
+      maxResults: '50',
+      key: youtubeApiKey,
+      ...(pageToken ? { pageToken } : {}),
+    });
+
+    const pageResult = await fetchYouTubeApiJson(
+      sourceUrl,
+      youtubePlaylistItemsResponseSchema,
+      'playlistItems.list'
+    );
+    if (Result.isError(pageResult)) {
+      return Result.err(pageResult.error);
     }
 
-    const parsedJsonResult = Result.try(() => JSON.parse(runResult.value.stdout));
-    if (Result.isError(parsedJsonResult)) {
-      continue;
-    }
-
-    const parsed = ytDlpPayloadSchema.safeParse(parsedJsonResult.value);
-    if (!parsed.success) {
-      continue;
-    }
-
-    const map = new Map<string, string>();
-    for (const entry of parsed.data.entries) {
-      const videoId = extractVideoId(entry.id);
+    for (const entry of pageResult.value.items) {
+      const videoId = extractVideoId(entry.contentDetails?.videoId) ?? extractVideoId(entry.snippet?.resourceId?.videoId);
       if (!videoId) continue;
-      map.set(videoId, entry.title);
+      map.set(videoId, (entry.snippet?.title ?? '').trim());
     }
 
-    if (map.size > 0) {
+    pageToken = pageResult.value.nextPageToken?.trim() ?? '';
+    if (!pageToken) {
+      if (map.size === 0) {
+        return Result.err(new Error('No videos returned from YouTube uploads playlist.'));
+      }
       return Result.ok(map);
     }
   }
 
-  return Result.err(new Error('No videos returned from channel scan.'));
+  return Result.err(new Error('YouTube uploads pagination exceeded safety limit.'));
 }
 
 function parseMissingRows(rows: Array<Record<string, unknown>>): Result<MissingStall[], Error> {
@@ -628,7 +763,7 @@ async function main(): Promise<void> {
   const cli = cliResult.value;
 
   const projectRoot = process.cwd();
-  const channelMapResult = await fetchChannelVideoMap(projectRoot, cli.channelUrl);
+  const channelMapResult = await fetchChannelVideoMap(cli.channelId, cli.youtubeApiKey);
   if (Result.isError(channelMapResult)) {
     throw channelMapResult.error;
   }
