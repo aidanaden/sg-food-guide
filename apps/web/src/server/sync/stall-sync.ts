@@ -11,10 +11,16 @@ import {
   ensureStallTables,
   getActiveStallCount,
   getActiveStallIndex,
+  getStallSlugIndex,
   insertSyncRun,
 } from '../stalls/repository';
 import { enrichOpeningTimesFromGoogleMaps } from './google-maps-hours';
-import { fetchSheetCsv, parseSheetRows, type SheetStallRow } from './sheet-source';
+import {
+  fetchSheetCsv,
+  parseSheetRows,
+  resolveSheetCuisineOverride,
+  type SheetStallRow,
+} from './sheet-source';
 import { buildCanonicalStallsFromStaticData } from './static-seed';
 import {
   buildYouTubeVideoUrl,
@@ -381,6 +387,46 @@ function canonicalPayloadHash(stall: CanonicalStall): string {
   ].join('|');
 }
 
+function ensureUniqueCanonicalSlugs(stalls: CanonicalStall[], existingSlugIndex: Map<string, string>): number {
+  const occupiedSlugs = new Map<string, string>();
+  let adjustedCount = 0;
+
+  const canonicalOrdered = [...stalls].sort((left, right) =>
+    left.sourceStallKey.localeCompare(right.sourceStallKey)
+  );
+
+  for (const stall of canonicalOrdered) {
+    const baseSlug = stall.slug;
+    let candidateSlug = baseSlug;
+    let attempt = 0;
+
+    while (true) {
+      const occupiedBy = occupiedSlugs.get(candidateSlug);
+      const existingBy = existingSlugIndex.get(candidateSlug);
+      const occupiedByCurrent = !occupiedBy || occupiedBy === stall.sourceStallKey;
+      const existingByCurrent = !existingBy || existingBy === stall.sourceStallKey;
+
+      if (occupiedByCurrent && existingByCurrent) {
+        break;
+      }
+
+      attempt += 1;
+      const suffixLength = 6 + Math.min(attempt, 4);
+      const suffix = makeStableHash(`${stall.sourceStallKey}|${attempt}`).slice(0, suffixLength);
+      candidateSlug = `${baseSlug}-${suffix}`;
+    }
+
+    if (candidateSlug !== stall.slug) {
+      adjustedCount += 1;
+      stall.slug = candidateSlug;
+    }
+
+    occupiedSlugs.set(candidateSlug, stall.sourceStallKey);
+  }
+
+  return adjustedCount;
+}
+
 function toTelegramMessage(summary: StallSyncSummary): string {
   const lines = [
     `SG Food Guide Stall Sync`,
@@ -489,9 +535,10 @@ export async function runStallSync(args: RunStallSyncArgs): Promise<StallSyncSum
       throw ensureResult.error;
     }
 
-    const [existingCountResult, existingIndexResult] = await Promise.all([
+    const [existingCountResult, existingIndexResult, existingSlugIndexResult] = await Promise.all([
       getActiveStallCount(args.env.STALLS_DB),
       getActiveStallIndex(args.env.STALLS_DB),
+      getStallSlugIndex(args.env.STALLS_DB),
     ]);
 
     if (Result.isError(existingCountResult)) {
@@ -501,18 +548,34 @@ export async function runStallSync(args: RunStallSyncArgs): Promise<StallSyncSum
     if (Result.isError(existingIndexResult)) {
       throw existingIndexResult.error;
     }
+    if (Result.isError(existingSlugIndexResult)) {
+      throw existingSlugIndexResult.error;
+    }
 
     const sheetFetchResult = await fetchSheetCsv(args.env);
     if (Result.isError(sheetFetchResult)) {
       throw sheetFetchResult.error;
     }
 
-    const sheetRowsResult = parseSheetRows(sheetFetchResult.value.csv);
-    if (Result.isError(sheetRowsResult)) {
-      throw sheetRowsResult.error;
+    const parsedSheetRows: SheetStallRow[] = [];
+    const sheetSources =
+      sheetFetchResult.value.sources.length > 0
+        ? sheetFetchResult.value.sources
+        : [{ sourceUrl: sheetFetchResult.value.sourceUrl, gid: '', csv: sheetFetchResult.value.csv }];
+
+    for (const source of sheetSources) {
+      const sheetRowsResult = parseSheetRows(source.csv, {
+        defaultCuisine: resolveSheetCuisineOverride(source.gid),
+        sourceIdentityPrefix: source.gid,
+      });
+      if (Result.isError(sheetRowsResult)) {
+        throw sheetRowsResult.error;
+      }
+
+      parsedSheetRows.push(...sheetRowsResult.value);
     }
 
-    let sheetRows = sheetRowsResult.value;
+    let sheetRows = parsedSheetRows;
     const pipelineWarnings: string[] = [];
 
     const mapsHoursResult = await enrichOpeningTimesFromGoogleMaps(sheetRows, args.env);
@@ -540,6 +603,8 @@ export async function runStallSync(args: RunStallSyncArgs): Promise<StallSyncSum
       canonical = buildCanonicalStallsFromStaticData(startedAt);
       usedStaticSeed = true;
     }
+
+    const slugAdjustments = ensureUniqueCanonicalSlugs(canonical, existingSlugIndexResult.value);
 
     const existingCount = existingCountResult.value;
     const existingIndex = existingIndexResult.value;
@@ -599,6 +664,9 @@ export async function runStallSync(args: RunStallSyncArgs): Promise<StallSyncSum
     }
     if (pipelineWarnings.length > 0) {
       summary.warnings.push(...pipelineWarnings);
+    }
+    if (slugAdjustments > 0) {
+      summary.warnings.push(`Adjusted ${slugAdjustments} slug(s) to avoid uniqueness collisions.`);
     }
 
     if (mode === 'dry-run') {

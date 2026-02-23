@@ -8,6 +8,10 @@ const activeStatusSchema = z.object({
   source_stall_key: z.string(),
   payload_hash: z.string(),
 });
+const slugIndexSchema = z.object({
+  source_stall_key: z.string(),
+  slug: z.string(),
+});
 
 export interface ActiveStallIndexEntry {
   sourceStallKey: string;
@@ -353,6 +357,27 @@ export async function getActiveStallIndex(
       sourceStallKey: parsed.data.source_stall_key,
       payloadHash: parsed.data.payload_hash,
     });
+  }
+
+  return Result.ok(map);
+}
+
+export async function getStallSlugIndex(db: D1Database): Promise<Result<Map<string, string>, Error>> {
+  const rowsResult = await Result.tryPromise(() =>
+    db.prepare('SELECT source_stall_key, slug FROM stalls').all<Record<string, unknown>>()
+  );
+  if (Result.isError(rowsResult)) {
+    return Result.err(new Error('Failed to read stall slug index.'));
+  }
+
+  const map = new Map<string, string>();
+  for (const row of rowsResult.value.results) {
+    const parsed = slugIndexSchema.safeParse(row);
+    if (!parsed.success) {
+      return Result.err(new Error('Invalid row returned for stall slug index.'));
+    }
+
+    map.set(parsed.data.slug, parsed.data.source_stall_key);
   }
 
   return Result.ok(map);
