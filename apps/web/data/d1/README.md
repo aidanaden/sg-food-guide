@@ -33,7 +33,18 @@ Set via `wrangler.jsonc` vars and/or secrets:
 - `STALL_SYNC_MAX_CHANGE_RATIO` (0..1)
 - `STALL_SYNC_ALERT_MODE` (`all` or `failed`)
 - `STALL_SYNC_FORCE_APPLY` (`1`/`0`, optional)
-- `SYNC_ADMIN_TOKEN` (optional token for `/api/sync/stalls`)
+- `COMMENT_SYNC_MODE` (`dry-run` or `apply`)
+- `COMMENT_SYNC_FORCE_APPLY` (`1`/`0`, optional)
+- `COMMENT_SYNC_MAX_VIDEOS_PER_RUN` (default `30`)
+- `COMMENT_SYNC_TOP_LEVEL_LIMIT` (default `50`)
+- `COMMENT_SYNC_MIN_LIKES` (default `2`)
+- `COMMENT_SYNC_HIGH_CONFIDENCE_THRESHOLD` (default `80`)
+- `COMMENT_SYNC_LLM_ENABLED` (`1`/`0`, optional)
+- `COMMENT_SYNC_LLM_MAX_COMMENTS_PER_RUN` (default `25`)
+- `CLOUDFLARE_ACCESS_ADMIN_EMAILS` (required for `/admin/comment-drafts`, comma-separated emails)
+- `OPENAI_API_KEY` (optional, enables LLM-based extraction from comments)
+- `OPENAI_MODEL` (optional, default `gpt-4o-mini`)
+- `SYNC_ADMIN_TOKEN` (optional token for `/api/sync/stalls` and `/api/sync/comment-suggestions`)
 - `TELEGRAM_BOT_TOKEN` (optional)
 - `TELEGRAM_CHAT_ID` (optional)
 
@@ -43,6 +54,12 @@ With app dev server running:
 
 ```bash
 bun --filter @sg-food-guide/web sync:stalls:api
+```
+
+Comment suggestion sync trigger:
+
+```bash
+curl -sS -X POST 'http://127.0.0.1:3000/api/sync/comment-suggestions?mode=dry-run'
 ```
 
 To test scheduled handler locally:
@@ -55,6 +72,7 @@ bun --filter @sg-food-guide/web sync:stalls:scheduled:dev
 ## Notes
 
 - Sync uses Google Sheet + YouTube Data API channel uploads and writes to D1.
+- Comment suggestion sync parses top YouTube comments/replies into admin-review drafts.
 - If sheet produces zero canonical stalls, sync falls back to static seed data.
 - Missing source rows are soft-closed (`status = 'closed'`).
 - All parsing uses zod schemas; thrown operations are wrapped with better-result.

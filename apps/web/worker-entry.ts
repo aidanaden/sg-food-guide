@@ -8,7 +8,12 @@ import { Result } from 'better-result';
 import * as z from 'zod/mini';
 
 import type { WorkerEnv, WorkerRequestContext } from './src/server/cloudflare/runtime';
+import {
+  type CommentSuggestionSyncMode,
+  runCommentSuggestionSync,
+} from './src/server/sync/comment-suggestion-sync';
 import { type StallSyncMode, runStallSync } from './src/server/sync/stall-sync';
+import { runScheduledCommentSuggestionSync } from './src/server/sync/scheduled-comment-sync';
 import { runScheduledStallSync } from './src/server/sync/scheduled-sync';
 
 interface ScheduledEventLike {
@@ -61,7 +66,7 @@ function json(body: unknown, status = 200): Response {
 
 async function maybeHandleSyncApiRequest(request: Request, env: WorkerEnv): Promise<Response | null> {
   const url = new URL(request.url);
-  if (url.pathname !== '/api/sync/stalls') {
+  if (url.pathname !== '/api/sync/stalls' && url.pathname !== '/api/sync/comment-suggestions') {
     return null;
   }
 
@@ -91,13 +96,20 @@ async function maybeHandleSyncApiRequest(request: Request, env: WorkerEnv): Prom
     }
   }
 
-  const modeOverride = payload.data.mode as StallSyncMode | undefined;
-  const summary = await runStallSync({
-    env,
-    triggerSource: request.method === 'POST' ? 'api:manual' : 'api:get',
-    modeOverride,
-    forceApply: parseBool(payload.data.force),
-  });
+  const isStallSync = url.pathname === '/api/sync/stalls';
+  const summary = isStallSync
+    ? await runStallSync({
+      env,
+      triggerSource: request.method === 'POST' ? 'api:manual' : 'api:get',
+      modeOverride: payload.data.mode as StallSyncMode | undefined,
+      forceApply: parseBool(payload.data.force),
+    })
+    : await runCommentSuggestionSync({
+      env,
+      triggerSource: request.method === 'POST' ? 'api:manual:comment-suggestions' : 'api:get:comment-suggestions',
+      modeOverride: payload.data.mode as CommentSuggestionSyncMode | undefined,
+      forceApply: parseBool(payload.data.force),
+    });
 
   const statusCode = summary.status === 'failed' ? 500 : 200;
   return json(summary, statusCode);
@@ -131,14 +143,21 @@ const scheduledHandler = (
   env: WorkerEnv,
   executionCtx: ExecutionContextLike
 ): void => {
-  executionCtx.waitUntil(
-    runScheduledStallSync({
+  executionCtx.waitUntil((async () => {
+    await runScheduledStallSync({
       env,
       executionCtx,
       cron: event.cron,
       scheduledTime: event.scheduledTime,
-    })
-  );
+    });
+
+    await runScheduledCommentSuggestionSync({
+      env,
+      executionCtx,
+      cron: event.cron,
+      scheduledTime: event.scheduledTime,
+    });
+  })());
 };
 
 export default {

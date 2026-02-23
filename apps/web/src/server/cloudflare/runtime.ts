@@ -30,6 +30,17 @@ const workerEnvSchema = z.object({
   STALL_SYNC_MAX_CHANGE_RATIO: z.optional(z.union([z.string(), z.number()])),
   STALL_SYNC_ALERT_MODE: z.optional(alertModeSchema),
   STALL_SYNC_FORCE_APPLY: z.optional(z.union([z.string(), z.number()])),
+  COMMENT_SYNC_MODE: z.optional(modeSchema),
+  COMMENT_SYNC_FORCE_APPLY: z.optional(z.union([z.string(), z.number()])),
+  COMMENT_SYNC_MAX_VIDEOS_PER_RUN: z.optional(z.union([z.string(), z.number()])),
+  COMMENT_SYNC_TOP_LEVEL_LIMIT: z.optional(z.union([z.string(), z.number()])),
+  COMMENT_SYNC_MIN_LIKES: z.optional(z.union([z.string(), z.number()])),
+  COMMENT_SYNC_HIGH_CONFIDENCE_THRESHOLD: z.optional(z.union([z.string(), z.number()])),
+  COMMENT_SYNC_LLM_ENABLED: z.optional(z.union([z.string(), z.number(), z.boolean()])),
+  COMMENT_SYNC_LLM_MAX_COMMENTS_PER_RUN: z.optional(z.union([z.string(), z.number()])),
+  CLOUDFLARE_ACCESS_ADMIN_EMAILS: z.optional(z.string()),
+  OPENAI_API_KEY: z.optional(z.string()),
+  OPENAI_MODEL: z.optional(z.string()),
   SYNC_ADMIN_TOKEN: z.optional(z.string()),
   TELEGRAM_BOT_TOKEN: z.optional(z.string()),
   TELEGRAM_CHAT_ID: z.optional(z.string()),
@@ -65,6 +76,17 @@ export interface WorkerEnv {
   STALL_SYNC_MAX_CHANGE_RATIO?: string | number;
   STALL_SYNC_ALERT_MODE?: 'all' | 'failed';
   STALL_SYNC_FORCE_APPLY?: string | number;
+  COMMENT_SYNC_MODE?: 'dry-run' | 'apply';
+  COMMENT_SYNC_FORCE_APPLY?: string | number;
+  COMMENT_SYNC_MAX_VIDEOS_PER_RUN?: string | number;
+  COMMENT_SYNC_TOP_LEVEL_LIMIT?: string | number;
+  COMMENT_SYNC_MIN_LIKES?: string | number;
+  COMMENT_SYNC_HIGH_CONFIDENCE_THRESHOLD?: string | number;
+  COMMENT_SYNC_LLM_ENABLED?: string | number | boolean;
+  COMMENT_SYNC_LLM_MAX_COMMENTS_PER_RUN?: string | number;
+  CLOUDFLARE_ACCESS_ADMIN_EMAILS?: string;
+  OPENAI_API_KEY?: string;
+  OPENAI_MODEL?: string;
   SYNC_ADMIN_TOKEN?: string;
   TELEGRAM_BOT_TOKEN?: string;
   TELEGRAM_CHAT_ID?: string;
@@ -169,4 +191,18 @@ export function getExecutionContextFromServerContext(
   }
 
   return Result.ok(executionCtx as WorkerExecutionContextLike);
+}
+
+export function getRequestFromServerContext(context: unknown): Result<Request, Error> {
+  const cloudflareContextResult = resolveCloudflareContext(context);
+  if (Result.isError(cloudflareContextResult)) {
+    return Result.err(cloudflareContextResult.error);
+  }
+
+  const request = cloudflareContextResult.value.request;
+  if (!(request instanceof Request)) {
+    return Result.err(new Error('Missing request in Cloudflare context.'));
+  }
+
+  return Result.ok(request);
 }

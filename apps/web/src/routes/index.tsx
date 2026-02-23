@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 
 import {
@@ -218,6 +218,14 @@ function HomePage() {
           <p className="text-foreground-muted mt-2">
             {stalls.length} stalls ranked, mapped, and reviewed.
           </p>
+          <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
+            <Link to="/community/stalls" className="text-primary hover:underline">
+              Community source route
+            </Link>
+            <Link to="/admin/comment-drafts" className="text-foreground-faint hover:text-primary">
+              Admin draft queue
+            </Link>
+          </div>
         </div>
       </header>
 
