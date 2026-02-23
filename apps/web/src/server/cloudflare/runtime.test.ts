@@ -1,8 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { Result } from "better-result";
+import { describe, expect, it } from "vitest";
 
-import { Result } from 'better-result';
-
-import { getWorkerEnvFromServerContext } from './runtime';
+import { getWorkerEnvFromServerContext } from "./runtime";
 
 function makeD1Mock() {
   return {
@@ -29,8 +28,8 @@ function makeD1Mock() {
   };
 }
 
-describe('cloudflare runtime context parsing', () => {
-  it('parses direct cloudflare context', () => {
+describe("cloudflare runtime context parsing", () => {
+  it("parses direct cloudflare context", () => {
     const db = makeD1Mock();
     const result = getWorkerEnvFromServerContext({
       cloudflare: {
@@ -47,7 +46,7 @@ describe('cloudflare runtime context parsing', () => {
     expect(result.value.STALLS_DB).toBe(db);
   });
 
-  it('parses route handler requestContext wrapper', () => {
+  it("parses route handler requestContext wrapper", () => {
     const db = makeD1Mock();
     const result = getWorkerEnvFromServerContext({
       requestContext: {
@@ -66,7 +65,7 @@ describe('cloudflare runtime context parsing', () => {
     expect(result.value.STALLS_DB).toBe(db);
   });
 
-  it('parses nested context wrapper shape', () => {
+  it("parses nested context wrapper shape", () => {
     const db = makeD1Mock();
     const result = getWorkerEnvFromServerContext({
       context: {

@@ -1,14 +1,17 @@
-import { Result } from 'better-result';
-import * as z from 'zod';
+import { Result } from "better-result";
+import * as z from "zod";
 
-import type { WorkerEnv } from '../cloudflare/runtime';
-import { buildYouTubeVideoUrl, normalizeDisplayText, normalizeYouTubeVideoId } from './normalize';
+import type { WorkerEnv } from "../cloudflare/runtime";
+import { buildYouTubeVideoUrl, normalizeDisplayText, normalizeYouTubeVideoId } from "./normalize";
 
-const YOUTUBE_DATA_API_BASE = 'https://www.googleapis.com/youtube/v3';
+const YOUTUBE_DATA_API_BASE = "https://www.googleapis.com/youtube/v3";
 const DEFAULT_ATTEMPTS = 3;
 const DEFAULT_BACKOFF_MS = 350;
 const MAX_COMMENT_THREAD_PAGES = 4;
 const MAX_REPLY_PAGES = 10;
+const DEFAULT_COMMENT_THREAD_PAGES = 1;
+const DEFAULT_REPLY_PAGES = 1;
+const DEFAULT_INCLUDE_REPLIES = false;
 const SHORT_DURATION_SECONDS_THRESHOLD = 120;
 
 const commentSnippetSchema = z.object({
@@ -30,9 +33,9 @@ const commentThreadItemSchema = z.object({
         z.object({
           id: z.string(),
           snippet: commentSnippetSchema,
-        })
+        }),
       ),
-    })
+    }),
   ),
 });
 
@@ -47,7 +50,7 @@ const repliesResponseSchema = z.object({
     z.object({
       id: z.string(),
       snippet: commentSnippetSchema,
-    })
+    }),
   ),
 });
 
@@ -59,14 +62,14 @@ const videosListResponseSchema = z.object({
         z.object({
           title: z.optional(z.string()),
           liveBroadcastContent: z.optional(z.string()),
-        })
+        }),
       ),
       contentDetails: z.optional(
         z.object({
           duration: z.optional(z.string()),
-        })
+        }),
       ),
-    })
+    }),
   ),
 });
 
@@ -95,9 +98,9 @@ export interface YouTubeCommentEntry {
 }
 
 function resolveApiKey(env: WorkerEnv): Result<string, Error> {
-  const apiKey = normalizeDisplayText(env.YOUTUBE_DATA_API_KEY ?? '');
+  const apiKey = normalizeDisplayText(env.YOUTUBE_DATA_API_KEY ?? "");
   if (!apiKey) {
-    return Result.err(new Error('Missing YOUTUBE_DATA_API_KEY for YouTube comment sync.'));
+    return Result.err(new Error("Missing YOUTUBE_DATA_API_KEY for YouTube comment sync."));
   }
 
   return Result.ok(apiKey);
@@ -117,6 +120,10 @@ function buildApiUrl(pathname: string, params: Record<string, string>): string {
 function parseNumeric(input: number | string | undefined): number {
   const value = Number(input);
   return Number.isFinite(value) ? value : 0;
+}
+
+function clampInt(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, Math.trunc(value)));
 }
 
 function parseDurationToSeconds(value: string | undefined): number | null {
@@ -141,12 +148,12 @@ function parseDurationToSeconds(value: string | undefined): number | null {
 }
 
 function normalizeCommentText(snippet: z.infer<typeof commentSnippetSchema>): string {
-  const original = normalizeDisplayText(snippet.textOriginal ?? '');
+  const original = normalizeDisplayText(snippet.textOriginal ?? "");
   if (original) {
     return original;
   }
 
-  return normalizeDisplayText(snippet.textDisplay ?? '');
+  return normalizeDisplayText(snippet.textDisplay ?? "");
 }
 
 function sleep(ms: number): Promise<void> {
@@ -159,7 +166,7 @@ async function fetchApiJsonWithRetry<TSchema extends z.ZodTypeAny>(
   url: string,
   schema: TSchema,
   label: string,
-  attempts = DEFAULT_ATTEMPTS
+  attempts = DEFAULT_ATTEMPTS,
 ): Promise<Result<z.infer<TSchema>, Error>> {
   let lastError: Error | null = null;
 
@@ -167,9 +174,9 @@ async function fetchApiJsonWithRetry<TSchema extends z.ZodTypeAny>(
     const responseResult = await Result.tryPromise(() =>
       fetch(url, {
         headers: {
-          'User-Agent': 'sg-food-guide-comment-sync/1.0',
+          "User-Agent": "sg-food-guide-comment-sync/1.0",
         },
-      })
+      }),
     );
 
     if (Result.isError(responseResult)) {
@@ -179,8 +186,12 @@ async function fetchApiJsonWithRetry<TSchema extends z.ZodTypeAny>(
           : new Error(String(responseResult.error));
     } else if (!responseResult.value.ok) {
       const bodyResult = await Result.tryPromise(() => responseResult.value.text());
-      const bodyText = Result.isError(bodyResult) ? '' : normalizeDisplayText(bodyResult.value).slice(0, 280);
-      lastError = new Error(`${label} failed with HTTP ${responseResult.value.status}${bodyText ? ` (${bodyText})` : ''}`);
+      const bodyText = Result.isError(bodyResult)
+        ? ""
+        : normalizeDisplayText(bodyResult.value).slice(0, 280);
+      lastError = new Error(
+        `${label} failed with HTTP ${responseResult.value.status}${bodyText ? ` (${bodyText})` : ""}`,
+      );
     } else {
       const payloadResult = await Result.tryPromise(() => responseResult.value.json());
       if (Result.isError(payloadResult)) {
@@ -207,7 +218,7 @@ function buildTopLevelComment(
   thread: z.infer<typeof commentThreadItemSchema>,
   videoId: string,
   videoTitle: string,
-  isPinned: boolean
+  isPinned: boolean,
 ): YouTubeCommentEntry | null {
   const topLevelComment = thread.snippet?.topLevelComment;
   if (!topLevelComment) {
@@ -229,12 +240,12 @@ function buildTopLevelComment(
     parentCommentId: null,
     replyCount: parseNumeric(thread.snippet?.totalReplyCount),
     videoId: parsedVideoId,
-    videoUrl: buildYouTubeVideoUrl(parsedVideoId) ?? '',
+    videoUrl: buildYouTubeVideoUrl(parsedVideoId) ?? "",
     videoTitle,
     isTopLevel: true,
     isPinned,
     likeCount: parseNumeric(topLevelComment.snippet.likeCount),
-    authorDisplayName: normalizeDisplayText(topLevelComment.snippet.authorDisplayName ?? ''),
+    authorDisplayName: normalizeDisplayText(topLevelComment.snippet.authorDisplayName ?? ""),
     text,
     publishedAt: topLevelComment.snippet.publishedAt ?? null,
     updatedAt: topLevelComment.snippet.updatedAt ?? null,
@@ -242,9 +253,9 @@ function buildTopLevelComment(
 }
 
 function buildReplyComment(
-  item: z.infer<typeof repliesResponseSchema>['items'][number],
+  item: z.infer<typeof repliesResponseSchema>["items"][number],
   videoId: string,
-  videoTitle: string
+  videoTitle: string,
 ): YouTubeCommentEntry | null {
   const parsedVideoId = normalizeYouTubeVideoId(item.snippet.videoId ?? videoId);
   if (!parsedVideoId) {
@@ -256,19 +267,19 @@ function buildReplyComment(
     return null;
   }
 
-  const parentCommentId = normalizeDisplayText(item.snippet.parentId ?? '');
+  const parentCommentId = normalizeDisplayText(item.snippet.parentId ?? "");
 
   return {
     commentId: item.id,
     parentCommentId: parentCommentId || null,
     replyCount: 0,
     videoId: parsedVideoId,
-    videoUrl: buildYouTubeVideoUrl(parsedVideoId) ?? '',
+    videoUrl: buildYouTubeVideoUrl(parsedVideoId) ?? "",
     videoTitle,
     isTopLevel: false,
     isPinned: false,
     likeCount: parseNumeric(item.snippet.likeCount),
-    authorDisplayName: normalizeDisplayText(item.snippet.authorDisplayName ?? ''),
+    authorDisplayName: normalizeDisplayText(item.snippet.authorDisplayName ?? ""),
     text,
     publishedAt: item.snippet.publishedAt ?? null,
     updatedAt: item.snippet.updatedAt ?? null,
@@ -277,9 +288,11 @@ function buildReplyComment(
 
 export async function fetchYouTubeVideoMetadata(
   env: WorkerEnv,
-  videoIds: string[]
+  videoIds: string[],
 ): Promise<Result<Map<string, YouTubeVideoMetadata>, Error>> {
-  const normalizedVideoIds = [...new Set(videoIds.map((videoId) => normalizeYouTubeVideoId(videoId)).filter(Boolean))] as string[];
+  const normalizedVideoIds = [
+    ...new Set(videoIds.map((videoId) => normalizeYouTubeVideoId(videoId)).filter(Boolean)),
+  ] as string[];
   if (normalizedVideoIds.length === 0) {
     return Result.ok(new Map());
   }
@@ -293,14 +306,18 @@ export async function fetchYouTubeVideoMetadata(
 
   for (let index = 0; index < normalizedVideoIds.length; index += 50) {
     const batchIds = normalizedVideoIds.slice(index, index + 50);
-    const responseUrl = buildApiUrl('videos', {
-      part: 'snippet,contentDetails',
-      id: batchIds.join(','),
+    const responseUrl = buildApiUrl("videos", {
+      part: "snippet,contentDetails",
+      id: batchIds.join(","),
       key: apiKeyResult.value,
-      maxResults: '50',
+      maxResults: "50",
     });
 
-    const responseResult = await fetchApiJsonWithRetry(responseUrl, videosListResponseSchema, 'videos.list');
+    const responseResult = await fetchApiJsonWithRetry(
+      responseUrl,
+      videosListResponseSchema,
+      "videos.list",
+    );
     if (Result.isError(responseResult)) {
       return Result.err(responseResult.error);
     }
@@ -311,12 +328,15 @@ export async function fetchYouTubeVideoMetadata(
         continue;
       }
 
-      const title = normalizeDisplayText(item.snippet?.title ?? '');
+      const title = normalizeDisplayText(item.snippet?.title ?? "");
       const durationSeconds = parseDurationToSeconds(item.contentDetails?.duration);
-      const liveBroadcastContent = normalizeDisplayText(item.snippet?.liveBroadcastContent ?? 'none').toLowerCase();
+      const liveBroadcastContent = normalizeDisplayText(
+        item.snippet?.liveBroadcastContent ?? "none",
+      ).toLowerCase();
       const isShortTitle = /\b#?shorts\b/i.test(title);
-      const isLive = liveBroadcastContent !== 'none';
-      const isVeryShort = durationSeconds !== null && durationSeconds <= SHORT_DURATION_SECONDS_THRESHOLD;
+      const isLive = liveBroadcastContent !== "none";
+      const isVeryShort =
+        durationSeconds !== null && durationSeconds <= SHORT_DURATION_SECONDS_THRESHOLD;
       const isRegularVideo = !isLive && !isShortTitle && !isVeryShort;
 
       metadataByVideoId.set(normalizedVideoId, {
@@ -336,22 +356,27 @@ async function fetchRepliesForTopLevelComment(
   apiKey: string,
   videoId: string,
   videoTitle: string,
-  parentCommentId: string
+  parentCommentId: string,
+  maxPages: number,
 ): Promise<Result<YouTubeCommentEntry[], Error>> {
   const entries: YouTubeCommentEntry[] = [];
-  let pageToken = '';
+  let pageToken = "";
 
-  for (let pageIndex = 0; pageIndex < MAX_REPLY_PAGES; pageIndex += 1) {
-    const responseUrl = buildApiUrl('comments', {
-      part: 'snippet',
-      maxResults: '100',
+  for (let pageIndex = 0; pageIndex < maxPages; pageIndex += 1) {
+    const responseUrl = buildApiUrl("comments", {
+      part: "snippet",
+      maxResults: "100",
       parentId: parentCommentId,
-      textFormat: 'plainText',
+      textFormat: "plainText",
       key: apiKey,
       ...(pageToken ? { pageToken } : {}),
     });
 
-    const responseResult = await fetchApiJsonWithRetry(responseUrl, repliesResponseSchema, 'comments.list');
+    const responseResult = await fetchApiJsonWithRetry(
+      responseUrl,
+      repliesResponseSchema,
+      "comments.list",
+    );
     if (Result.isError(responseResult)) {
       return Result.err(responseResult.error);
     }
@@ -364,7 +389,7 @@ async function fetchRepliesForTopLevelComment(
       entries.push(entry);
     }
 
-    pageToken = responseResult.value.nextPageToken?.trim() ?? '';
+    pageToken = responseResult.value.nextPageToken?.trim() ?? "";
     if (!pageToken) {
       return Result.ok(entries);
     }
@@ -379,11 +404,14 @@ export async function fetchTopYouTubeCommentsForVideo(
     videoId: string;
     videoTitle: string;
     topLevelLimit: number;
-  }
+    maxCommentThreadPages?: number;
+    includeReplies?: boolean;
+    maxReplyPagesPerComment?: number;
+  },
 ): Promise<Result<{ comments: YouTubeCommentEntry[]; repliesFetched: number }, Error>> {
   const videoId = normalizeYouTubeVideoId(args.videoId);
   if (!videoId) {
-    return Result.err(new Error('Invalid video id for YouTube comments fetch.'));
+    return Result.err(new Error("Invalid video id for YouTube comments fetch."));
   }
 
   const apiKeyResult = resolveApiKey(env);
@@ -391,40 +419,63 @@ export async function fetchTopYouTubeCommentsForVideo(
     return Result.err(apiKeyResult.error);
   }
 
-  const topLevelCandidates: YouTubeCommentEntry[] = [];
-  let pageToken = '';
+  const maxCommentThreadPages = clampInt(
+    Number(args.maxCommentThreadPages ?? DEFAULT_COMMENT_THREAD_PAGES),
+    1,
+    MAX_COMMENT_THREAD_PAGES,
+  );
+  const includeReplies = args.includeReplies ?? DEFAULT_INCLUDE_REPLIES;
+  const maxReplyPagesPerComment = clampInt(
+    Number(args.maxReplyPagesPerComment ?? DEFAULT_REPLY_PAGES),
+    1,
+    MAX_REPLY_PAGES,
+  );
 
-  for (let pageIndex = 0; pageIndex < MAX_COMMENT_THREAD_PAGES; pageIndex += 1) {
-    const responseUrl = buildApiUrl('commentThreads', {
-      part: 'snippet',
-      maxResults: '100',
-      order: 'relevance',
-      textFormat: 'plainText',
+  const topLevelCandidates: YouTubeCommentEntry[] = [];
+  let pageToken = "";
+
+  for (let pageIndex = 0; pageIndex < maxCommentThreadPages; pageIndex += 1) {
+    const responseUrl = buildApiUrl("commentThreads", {
+      part: "snippet",
+      maxResults: "100",
+      order: "relevance",
+      textFormat: "plainText",
       videoId,
       key: apiKeyResult.value,
       ...(pageToken ? { pageToken } : {}),
     });
 
-    const responseResult = await fetchApiJsonWithRetry(responseUrl, commentThreadsResponseSchema, 'commentThreads.list');
+    const responseResult = await fetchApiJsonWithRetry(
+      responseUrl,
+      commentThreadsResponseSchema,
+      "commentThreads.list",
+    );
     if (Result.isError(responseResult)) {
       return Result.err(responseResult.error);
     }
 
     for (const [threadIndex, thread] of responseResult.value.items.entries()) {
-      const entry = buildTopLevelComment(thread, videoId, args.videoTitle, pageIndex === 0 && threadIndex === 0);
+      const entry = buildTopLevelComment(
+        thread,
+        videoId,
+        args.videoTitle,
+        pageIndex === 0 && threadIndex === 0,
+      );
       if (!entry) {
         continue;
       }
       topLevelCandidates.push(entry);
     }
 
-    pageToken = responseResult.value.nextPageToken?.trim() ?? '';
+    pageToken = responseResult.value.nextPageToken?.trim() ?? "";
     if (!pageToken) {
       break;
     }
   }
 
-  const sortedTopLevel = [...topLevelCandidates].sort((left, right) => right.likeCount - left.likeCount);
+  const sortedTopLevel = [...topLevelCandidates].sort(
+    (left, right) => right.likeCount - left.likeCount,
+  );
   const pinnedTopLevel = topLevelCandidates.filter((item) => item.isPinned);
   const selectedMap = new Map<string, YouTubeCommentEntry>();
 
@@ -443,6 +494,13 @@ export async function fetchTopYouTubeCommentsForVideo(
   let repliesFetched = 0;
   const allComments: YouTubeCommentEntry[] = [...selectedTopLevel];
 
+  if (!includeReplies) {
+    return Result.ok({
+      comments: allComments,
+      repliesFetched,
+    });
+  }
+
   for (const topLevelComment of selectedTopLevel) {
     if (topLevelComment.replyCount <= 0) {
       continue;
@@ -452,7 +510,8 @@ export async function fetchTopYouTubeCommentsForVideo(
       apiKeyResult.value,
       videoId,
       args.videoTitle,
-      topLevelComment.commentId
+      topLevelComment.commentId,
+      maxReplyPagesPerComment,
     );
 
     if (Result.isError(repliesResult)) {

@@ -1,7 +1,7 @@
-import { Result } from 'better-result';
-import * as z from 'zod';
+import { Result } from "better-result";
+import * as z from "zod";
 
-import type { WorkerEnv, WorkerExecutionContextLike } from '../cloudflare/runtime';
+import type { WorkerEnv, WorkerExecutionContextLike } from "../cloudflare/runtime";
 import {
   type CanonicalStallCommentEvidenceRecord,
   ensureCommentSuggestionTables,
@@ -13,22 +13,22 @@ import {
   upsertCanonicalStallCommentEvidence,
   upsertDraftSuggestions,
   upsertYouTubeCommentSourceRecords,
-} from '../comment-suggestions/repository';
-import { ensureStallTables } from '../stalls/repository';
+} from "../comment-suggestions/repository";
+import { ensureStallTables } from "../stalls/repository";
 import {
   extractStallSuggestionsFromComment,
   hasBlockingModerationFlags,
-} from './comment-suggestion-extraction';
-import { makeStableHash, normalizeComparableText, normalizeDisplayText } from './normalize';
+} from "./comment-suggestion-extraction";
+import { makeStableHash, normalizeComparableText, normalizeDisplayText } from "./normalize";
 import {
   fetchTopYouTubeCommentsForVideo,
   fetchYouTubeVideoMetadata,
   type YouTubeCommentEntry,
-} from './youtube-comments-source';
-import { fetchYouTubeVideos, type YouTubeVideoEntry } from './youtube-source';
+} from "./youtube-comments-source";
+import { fetchYouTubeVideos, type YouTubeVideoEntry } from "./youtube-source";
 
-export type CommentSuggestionSyncMode = 'dry-run' | 'apply';
-export type CommentSuggestionSyncStatus = 'success' | 'failed' | 'guarded';
+export type CommentSuggestionSyncMode = "dry-run" | "apply";
+export type CommentSuggestionSyncStatus = "success" | "failed" | "guarded";
 
 export interface CommentSuggestionSyncSummary {
   runId: string;
@@ -89,11 +89,11 @@ interface DraftAggregateAccumulator {
   mapsUrls: Set<string>;
   evidenceCommentIds: Set<string>;
   evidenceVideoIds: Set<string>;
-  extractionMethods: Set<'rules' | 'llm' | 'mixed'>;
+  extractionMethods: Set<"rules" | "llm" | "mixed">;
   extractionNotes: Set<string>;
 }
 
-const COMMENT_SYNC_STATE_KEY = 'youtube-comment-sync-progress:v1';
+const COMMENT_SYNC_STATE_KEY = "youtube-comment-sync-progress:v1";
 const backfillStateSchema = z.object({
   backfillOffset: z.number(),
   backfillCompleted: z.boolean(),
@@ -102,6 +102,9 @@ const backfillStateSchema = z.object({
 
 const DEFAULT_MAX_VIDEOS_PER_RUN = 30;
 const DEFAULT_TOP_LEVEL_LIMIT = 50;
+const DEFAULT_MAX_COMMENT_THREAD_PAGES = 1;
+const MAX_COMMENT_THREAD_PAGES_HARD_CAP = 4;
+const DEFAULT_INCLUDE_REPLIES = false;
 const DEFAULT_MIN_LIKES = 2;
 const DEFAULT_HIGH_CONFIDENCE_THRESHOLD = 80;
 const DEFAULT_LLM_MAX_COMMENTS_PER_RUN = 25;
@@ -112,21 +115,21 @@ function nowIso(): string {
 }
 
 function boolFromValue(value: unknown, fallback: boolean): boolean {
-  if (typeof value === 'boolean') {
+  if (typeof value === "boolean") {
     return value;
   }
 
-  if (typeof value === 'number') {
+  if (typeof value === "number") {
     return value !== 0;
   }
 
-  if (typeof value !== 'string') {
+  if (typeof value !== "string") {
     return fallback;
   }
 
   const normalized = value.trim().toLowerCase();
-  if (['1', 'true', 'yes', 'on', 'y'].includes(normalized)) return true;
-  if (['0', 'false', 'no', 'off', 'n'].includes(normalized)) return false;
+  if (["1", "true", "yes", "on", "y"].includes(normalized)) return true;
+  if (["0", "false", "no", "off", "n"].includes(normalized)) return false;
   return fallback;
 }
 
@@ -144,7 +147,7 @@ function resolveSyncMode(args: RunCommentSuggestionSyncArgs): CommentSuggestionS
     return args.modeOverride;
   }
 
-  return args.env.COMMENT_SYNC_MODE === 'apply' ? 'apply' : 'dry-run';
+  return args.env.COMMENT_SYNC_MODE === "apply" ? "apply" : "dry-run";
 }
 
 function shouldForceApply(args: RunCommentSuggestionSyncArgs): boolean {
@@ -161,24 +164,42 @@ function resolveTopLevelLimit(env: WorkerEnv): number {
   return Math.max(1, Math.min(100, Math.trunc(raw)));
 }
 
+function resolveMaxCommentThreadPages(env: WorkerEnv): number {
+  const raw = numberFromValue(
+    env.COMMENT_SYNC_MAX_COMMENT_THREAD_PAGES,
+    DEFAULT_MAX_COMMENT_THREAD_PAGES,
+  );
+  return Math.max(1, Math.min(MAX_COMMENT_THREAD_PAGES_HARD_CAP, Math.trunc(raw)));
+}
+
+function resolveIncludeReplies(env: WorkerEnv): boolean {
+  return boolFromValue(env.COMMENT_SYNC_INCLUDE_REPLIES, DEFAULT_INCLUDE_REPLIES);
+}
+
 function resolveMinLikes(env: WorkerEnv): number {
   const raw = numberFromValue(env.COMMENT_SYNC_MIN_LIKES, DEFAULT_MIN_LIKES);
   return Math.max(0, Math.min(1000, Math.trunc(raw)));
 }
 
 function resolveHighConfidenceThreshold(env: WorkerEnv): number {
-  const raw = numberFromValue(env.COMMENT_SYNC_HIGH_CONFIDENCE_THRESHOLD, DEFAULT_HIGH_CONFIDENCE_THRESHOLD);
+  const raw = numberFromValue(
+    env.COMMENT_SYNC_HIGH_CONFIDENCE_THRESHOLD,
+    DEFAULT_HIGH_CONFIDENCE_THRESHOLD,
+  );
   return Math.max(0, Math.min(100, Math.trunc(raw)));
 }
 
 function resolveLlmMaxCommentsPerRun(env: WorkerEnv): number {
-  const raw = numberFromValue(env.COMMENT_SYNC_LLM_MAX_COMMENTS_PER_RUN, DEFAULT_LLM_MAX_COMMENTS_PER_RUN);
+  const raw = numberFromValue(
+    env.COMMENT_SYNC_LLM_MAX_COMMENTS_PER_RUN,
+    DEFAULT_LLM_MAX_COMMENTS_PER_RUN,
+  );
   return Math.max(0, Math.min(200, Math.trunc(raw)));
 }
 
 function resolveLlmEnabled(env: WorkerEnv): boolean {
-  const hasWorkersAi = Boolean(env.AI && typeof env.AI.run === 'function');
-  const hasOpenAi = Boolean(normalizeDisplayText(env.OPENAI_API_KEY ?? ''));
+  const hasWorkersAi = Boolean(env.AI && typeof env.AI.run === "function");
+  const hasOpenAi = Boolean(normalizeDisplayText(env.OPENAI_API_KEY ?? ""));
   const fallback = hasWorkersAi || hasOpenAi;
   return boolFromValue(env.COMMENT_SYNC_LLM_ENABLED, fallback);
 }
@@ -203,7 +224,7 @@ function buildRunId(startedAtIso: string): string {
 
 function toTelegramMessage(summary: CommentSuggestionSyncSummary): string {
   const lines = [
-    'SG Food Guide Comment Suggestion Sync',
+    "SG Food Guide Comment Suggestion Sync",
     `Run: ${summary.runId}`,
     `Status: ${summary.status}`,
     `Mode: ${summary.mode}`,
@@ -216,19 +237,22 @@ function toTelegramMessage(summary: CommentSuggestionSyncSummary): string {
   ];
 
   if (summary.warnings.length > 0) {
-    lines.push(`Warnings: ${summary.warnings.join(' | ')}`);
+    lines.push(`Warnings: ${summary.warnings.join(" | ")}`);
   }
 
   if (summary.error) {
     lines.push(`Error: ${summary.error}`);
   }
 
-  return lines.join('\n');
+  return lines.join("\n");
 }
 
-async function sendTelegramAlert(env: WorkerEnv, summary: CommentSuggestionSyncSummary): Promise<Result<void, Error>> {
-  const botToken = normalizeDisplayText(env.TELEGRAM_BOT_TOKEN ?? '');
-  const chatId = normalizeDisplayText(env.TELEGRAM_CHAT_ID ?? '');
+async function sendTelegramAlert(
+  env: WorkerEnv,
+  summary: CommentSuggestionSyncSummary,
+): Promise<Result<void, Error>> {
+  const botToken = normalizeDisplayText(env.TELEGRAM_BOT_TOKEN ?? "");
+  const chatId = normalizeDisplayText(env.TELEGRAM_CHAT_ID ?? "");
 
   if (!botToken || !chatId) {
     return Result.ok();
@@ -236,24 +260,26 @@ async function sendTelegramAlert(env: WorkerEnv, summary: CommentSuggestionSyncS
 
   const responseResult = await Result.tryPromise(() =>
     fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'content-type': 'application/json; charset=utf-8',
+        "content-type": "application/json; charset=utf-8",
       },
       body: JSON.stringify({
         chat_id: chatId,
         text: toTelegramMessage(summary),
         disable_web_page_preview: true,
       }),
-    })
+    }),
   );
 
   if (Result.isError(responseResult)) {
-    return Result.err(new Error('Failed to send Telegram alert for comment suggestion sync.'));
+    return Result.err(new Error("Failed to send Telegram alert for comment suggestion sync."));
   }
 
   if (!responseResult.value.ok) {
-    return Result.err(new Error(`Telegram alert request failed with HTTP ${responseResult.value.status}.`));
+    return Result.err(
+      new Error(`Telegram alert request failed with HTTP ${responseResult.value.status}.`),
+    );
   }
 
   return Result.ok();
@@ -282,13 +308,13 @@ function normalizeVideoCandidates(entries: YouTubeVideoEntry[]): SyncVideoCandid
 function selectVideosForRun(
   allRegularCandidates: SyncVideoCandidate[],
   state: z.infer<typeof backfillStateSchema> | null,
-  maxVideosPerRun: number
+  maxVideosPerRun: number,
 ): {
   selected: SyncVideoCandidate[];
   nextState: z.infer<typeof backfillStateSchema>;
 } {
   const sortedByPublishedAtAsc = [...allRegularCandidates].sort(
-    (left, right) => toPublishedAtValue(left.publishedAt) - toPublishedAtValue(right.publishedAt)
+    (left, right) => toPublishedAtValue(left.publishedAt) - toPublishedAtValue(right.publishedAt),
   );
 
   const fallbackState: z.infer<typeof backfillStateSchema> = {
@@ -299,28 +325,32 @@ function selectVideosForRun(
 
   const currentState = state ?? fallbackState;
   if (!currentState.backfillCompleted) {
-    const offset = Math.max(0, Math.min(sortedByPublishedAtAsc.length, currentState.backfillOffset));
+    const offset = Math.max(
+      0,
+      Math.min(sortedByPublishedAtAsc.length, currentState.backfillOffset),
+    );
     const selected = sortedByPublishedAtAsc.slice(offset, offset + maxVideosPerRun);
 
     const nextOffset = offset + selected.length;
     const latestSeenPublishedAt =
       sortedByPublishedAtAsc.length > 0
-        ? sortedByPublishedAtAsc[sortedByPublishedAtAsc.length - 1]?.publishedAt ?? null
-        : currentState.lastIncrementalPublishedAt ?? null;
+        ? (sortedByPublishedAtAsc[sortedByPublishedAtAsc.length - 1]?.publishedAt ?? null)
+        : (currentState.lastIncrementalPublishedAt ?? null);
 
     return {
       selected,
       nextState: {
         backfillOffset: nextOffset,
         backfillCompleted: nextOffset >= sortedByPublishedAtAsc.length,
-        lastIncrementalPublishedAt: nextOffset >= sortedByPublishedAtAsc.length ? latestSeenPublishedAt : null,
+        lastIncrementalPublishedAt:
+          nextOffset >= sortedByPublishedAtAsc.length ? latestSeenPublishedAt : null,
       },
     };
   }
 
-  const watermark = normalizeDisplayText(currentState.lastIncrementalPublishedAt ?? '');
+  const watermark = normalizeDisplayText(currentState.lastIncrementalPublishedAt ?? "");
   const sortedByPublishedAtDesc = [...allRegularCandidates].sort(
-    (left, right) => toPublishedAtValue(right.publishedAt) - toPublishedAtValue(left.publishedAt)
+    (left, right) => toPublishedAtValue(right.publishedAt) - toPublishedAtValue(left.publishedAt),
   );
 
   const incrementalCandidates = sortedByPublishedAtDesc.filter((candidate) => {
@@ -354,7 +384,7 @@ function selectVideosForRun(
 function ensureDraftAccumulator(
   map: Map<string, DraftAggregateAccumulator>,
   normalizedName: string,
-  displayName: string
+  displayName: string,
 ): DraftAggregateAccumulator {
   const existing = map.get(normalizedName);
   if (existing) {
@@ -364,14 +394,14 @@ function ensureDraftAccumulator(
   const created: DraftAggregateAccumulator = {
     normalizedName,
     displayName,
-    country: 'SG',
+    country: "SG",
     confidenceScore: 0,
     topLikeCount: 0,
     moderationFlags: new Set<string>(),
     mapsUrls: new Set<string>(),
     evidenceCommentIds: new Set<string>(),
     evidenceVideoIds: new Set<string>(),
-    extractionMethods: new Set<'rules' | 'llm' | 'mixed'>(),
+    extractionMethods: new Set<"rules" | "llm" | "mixed">(),
     extractionNotes: new Set<string>(),
   };
   map.set(normalizedName, created);
@@ -383,7 +413,7 @@ function aggregateDraftSuggestions(
   extractedByCommentId: Map<string, Awaited<ReturnType<typeof extractStallSuggestionsFromComment>>>,
   canonicalStallNameSet: Set<string>,
   minLikes: number,
-  highConfidenceThreshold: number
+  highConfidenceThreshold: number,
 ): {
   draftAggregates: Array<{
     normalizedName: string;
@@ -392,11 +422,11 @@ function aggregateDraftSuggestions(
     confidenceScore: number;
     supportCount: number;
     topLikeCount: number;
-    moderationFlags: Array<'spam' | 'profanity' | 'self-promo' | 'insufficient-signal'>;
+    moderationFlags: Array<"spam" | "profanity" | "self-promo" | "insufficient-signal">;
     mapsUrls: string[];
     evidenceCommentIds: string[];
     evidenceVideoIds: string[];
-    extractionMethod: 'rules' | 'llm' | 'mixed';
+    extractionMethod: "rules" | "llm" | "mixed";
     extractionNotes: string;
   }>;
   canonicalEvidenceCandidates: CanonicalStallCommentEvidenceRecord[];
@@ -439,11 +469,18 @@ function aggregateDraftSuggestions(
         continue;
       }
 
-      const accumulator = ensureDraftAccumulator(byNormalizedName, normalizedName, suggestion.displayName);
+      const accumulator = ensureDraftAccumulator(
+        byNormalizedName,
+        normalizedName,
+        suggestion.displayName,
+      );
       if (suggestion.displayName.length > accumulator.displayName.length) {
         accumulator.displayName = suggestion.displayName;
       }
-      accumulator.confidenceScore = Math.max(accumulator.confidenceScore, suggestion.confidenceScore);
+      accumulator.confidenceScore = Math.max(
+        accumulator.confidenceScore,
+        suggestion.confidenceScore,
+      );
       accumulator.topLikeCount = Math.max(accumulator.topLikeCount, comment.likeCount);
       accumulator.evidenceCommentIds.add(comment.commentId);
       accumulator.evidenceVideoIds.add(comment.videoId);
@@ -461,11 +498,11 @@ function aggregateDraftSuggestions(
   }
 
   const draftAggregates = [...byNormalizedName.values()].map((accumulator) => {
-    let extractionMethod: 'rules' | 'llm' | 'mixed' = 'rules';
+    let extractionMethod: "rules" | "llm" | "mixed" = "rules";
     if (accumulator.extractionMethods.size > 1) {
-      extractionMethod = 'mixed';
-    } else if (accumulator.extractionMethods.has('llm')) {
-      extractionMethod = 'llm';
+      extractionMethod = "mixed";
+    } else if (accumulator.extractionMethods.has("llm")) {
+      extractionMethod = "llm";
     }
 
     return {
@@ -476,18 +513,18 @@ function aggregateDraftSuggestions(
       supportCount: accumulator.evidenceCommentIds.size,
       topLikeCount: accumulator.topLikeCount,
       moderationFlags: [...accumulator.moderationFlags] as Array<
-        'spam' | 'profanity' | 'self-promo' | 'insufficient-signal'
+        "spam" | "profanity" | "self-promo" | "insufficient-signal"
       >,
       mapsUrls: [...accumulator.mapsUrls],
       evidenceCommentIds: [...accumulator.evidenceCommentIds],
       evidenceVideoIds: [...accumulator.evidenceVideoIds],
       extractionMethod,
-      extractionNotes: [...accumulator.extractionNotes].join(' | ').slice(0, 600),
+      extractionNotes: [...accumulator.extractionNotes].join(" | ").slice(0, 600),
     };
   });
 
   const highConfidenceDraftCandidates = draftAggregates.filter(
-    (aggregate) => aggregate.confidenceScore >= highConfidenceThreshold
+    (aggregate) => aggregate.confidenceScore >= highConfidenceThreshold,
   ).length;
 
   return {
@@ -498,7 +535,7 @@ function aggregateDraftSuggestions(
 }
 
 export async function runCommentSuggestionSync(
-  args: RunCommentSuggestionSyncArgs
+  args: RunCommentSuggestionSyncArgs,
 ): Promise<CommentSuggestionSyncSummary> {
   const startedAt = nowIso();
   const runId = buildRunId(startedAt);
@@ -506,6 +543,8 @@ export async function runCommentSuggestionSync(
   const forceApply = shouldForceApply(args);
   const maxVideosPerRun = resolveMaxVideosPerRun(args.env);
   const topLevelLimit = resolveTopLevelLimit(args.env);
+  const maxCommentThreadPages = resolveMaxCommentThreadPages(args.env);
+  const includeReplies = resolveIncludeReplies(args.env);
   const minLikes = resolveMinLikes(args.env);
   const highConfidenceThreshold = resolveHighConfidenceThreshold(args.env);
   const llmEnabled = resolveLlmEnabled(args.env);
@@ -515,7 +554,7 @@ export async function runCommentSuggestionSync(
     runId,
     triggerSource: args.triggerSource,
     mode,
-    status: 'failed',
+    status: "failed",
     startedAt,
     finishedAt: startedAt,
     sourceStats: {
@@ -559,7 +598,7 @@ export async function runCommentSuggestionSync(
     const backfillStateResult = await getCommentSyncState(
       args.env.STALLS_DB,
       COMMENT_SYNC_STATE_KEY,
-      backfillStateSchema
+      backfillStateSchema,
     );
     if (Result.isError(backfillStateResult)) {
       throw backfillStateResult.error;
@@ -580,7 +619,7 @@ export async function runCommentSuggestionSync(
 
     const metadataByVideoIdResult = await fetchYouTubeVideoMetadata(
       args.env,
-      normalizedCandidates.map((candidate) => candidate.videoId)
+      normalizedCandidates.map((candidate) => candidate.videoId),
     );
     if (Result.isError(metadataByVideoIdResult)) {
       throw metadataByVideoIdResult.error;
@@ -600,7 +639,7 @@ export async function runCommentSuggestionSync(
     const selection = selectVideosForRun(
       regularCandidates,
       backfillStateResult.value,
-      maxVideosPerRun
+      maxVideosPerRun,
     );
 
     const selectedVideos = selection.selected;
@@ -614,11 +653,13 @@ export async function runCommentSuggestionSync(
         videoId: video.videoId,
         videoTitle: video.title,
         topLevelLimit,
+        maxCommentThreadPages,
+        includeReplies,
       });
 
       if (Result.isError(commentResult)) {
         baseSummary.warnings.push(
-          `Failed to fetch comments for ${video.videoId}: ${normalizeDisplayText(commentResult.error.message).slice(0, 220)}`
+          `Failed to fetch comments for ${video.videoId}: ${normalizeDisplayText(commentResult.error.message).slice(0, 220)}`,
         );
         continue;
       }
@@ -629,7 +670,9 @@ export async function runCommentSuggestionSync(
     }
 
     baseSummary.sourceStats.repliesFetched = repliesFetched;
-    baseSummary.sourceStats.topLevelCommentsFetched = fetchedComments.filter((item) => item.isTopLevel).length;
+    baseSummary.sourceStats.topLevelCommentsFetched = fetchedComments.filter(
+      (item) => item.isTopLevel,
+    ).length;
 
     const rawTextExpiresAt = addDaysIso(startedAt, RAW_COMMENT_RETENTION_DAYS);
     const sourceRecords = fetchedComments.map((comment) => ({
@@ -653,7 +696,10 @@ export async function runCommentSuggestionSync(
     baseSummary.sourceStats.commentSourceRecords = sourceRecords.length;
 
     let llmBudget = llmEnabled ? llmMaxCommentsPerRun : 0;
-    const extractedByCommentId = new Map<string, Awaited<ReturnType<typeof extractStallSuggestionsFromComment>>>();
+    const extractedByCommentId = new Map<
+      string,
+      Awaited<ReturnType<typeof extractStallSuggestionsFromComment>>
+    >();
 
     for (const comment of fetchedComments) {
       const shouldUseLlm = llmBudget > 0 && comment.likeCount >= minLikes;
@@ -673,7 +719,7 @@ export async function runCommentSuggestionSync(
       extractedByCommentId,
       canonicalNameSetResult.value,
       minLikes,
-      highConfidenceThreshold
+      highConfidenceThreshold,
     );
 
     baseSummary.sourceStats.draftCandidates = aggregateResult.draftAggregates.length;
@@ -682,9 +728,12 @@ export async function runCommentSuggestionSync(
     baseSummary.changeStats.highConfidenceDraftCandidates =
       aggregateResult.highConfidenceDraftCandidates;
 
-    const shouldApply = mode === 'apply' || forceApply;
+    const shouldApply = mode === "apply" || forceApply;
     if (shouldApply) {
-      const upsertSourcesResult = await upsertYouTubeCommentSourceRecords(args.env.STALLS_DB, sourceRecords);
+      const upsertSourcesResult = await upsertYouTubeCommentSourceRecords(
+        args.env.STALLS_DB,
+        sourceRecords,
+      );
       if (Result.isError(upsertSourcesResult)) {
         throw upsertSourcesResult.error;
       }
@@ -693,7 +742,7 @@ export async function runCommentSuggestionSync(
       const evidenceUpsertResult = await upsertCanonicalStallCommentEvidence(
         args.env.STALLS_DB,
         aggregateResult.canonicalEvidenceCandidates,
-        startedAt
+        startedAt,
       );
       if (Result.isError(evidenceUpsertResult)) {
         throw evidenceUpsertResult.error;
@@ -703,7 +752,7 @@ export async function runCommentSuggestionSync(
       const draftUpsertResult = await upsertDraftSuggestions(
         args.env.STALLS_DB,
         aggregateResult.draftAggregates,
-        startedAt
+        startedAt,
       );
       if (Result.isError(draftUpsertResult)) {
         throw draftUpsertResult.error;
@@ -714,12 +763,17 @@ export async function runCommentSuggestionSync(
 
       const pruneResult = await pruneExpiredCommentSourceRawText(args.env.STALLS_DB, startedAt);
       if (Result.isError(pruneResult)) {
-        baseSummary.warnings.push('Failed to prune expired raw comment text.');
+        baseSummary.warnings.push("Failed to prune expired raw comment text.");
       } else {
         baseSummary.applyStats.prunedRawCommentRows = 1;
       }
 
-      const stateUpdateResult = await setCommentSyncState(args.env.STALLS_DB, COMMENT_SYNC_STATE_KEY, nextState, startedAt);
+      const stateUpdateResult = await setCommentSyncState(
+        args.env.STALLS_DB,
+        COMMENT_SYNC_STATE_KEY,
+        nextState,
+        startedAt,
+      );
       if (Result.isError(stateUpdateResult)) {
         throw stateUpdateResult.error;
       }
@@ -728,21 +782,21 @@ export async function runCommentSuggestionSync(
       if (baseSummary.changeStats.highConfidenceDraftCandidates > 0) {
         const alertResult = await sendTelegramAlert(args.env, {
           ...baseSummary,
-          mode: shouldApply ? 'apply' : mode,
-          status: 'success',
+          mode: shouldApply ? "apply" : mode,
+          status: "success",
           finishedAt: nowIso(),
         });
 
         if (Result.isError(alertResult)) {
-          baseSummary.warnings.push('Failed to send Telegram alert for high-confidence drafts.');
+          baseSummary.warnings.push("Failed to send Telegram alert for high-confidence drafts.");
         } else {
           baseSummary.applyStats.alertSent = true;
         }
       }
     }
 
-    baseSummary.mode = shouldApply ? 'apply' : mode;
-    baseSummary.status = 'success';
+    baseSummary.mode = shouldApply ? "apply" : mode;
+    baseSummary.status = "success";
     baseSummary.finishedAt = nowIso();
 
     const insertRunResult = await insertCommentSyncRun(args.env.STALLS_DB, {
@@ -757,7 +811,7 @@ export async function runCommentSuggestionSync(
     });
 
     if (Result.isError(insertRunResult)) {
-      baseSummary.warnings.push('Failed to persist comment sync run summary.');
+      baseSummary.warnings.push("Failed to persist comment sync run summary.");
     }
 
     return baseSummary;
@@ -767,8 +821,9 @@ export async function runCommentSuggestionSync(
     const failedSummary: CommentSuggestionSyncSummary = {
       ...baseSummary,
       finishedAt: nowIso(),
-      status: 'failed',
-      error: syncResult.error instanceof Error ? syncResult.error.message : String(syncResult.error),
+      status: "failed",
+      error:
+        syncResult.error instanceof Error ? syncResult.error.message : String(syncResult.error),
     };
 
     const insertFailureResult = await insertCommentSyncRun(args.env.STALLS_DB, {
@@ -783,7 +838,7 @@ export async function runCommentSuggestionSync(
     });
 
     if (Result.isError(insertFailureResult)) {
-      failedSummary.warnings.push('Failed to persist failed comment sync run summary.');
+      failedSummary.warnings.push("Failed to persist failed comment sync run summary.");
     }
 
     return failedSummary;

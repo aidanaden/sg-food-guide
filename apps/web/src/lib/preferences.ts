@@ -1,13 +1,13 @@
-import { Result } from 'better-result';
-import { z } from 'zod';
+import { Result } from "better-result";
+import { z } from "zod";
 
-const favoritesKey = 'sg-food-guide:favorites';
-const visitedKey = 'sg-food-guide:visited';
+const favoritesKey = "sg-food-guide:favorites";
+const visitedKey = "sg-food-guide:visited";
 
 const slugArraySchema = z.array(z.string().min(1));
 
 function canUseStorage(): boolean {
-  return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+  return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
 }
 
 function readSet(key: string): Set<string> {

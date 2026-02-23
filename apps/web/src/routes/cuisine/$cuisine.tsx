@@ -18,6 +18,8 @@ import {
 
 import { StallCard } from "../../components/StallCard";
 import type { Stall } from "../../data/shared";
+import { getFavorites, getVisited, toggleFavorite, toggleVisited } from "../../lib/preferences";
+import { loadCuisineRouteData } from "../../lib/route-loaders";
 import {
   getAreas,
   getAllTimeCategories,
@@ -26,8 +28,6 @@ import {
   timeCategoryLabels,
   countryLabels,
 } from "../../lib/stall-utils";
-import { getFavorites, getVisited, toggleFavorite, toggleVisited } from "../../lib/preferences";
-import { loadCuisineRouteData } from "../../lib/route-loaders";
 
 const ALL_FILTER_VALUE = "__all__";
 
@@ -160,7 +160,9 @@ function CuisinePage() {
           <h1 className="font-display mt-2 text-3xl font-black">
             Best <span className="text-primary">{cuisineLabel}</span> in Singapore
           </h1>
-          <p className="text-foreground-muted">{cuisineStalls.length} stalls reviewed and ranked.</p>
+          <p className="text-foreground-muted">
+            {cuisineStalls.length} stalls reviewed and ranked.
+          </p>
         </div>
       </header>
 
@@ -172,7 +174,7 @@ function CuisinePage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search stalls or dishes..."
-              className="border-border bg-surface-raised relative z-0 h-11 min-w-0 w-full px-3 text-base sm:text-sm"
+              className="border-border bg-surface-raised relative z-0 h-11 w-full min-w-0 px-3 text-base sm:text-sm"
             />
 
             <Button
@@ -186,14 +188,20 @@ function CuisinePage() {
             </Button>
 
             <ResponsiveDialog open={isFiltersOpen} onOpenChange={setIsFiltersOpen}>
-              <ResponsiveDialogContent showCloseButton={false} className="pt-0 sm:max-w-2xl sm:gap-0">
+              <ResponsiveDialogContent
+                showCloseButton={false}
+                className="pt-0 sm:max-w-2xl sm:gap-0"
+              >
                 <ResponsiveDialogHeader className="border-border -mx-4 border-b px-4 pb-3 sm:pt-3 sm:pb-2">
                   <div className="flex items-center justify-between">
                     <ResponsiveDialogTitle className="font-display text-lg font-bold">
                       Filters
                     </ResponsiveDialogTitle>
                     <ResponsiveDialogClose aria-label="Close filters">
-                      <span aria-hidden="true" className="iconify ph--x-bold text-foreground-muted size-4 shrink-0" />
+                      <span
+                        aria-hidden="true"
+                        className="iconify ph--x-bold text-foreground-muted size-4 shrink-0"
+                      />
                     </ResponsiveDialogClose>
                   </div>
                 </ResponsiveDialogHeader>
@@ -264,8 +272,10 @@ function CuisinePage() {
                               return "All Countries";
                             }
 
-                            return countryLabels[stringValue as keyof typeof countryLabels] ??
-                              "All Countries";
+                            return (
+                              countryLabels[stringValue as keyof typeof countryLabels] ??
+                              "All Countries"
+                            );
                           }}
                         </SelectValue>
                       </SelectTrigger>

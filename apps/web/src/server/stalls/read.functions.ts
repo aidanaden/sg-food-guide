@@ -1,8 +1,9 @@
-import { Result } from 'better-result';
-import { createServerFn } from '@tanstack/react-start';
-import * as z from 'zod';
+import { createServerFn } from "@tanstack/react-start";
+import { Result } from "better-result";
+import * as z from "zod";
 
-import { getWorkerEnvFromServerContext } from '../cloudflare/runtime';
+import { getWorkerEnvFromServerContext } from "../cloudflare/runtime";
+import { buildCanonicalStallsFromStaticData } from "../sync/static-seed";
 import {
   applyCanonicalStalls,
   ensureStallTables,
@@ -10,8 +11,7 @@ import {
   getActiveStallBySlug,
   listActiveStalls,
   listActiveStallsByCuisine,
-} from './repository';
-import { buildCanonicalStallsFromStaticData } from '../sync/static-seed';
+} from "./repository";
 
 const cuisineSchema = z.object({
   cuisine: z.string().min(1),
@@ -21,7 +21,9 @@ const slugSchema = z.object({
   slug: z.string().min(1),
 });
 
-async function ensureBaselineSeed(db: Parameters<typeof ensureStallTables>[0]): Promise<Result<void, Error>> {
+async function ensureBaselineSeed(
+  db: Parameters<typeof ensureStallTables>[0],
+): Promise<Result<void, Error>> {
   const activeCountResult = await getActiveStallCount(db);
   if (Result.isError(activeCountResult)) {
     return Result.err(activeCountResult.error);

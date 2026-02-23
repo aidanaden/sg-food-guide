@@ -1,17 +1,18 @@
-import { Result } from 'better-result';
-import * as z from 'zod/mini';
-import { lookupSgArea, normalizeAreaLikeQuery } from '../../data/sg-areas';
+import { Result } from "better-result";
+import * as z from "zod/mini";
+
+import { lookupSgArea, normalizeAreaLikeQuery } from "../../data/sg-areas";
 
 interface GeocodeOk {
-  status: 'ok';
-  source: 'onemap' | 'nominatim';
+  status: "ok";
+  source: "onemap" | "nominatim";
   lat: number;
   lng: number;
   label: string;
 }
 
 interface GeocodeError {
-  status: 'error';
+  status: "error";
   error: string;
 }
 
@@ -43,28 +44,30 @@ const nominatimItemSchema = z.object({
 const nominatimResponseSchema = z.array(nominatimItemSchema);
 
 const COUNTRY_TO_CODE: Record<string, string> = {
-  SG: 'sg',
-  MY: 'my',
-  TH: 'th',
-  HK: 'hk',
-  CN: 'cn',
-  JP: 'jp',
-  ID: 'id',
+  SG: "sg",
+  MY: "my",
+  TH: "th",
+  HK: "hk",
+  CN: "cn",
+  JP: "jp",
+  ID: "id",
 };
 
 function json(body: GeocodeOk | GeocodeError, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: {
-      'content-type': 'application/json; charset=utf-8',
-      'cache-control': 'no-store',
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "no-store",
     },
   });
 }
 
 function normalizeCountry(raw: string | null): string {
-  const value = String(raw || '').trim().toUpperCase();
-  return COUNTRY_TO_CODE[value] ? value : 'SG';
+  const value = String(raw || "")
+    .trim()
+    .toUpperCase();
+  return COUNTRY_TO_CODE[value] ? value : "SG";
 }
 
 function cacheKey(query: string, country: string): string {
@@ -76,9 +79,9 @@ function lookupKnownSingaporeArea(query: string): GeocodeOk | null {
   if (!area) return null;
 
   return {
-    status: 'ok',
+    status: "ok",
     // Keep existing client contract without adding a new source variant.
-    source: 'nominatim',
+    source: "nominatim",
     lat: area.lat,
     lng: area.lng,
     label: area.label,
@@ -110,23 +113,28 @@ function parseLatLng(latRaw: unknown, lngRaw: unknown): { lat: number; lng: numb
   return { lat, lng };
 }
 
-function oneMapLabel(result: { BUILDING?: string | number; ADDRESS?: string | number }, query: string): string {
-  const building = String(result.BUILDING || '').trim();
-  const address = String(result.ADDRESS || '').trim();
+function oneMapLabel(
+  result: { BUILDING?: string | number; ADDRESS?: string | number },
+  query: string,
+): string {
+  const building = String(result.BUILDING || "").trim();
+  const address = String(result.ADDRESS || "").trim();
   if (building && address) return `${building}, ${address}`;
   return building || address || query;
 }
 
 async function geocodeWithOneMap(query: string): Promise<GeocodeOk | null> {
-  const url = new URL('https://www.onemap.gov.sg/api/common/elastic/search');
-  url.searchParams.set('searchVal', query);
-  url.searchParams.set('returnGeom', 'Y');
-  url.searchParams.set('getAddrDetails', 'Y');
-  url.searchParams.set('pageNum', '1');
+  const url = new URL("https://www.onemap.gov.sg/api/common/elastic/search");
+  url.searchParams.set("searchVal", query);
+  url.searchParams.set("returnGeom", "Y");
+  url.searchParams.set("getAddrDetails", "Y");
+  url.searchParams.set("pageNum", "1");
 
-  const responseResult = await Result.tryPromise(() => fetch(url.toString(), {
-    headers: { accept: 'application/json' },
-  }));
+  const responseResult = await Result.tryPromise(() =>
+    fetch(url.toString(), {
+      headers: { accept: "application/json" },
+    }),
+  );
   if (Result.isError(responseResult)) return null;
 
   const response = responseResult.value;
@@ -143,8 +151,8 @@ async function geocodeWithOneMap(query: string): Promise<GeocodeOk | null> {
   if (!coords) return null;
 
   return {
-    status: 'ok',
-    source: 'onemap',
+    status: "ok",
+    source: "onemap",
     lat: coords.lat,
     lng: coords.lng,
     label: oneMapLabel(first, query),
@@ -152,16 +160,18 @@ async function geocodeWithOneMap(query: string): Promise<GeocodeOk | null> {
 }
 
 async function geocodeWithNominatim(query: string, country: string): Promise<GeocodeOk | null> {
-  const cc = COUNTRY_TO_CODE[country] || 'sg';
-  const url = new URL('https://nominatim.openstreetmap.org/search');
-  url.searchParams.set('format', 'jsonv2');
-  url.searchParams.set('limit', '1');
-  url.searchParams.set('q', query);
-  url.searchParams.set('countrycodes', cc === 'hk' ? 'cn,hk' : cc);
+  const cc = COUNTRY_TO_CODE[country] || "sg";
+  const url = new URL("https://nominatim.openstreetmap.org/search");
+  url.searchParams.set("format", "jsonv2");
+  url.searchParams.set("limit", "1");
+  url.searchParams.set("q", query);
+  url.searchParams.set("countrycodes", cc === "hk" ? "cn,hk" : cc);
 
-  const responseResult = await Result.tryPromise(() => fetch(url.toString(), {
-    headers: { accept: 'application/json' },
-  }));
+  const responseResult = await Result.tryPromise(() =>
+    fetch(url.toString(), {
+      headers: { accept: "application/json" },
+    }),
+  );
   if (Result.isError(responseResult)) return null;
 
   const response = responseResult.value;
@@ -178,8 +188,8 @@ async function geocodeWithNominatim(query: string, country: string): Promise<Geo
   if (!coords) return null;
 
   return {
-    status: 'ok',
-    source: 'nominatim',
+    status: "ok",
+    source: "nominatim",
     lat: coords.lat,
     lng: coords.lng,
     label: String(first.display_name || query).trim() || query,
@@ -190,16 +200,16 @@ export async function onRequestGet(context: { request: Request }): Promise<Respo
   const { request } = context;
   const url = new URL(request.url);
   const parsedQuery = geocodeQuerySchema.safeParse({
-    q: url.searchParams.get('q') ?? '',
-    country: url.searchParams.get('country') ?? undefined,
+    q: url.searchParams.get("q") ?? "",
+    country: url.searchParams.get("country") ?? undefined,
   });
   if (!parsedQuery.success) {
     return json(
       {
-        status: 'error',
-        error: 'Invalid geocode query parameters.',
+        status: "error",
+        error: "Invalid geocode query parameters.",
       },
-      400
+      400,
     );
   }
 
@@ -209,27 +219,27 @@ export async function onRequestGet(context: { request: Request }): Promise<Respo
   if (query.length < 2) {
     return json(
       {
-        status: 'error',
-        error: 'Query must be at least 2 characters.',
+        status: "error",
+        error: "Query must be at least 2 characters.",
       },
-      400
+      400,
     );
   }
 
   const key = cacheKey(query, country);
   const cached = readCache(key);
   if (cached) {
-    return json(cached, cached.status === 'ok' ? 200 : 404);
+    return json(cached, cached.status === "ok" ? 200 : 404);
   }
 
-  const sgAreaMatch = country === 'SG' ? lookupKnownSingaporeArea(query) : null;
+  const sgAreaMatch = country === "SG" ? lookupKnownSingaporeArea(query) : null;
   if (sgAreaMatch) {
     writeCache(key, sgAreaMatch);
     return json(sgAreaMatch, 200);
   }
 
-  const sgQuery = country === 'SG' && !/singapore/i.test(query) ? `${query} Singapore` : query;
-  const oneMapResult = country === 'SG' ? await geocodeWithOneMap(sgQuery) : null;
+  const sgQuery = country === "SG" && !/singapore/i.test(query) ? `${query} Singapore` : query;
+  const oneMapResult = country === "SG" ? await geocodeWithOneMap(sgQuery) : null;
   if (oneMapResult) {
     writeCache(key, oneMapResult);
     return json(oneMapResult, 200);
@@ -242,8 +252,8 @@ export async function onRequestGet(context: { request: Request }): Promise<Respo
   }
 
   const failure: GeocodeError = {
-    status: 'error',
-    error: 'Location not found.',
+    status: "error",
+    error: "Location not found.",
   };
   writeCache(key, failure);
   return json(failure, 404);

@@ -34,7 +34,8 @@ const DEFAULT_ACTION = "restart";
 const ACTION = (process.argv[2] ?? DEFAULT_ACTION).trim().toLowerCase();
 
 const SESSION = process.env.DEV_TUNNEL_SESSION?.trim() || `${PROJECT_NAME}-tunnel`;
-const STATE_FILE = process.env.DEV_TUNNEL_STATE_FILE?.trim() || `/tmp/${PROJECT_NAME}-dev-tunnel-state.json`;
+const STATE_FILE =
+  process.env.DEV_TUNNEL_STATE_FILE?.trim() || `/tmp/${PROJECT_NAME}-dev-tunnel-state.json`;
 
 function printHelp(): void {
   console.log(`Usage: bun ./scripts/dev-tunnel.ts [start|stop|restart|status|logs]
@@ -85,7 +86,11 @@ function sleep(ms: number): Promise<void> {
   });
 }
 
-function runCommand(command: string, args: string[], options?: { ignoreFailure?: boolean }): CommandResult {
+function runCommand(
+  command: string,
+  args: string[],
+  options?: { ignoreFailure?: boolean },
+): CommandResult {
   const result = spawnSync(command, args, {
     cwd: ROOT_DIR,
     encoding: "utf8",
@@ -131,7 +136,13 @@ function ensureTunnelExists(tunnelName: string): void {
   mkdirSync(dirname(credentialsFile), { recursive: true });
 
   console.log(`Creating named tunnel: ${tunnelName}`);
-  runCommand("cloudflared", ["tunnel", "create", "--credentials-file", credentialsFile, tunnelName]);
+  runCommand("cloudflared", [
+    "tunnel",
+    "create",
+    "--credentials-file",
+    credentialsFile,
+    tunnelName,
+  ]);
 }
 
 function readState(): TunnelState | null {
@@ -237,7 +248,9 @@ async function resolvePort(): Promise<number> {
   const portStart = parsePort("DEV_TUNNEL_PORT_START", process.env.DEV_TUNNEL_PORT_START ?? "4330");
   const portEnd = parsePort("DEV_TUNNEL_PORT_END", process.env.DEV_TUNNEL_PORT_END ?? "4399");
   if (portStart > portEnd) {
-    throw new Error(`DEV_TUNNEL_PORT_START must be <= DEV_TUNNEL_PORT_END (${portStart} > ${portEnd})`);
+    throw new Error(
+      `DEV_TUNNEL_PORT_START must be <= DEV_TUNNEL_PORT_END (${portStart} > ${portEnd})`,
+    );
   }
 
   if (process.env.DEV_TUNNEL_PORT) {
@@ -290,7 +303,18 @@ function getEdgeStatusCode(hostname: string): string {
   const resolveValue = `${hostname}:443:${ip}`;
   const curl = runCommand(
     "curl",
-    ["-sS", "-o", "/dev/null", "-w", "%{http_code}", "--max-time", "8", "--resolve", resolveValue, url],
+    [
+      "-sS",
+      "-o",
+      "/dev/null",
+      "-w",
+      "%{http_code}",
+      "--max-time",
+      "8",
+      "--resolve",
+      resolveValue,
+      url,
+    ],
     { ignoreFailure: true },
   );
   const code = curl.stdout.trim();
@@ -377,12 +401,15 @@ async function startSession(): Promise<void> {
   ensureTunnelExists(tunnelName);
 
   const port = await resolvePort();
-  const localLog = process.env.DEV_TUNNEL_LOG_FILE?.trim() || `/tmp/${PROJECT_NAME}-local-web-${port}.log`;
+  const localLog =
+    process.env.DEV_TUNNEL_LOG_FILE?.trim() || `/tmp/${PROJECT_NAME}-local-web-${port}.log`;
   const tunnelLog =
-    process.env.DEV_TUNNEL_CLOUDFLARED_LOG?.trim() || `/tmp/${PROJECT_NAME}-cloudflared-${port}.log`;
+    process.env.DEV_TUNNEL_CLOUDFLARED_LOG?.trim() ||
+    `/tmp/${PROJECT_NAME}-cloudflared-${port}.log`;
   const tokenName = sanitizeDnsLabel(tunnelName) || "named-tunnel";
   const tokenFile =
-    process.env.DEV_TUNNEL_TOKEN_FILE?.trim() || `/tmp/${PROJECT_NAME}-cloudflared-token-${tokenName}.txt`;
+    process.env.DEV_TUNNEL_TOKEN_FILE?.trim() ||
+    `/tmp/${PROJECT_NAME}-cloudflared-token-${tokenName}.txt`;
   mkdirSync(dirname(localLog), { recursive: true });
   mkdirSync(dirname(tunnelLog), { recursive: true });
   mkdirSync(dirname(tokenFile), { recursive: true });
@@ -390,7 +417,8 @@ async function startSession(): Promise<void> {
   runCommand("cloudflared", ["tunnel", "route", "dns", "--overwrite-dns", tunnelName, hostname]);
 
   const tunnelToken =
-    process.env.DEV_TUNNEL_TOKEN?.trim() || runCommand("cloudflared", ["tunnel", "token", tunnelName]).stdout.trim();
+    process.env.DEV_TUNNEL_TOKEN?.trim() ||
+    runCommand("cloudflared", ["tunnel", "token", tunnelName]).stdout.trim();
   if (!tunnelToken) {
     throw new Error(`Failed to resolve token for tunnel: ${tunnelName}`);
   }

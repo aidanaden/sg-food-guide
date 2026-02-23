@@ -1,31 +1,31 @@
-export type Country = 'SG' | 'MY' | 'TH' | 'HK' | 'CN' | 'JP' | 'ID';
+export type Country = "SG" | "MY" | "TH" | "HK" | "CN" | "JP" | "ID";
 
 export const countryLabels: Record<Country, string> = {
-  SG: 'Singapore',
-  MY: 'Malaysia',
-  TH: 'Thailand',
-  HK: 'Hong Kong',
-  CN: 'China',
-  JP: 'Japan',
-  ID: 'Indonesia',
+  SG: "Singapore",
+  MY: "Malaysia",
+  TH: "Thailand",
+  HK: "Hong Kong",
+  CN: "China",
+  JP: "Japan",
+  ID: "Indonesia",
 };
 
-export type TimeCategory = 'early-morning' | 'lunch' | 'dinner' | 'late-night' | 'all-day';
+export type TimeCategory = "early-morning" | "lunch" | "dinner" | "late-night" | "all-day";
 
 export const timeCategoryLabels: Record<TimeCategory, string> = {
-  'early-morning': 'Early Morning',
-  'lunch': 'Lunch',
-  'dinner': 'Dinner',
-  'late-night': 'Late Night',
-  'all-day': 'All Day',
+  "early-morning": "Early Morning",
+  lunch: "Lunch",
+  dinner: "Dinner",
+  "late-night": "Late Night",
+  "all-day": "All Day",
 };
 
 export const timeCategoryIcons: Record<TimeCategory, string> = {
-  'early-morning': 'iconify ph--sun-horizon',
-  'lunch': 'iconify ph--sun',
-  'dinner': 'iconify ph--moon-stars',
-  'late-night': 'iconify ph--moon',
-  'all-day': 'iconify ph--clock',
+  "early-morning": "iconify ph--sun-horizon",
+  lunch: "iconify ph--sun",
+  dinner: "iconify ph--moon-stars",
+  "late-night": "iconify ph--moon",
+  "all-day": "iconify ph--clock",
 };
 
 export interface Stall {
@@ -60,10 +60,10 @@ export interface Stall {
 export function slugify(name: string): string {
   return name
     .toLowerCase()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/[\s_]+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
+    .replace(/[^\w\s-]/g, "")
+    .replace(/[\s_]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
     .slice(0, 60);
 }
 
@@ -76,10 +76,10 @@ export function parseTimeCategories(times: string): TimeCategory[] {
   const openMatch = t.match(/(\d{1,2})(?:\.(\d{2}))?\s*(am|pm)/);
   let openHour = 0;
   if (openMatch) {
-    openHour = parseInt(openMatch[1] ?? '0', 10);
-    const openPeriod = openMatch[3] ?? '';
-    if (openPeriod === 'pm' && openHour !== 12) openHour += 12;
-    if (openPeriod === 'am' && openHour === 12) openHour = 0;
+    openHour = parseInt(openMatch[1] ?? "0", 10);
+    const openPeriod = openMatch[3] ?? "";
+    if (openPeriod === "pm" && openHour !== 12) openHour += 12;
+    if (openPeriod === "am" && openHour === 12) openHour = 0;
   }
 
   // Parse closing hour - find last time mentioned
@@ -88,26 +88,27 @@ export function parseTimeCategories(times: string): TimeCategory[] {
   if (allTimes.length > 0) {
     const last = allTimes[allTimes.length - 1];
     if (last) {
-      closeHour = parseInt(last[1] ?? '0', 10);
+      closeHour = parseInt(last[1] ?? "0", 10);
     }
-    const closePeriod = last?.[3] ?? '';
-    if (closePeriod === 'pm' && closeHour !== 12) closeHour += 12;
-    if (closePeriod === 'am' && closeHour === 12) closeHour = 0;
-    if (closePeriod === 'mn' || t.includes('12mn') || t.includes('midnight')) closeHour = 24;
+    const closePeriod = last?.[3] ?? "";
+    if (closePeriod === "pm" && closeHour !== 12) closeHour += 12;
+    if (closePeriod === "am" && closeHour === 12) closeHour = 0;
+    if (closePeriod === "mn" || t.includes("12mn") || t.includes("midnight")) closeHour = 24;
     // Handles spans that cross midnight (e.g. 6pm-2am) so late-night/all-day rules still work.
     if (allTimes.length >= 2 && closeHour < openHour) closeHour += 24;
   }
 
   // Categorize
-  if (openHour < 9) cats.add('early-morning');
-  if ((openHour <= 11 && closeHour >= 14) || (openHour <= 12 && closeHour >= 13)) cats.add('lunch');
-  if ((openHour <= 17 && closeHour >= 20) || (openHour >= 16 && closeHour >= 20)) cats.add('dinner');
-  if (closeHour >= 22 || t.includes('12mn') || t.includes('midnight')) cats.add('late-night');
-  if (closeHour - openHour >= 8) cats.add('all-day');
+  if (openHour < 9) cats.add("early-morning");
+  if ((openHour <= 11 && closeHour >= 14) || (openHour <= 12 && closeHour >= 13)) cats.add("lunch");
+  if ((openHour <= 17 && closeHour >= 20) || (openHour >= 16 && closeHour >= 20))
+    cats.add("dinner");
+  if (closeHour >= 22 || t.includes("12mn") || t.includes("midnight")) cats.add("late-night");
+  if (closeHour - openHour >= 8) cats.add("all-day");
 
   // Fallback: if no categories detected, check for "daily"
-  if (cats.size === 0 && t.includes('daily')) cats.add('all-day');
-  if (cats.size === 0) cats.add('lunch'); // safe fallback
+  if (cats.size === 0 && t.includes("daily")) cats.add("all-day");
+  if (cats.size === 0) cats.add("lunch"); // safe fallback
 
   return [...cats];
 }

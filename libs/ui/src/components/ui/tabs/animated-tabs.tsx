@@ -51,7 +51,7 @@ export function AnimatedTabs<T extends string>({
             data-slot="animated-tabs-trigger"
             data-active={isActive || undefined}
             onClick={() => onChange(option.value)}
-            className="text-foreground-muted data-[active]:text-foreground hover:bg-muted-hover hover:text-foreground data-[active]:hover:bg-transparent relative z-10 h-auto min-h-0 flex-1 cursor-pointer border-0 bg-transparent px-3 py-1.5 text-center text-sm font-medium transition-colors sm:flex-none sm:text-left"
+            className="text-foreground-muted data-[active]:text-foreground hover:bg-muted-hover hover:text-foreground relative z-10 h-auto min-h-0 flex-1 cursor-pointer border-0 bg-transparent px-3 py-1.5 text-center text-sm font-medium transition-colors data-[active]:hover:bg-transparent sm:flex-none sm:text-left"
           >
             {/* Animated indicator - skipped for reduced motion users */}
             {isActive && shouldReduceMotion !== true && (

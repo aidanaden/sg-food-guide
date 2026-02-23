@@ -226,7 +226,9 @@ const TableRowInner = <T,>({
         </div>
       )}
 
-      {expandedRowContent != null && <Collapsible open={isExpanded}>{expandedRowContent}</Collapsible>}
+      {expandedRowContent != null && (
+        <Collapsible open={isExpanded}>{expandedRowContent}</Collapsible>
+      )}
     </div>
   );
 };

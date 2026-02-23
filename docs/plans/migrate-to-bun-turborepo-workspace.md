@@ -7,11 +7,13 @@ Restructure the current single-package Astro + Bun repository into a Turborepo w
 ## Context
 
 Current state:
+
 - One root package with Astro app sources in `src/`, static assets in `public/`, Pages Functions in `functions/`, and scripts in `scripts/`.
 - CI/deploy workflows invoke root-level `bun run` scripts.
 - Existing dirty working copy includes unrelated edits that must be preserved.
 
 Target state:
+
 - Monorepo workspace with Turbo orchestration and app code moved into `apps/web`.
 - Root scripts preserved as primary entry points (`bun run dev`, `bun run build`, etc.) via Turbo delegation.
 

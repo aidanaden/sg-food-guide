@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
 import { Toast as ToastPrimitive } from "@base-ui/react/toast";
+import type { ReactNode } from "react";
 
 import { Num } from "@sg-food-guide/toolkit";
 
@@ -37,7 +37,13 @@ function getToastIconClassName(type?: string): string {
   return "text-primary ph--info-fill";
 }
 
-function addToast({ id, title, description, type, timeout }: ToastProps & {
+function addToast({
+  id,
+  title,
+  description,
+  type,
+  timeout,
+}: ToastProps & {
   type: ToastKind;
   timeout: number;
 }): number {

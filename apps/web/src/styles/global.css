@@ -1,14 +1,32 @@
 @import "@sg-food-guide/ui/global.css";
 
 /* Rating colors */
-.rating-1 { color: var(--color-destructive-text); }
-.rating-2 { color: var(--color-warning-text); }
-.rating-3 { color: var(--color-success-text); }
+.rating-1 {
+  color: var(--color-destructive-text);
+}
+.rating-2 {
+  color: var(--color-warning-text);
+}
+.rating-3 {
+  color: var(--color-success-text);
+}
 
-.rating-bg-1 { background-color: var(--color-destructive-active); }
-.rating-bg-2 { background-color: var(--color-warning-active); }
-.rating-bg-3 { background-color: var(--color-success-active); }
+.rating-bg-1 {
+  background-color: var(--color-destructive-active);
+}
+.rating-bg-2 {
+  background-color: var(--color-warning-active);
+}
+.rating-bg-3 {
+  background-color: var(--color-success-active);
+}
 
-.rating-border-1 { border-color: var(--color-destructive); }
-.rating-border-2 { border-color: var(--color-warning); }
-.rating-border-3 { border-color: var(--color-success); }
+.rating-border-1 {
+  border-color: var(--color-destructive);
+}
+.rating-border-2 {
+  border-color: var(--color-warning);
+}
+.rating-border-3 {
+  border-color: var(--color-success);
+}

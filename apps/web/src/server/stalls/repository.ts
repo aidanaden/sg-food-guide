@@ -1,8 +1,8 @@
-import { Result } from 'better-result';
-import * as z from 'zod/mini';
+import { Result } from "better-result";
+import * as z from "zod/mini";
 
-import type { D1Database } from '../cloudflare/runtime';
-import { type CanonicalStall, mapDbRowToStall } from './contracts';
+import type { D1Database } from "../cloudflare/runtime";
+import { type CanonicalStall, mapDbRowToStall } from "./contracts";
 
 const activeStatusSchema = z.object({
   source_stall_key: z.string(),
@@ -83,17 +83,17 @@ const schemaStatements = [
     summary_json TEXT NOT NULL DEFAULT '{}',
     error_text TEXT
   )`,
-  'CREATE INDEX IF NOT EXISTS idx_stalls_status ON stalls(status)',
-  'CREATE INDEX IF NOT EXISTS idx_stalls_cuisine ON stalls(cuisine)',
-  'CREATE INDEX IF NOT EXISTS idx_stalls_country ON stalls(country)',
-  'CREATE INDEX IF NOT EXISTS idx_stalls_last_synced_at ON stalls(last_synced_at)',
-  'CREATE INDEX IF NOT EXISTS idx_stall_locations_stall_id ON stall_locations(stall_id)',
-  'CREATE INDEX IF NOT EXISTS idx_stall_locations_primary ON stall_locations(stall_id, is_primary, is_active)',
+  "CREATE INDEX IF NOT EXISTS idx_stalls_status ON stalls(status)",
+  "CREATE INDEX IF NOT EXISTS idx_stalls_cuisine ON stalls(cuisine)",
+  "CREATE INDEX IF NOT EXISTS idx_stalls_country ON stalls(country)",
+  "CREATE INDEX IF NOT EXISTS idx_stalls_last_synced_at ON stalls(last_synced_at)",
+  "CREATE INDEX IF NOT EXISTS idx_stall_locations_stall_id ON stall_locations(stall_id)",
+  "CREATE INDEX IF NOT EXISTS idx_stall_locations_primary ON stall_locations(stall_id, is_primary, is_active)",
 ] as const;
 
 export async function ensureStallTables(db: D1Database): Promise<Result<void, Error>> {
   for (const statement of schemaStatements) {
-    const isPragma = statement.trim().toUpperCase().startsWith('PRAGMA ');
+    const isPragma = statement.trim().toUpperCase().startsWith("PRAGMA ");
     const executionResult = isPragma
       ? await Result.tryPromise(() => db.exec(statement))
       : await Result.tryPromise(() => db.prepare(statement).run());
@@ -104,12 +104,14 @@ export async function ensureStallTables(db: D1Database): Promise<Result<void, Er
           ? executionResult.error.message
           : String(executionResult.error);
       return Result.err(
-        new Error(`Failed to execute schema statement: ${statement}\nReason: ${reason}`)
+        new Error(`Failed to execute schema statement: ${statement}\nReason: ${reason}`),
       );
     }
 
     if (!executionResult.value.success) {
-      return Result.err(new Error(`Schema statement reported unsuccessful execution: ${statement}`));
+      return Result.err(
+        new Error(`Schema statement reported unsuccessful execution: ${statement}`),
+      );
     }
   }
 
@@ -157,10 +159,10 @@ export async function listActiveStalls(db: D1Database) {
   `;
 
   const rowsResult = await Result.tryPromise(() =>
-    db.prepare(query).all<Record<string, unknown>>()
+    db.prepare(query).all<Record<string, unknown>>(),
   );
   if (Result.isError(rowsResult)) {
-    return Result.err(new Error('Failed to read active stalls from D1.'));
+    return Result.err(new Error("Failed to read active stalls from D1."));
   }
 
   const mapped = [];
@@ -216,10 +218,10 @@ export async function listActiveStallsByCuisine(db: D1Database, cuisine: string)
   `;
 
   const rowsResult = await Result.tryPromise(() =>
-    db.prepare(query).bind(cuisine).all<Record<string, unknown>>()
+    db.prepare(query).bind(cuisine).all<Record<string, unknown>>(),
   );
   if (Result.isError(rowsResult)) {
-    return Result.err(new Error('Failed to read cuisine stalls from D1.'));
+    return Result.err(new Error("Failed to read cuisine stalls from D1."));
   }
 
   const mapped = [];
@@ -273,10 +275,10 @@ export async function getActiveStallBySlug(db: D1Database, slug: string) {
   `;
 
   const rowResult = await Result.tryPromise(() =>
-    db.prepare(query).bind(slug).first<Record<string, unknown>>()
+    db.prepare(query).bind(slug).first<Record<string, unknown>>(),
   );
   if (Result.isError(rowResult)) {
-    return Result.err(new Error('Failed to read stall by slug from D1.'));
+    return Result.err(new Error("Failed to read stall by slug from D1."));
   }
 
   const row = rowResult.value;
@@ -294,10 +296,12 @@ export async function getActiveStallBySlug(db: D1Database, slug: string) {
 
 export async function getActiveStallCount(db: D1Database): Promise<Result<number, Error>> {
   const countResult = await Result.tryPromise(() =>
-    db.prepare("SELECT COUNT(*) AS count FROM stalls WHERE status = 'active'").first<Record<string, unknown>>()
+    db
+      .prepare("SELECT COUNT(*) AS count FROM stalls WHERE status = 'active'")
+      .first<Record<string, unknown>>(),
   );
   if (Result.isError(countResult)) {
-    return Result.err(new Error('Failed to read active stall count.'));
+    return Result.err(new Error("Failed to read active stall count."));
   }
 
   const count = Number((countResult.value?.count as number | string | undefined) ?? 0);
@@ -305,7 +309,7 @@ export async function getActiveStallCount(db: D1Database): Promise<Result<number
 }
 
 export async function getActiveStallIndex(
-  db: D1Database
+  db: D1Database,
 ): Promise<Result<Map<string, ActiveStallIndexEntry>, Error>> {
   const query = `
     SELECT source_stall_key, (
@@ -340,17 +344,17 @@ export async function getActiveStallIndex(
   `;
 
   const rowsResult = await Result.tryPromise(() =>
-    db.prepare(query).all<Record<string, unknown>>()
+    db.prepare(query).all<Record<string, unknown>>(),
   );
   if (Result.isError(rowsResult)) {
-    return Result.err(new Error('Failed to read active stall index.'));
+    return Result.err(new Error("Failed to read active stall index."));
   }
 
   const map = new Map<string, ActiveStallIndexEntry>();
   for (const row of rowsResult.value.results) {
     const parsed = activeStatusSchema.safeParse(row);
     if (!parsed.success) {
-      return Result.err(new Error('Invalid row returned for active stall index.'));
+      return Result.err(new Error("Invalid row returned for active stall index."));
     }
 
     map.set(parsed.data.source_stall_key, {
@@ -362,19 +366,21 @@ export async function getActiveStallIndex(
   return Result.ok(map);
 }
 
-export async function getStallSlugIndex(db: D1Database): Promise<Result<Map<string, string>, Error>> {
+export async function getStallSlugIndex(
+  db: D1Database,
+): Promise<Result<Map<string, string>, Error>> {
   const rowsResult = await Result.tryPromise(() =>
-    db.prepare('SELECT source_stall_key, slug FROM stalls').all<Record<string, unknown>>()
+    db.prepare("SELECT source_stall_key, slug FROM stalls").all<Record<string, unknown>>(),
   );
   if (Result.isError(rowsResult)) {
-    return Result.err(new Error('Failed to read stall slug index.'));
+    return Result.err(new Error("Failed to read stall slug index."));
   }
 
   const map = new Map<string, string>();
   for (const row of rowsResult.value.results) {
     const parsed = slugIndexSchema.safeParse(row);
     if (!parsed.success) {
-      return Result.err(new Error('Invalid row returned for stall slug index.'));
+      return Result.err(new Error("Invalid row returned for stall slug index."));
     }
 
     map.set(parsed.data.slug, parsed.data.source_stall_key);
@@ -386,7 +392,7 @@ export async function getStallSlugIndex(db: D1Database): Promise<Result<Map<stri
 export async function applyCanonicalStalls(
   db: D1Database,
   stalls: CanonicalStall[],
-  syncedAtIso: string
+  syncedAtIso: string,
 ): Promise<Result<ApplyCanonicalStallsSummary, Error>> {
   let upsertedStalls = 0;
   let upsertedLocations = 0;
@@ -458,38 +464,41 @@ export async function applyCanonicalStalls(
       `;
 
       const stallUpsertResult = await Result.tryPromise(() =>
-        db.prepare(stallUpsertQuery).bind(
-          stall.id,
-          stall.sourceStallKey,
-          stall.slug,
-          stall.name,
-          stall.cuisine,
-          stall.cuisineLabel,
-          stall.country,
-          stall.primaryAddress,
-          stall.primaryLat,
-          stall.primaryLng,
-          stall.episodeNumber,
-          stall.dishName,
-          stall.price,
-          stall.ratingOriginal,
-          stall.ratingModerated,
-          stall.openingTimes,
-          JSON.stringify(stall.timeCategories),
-          JSON.stringify(stall.hits),
-          JSON.stringify(stall.misses),
-          stall.youtubeTitle,
-          stall.youtubeVideoUrl,
-          stall.youtubeVideoId,
-          stall.googleMapsName,
-          JSON.stringify(stall.awards),
-          stall.status,
-          stall.sourceRank,
-          stall.sourceSheetHash,
-          stall.sourceYoutubeHash,
-          syncedAtIso,
-          syncedAtIso
-        ).run()
+        db
+          .prepare(stallUpsertQuery)
+          .bind(
+            stall.id,
+            stall.sourceStallKey,
+            stall.slug,
+            stall.name,
+            stall.cuisine,
+            stall.cuisineLabel,
+            stall.country,
+            stall.primaryAddress,
+            stall.primaryLat,
+            stall.primaryLng,
+            stall.episodeNumber,
+            stall.dishName,
+            stall.price,
+            stall.ratingOriginal,
+            stall.ratingModerated,
+            stall.openingTimes,
+            JSON.stringify(stall.timeCategories),
+            JSON.stringify(stall.hits),
+            JSON.stringify(stall.misses),
+            stall.youtubeTitle,
+            stall.youtubeVideoUrl,
+            stall.youtubeVideoId,
+            stall.googleMapsName,
+            JSON.stringify(stall.awards),
+            stall.status,
+            stall.sourceRank,
+            stall.sourceSheetHash,
+            stall.sourceYoutubeHash,
+            syncedAtIso,
+            syncedAtIso,
+          )
+          .run(),
       );
       if (Result.isError(stallUpsertResult)) {
         throw stallUpsertResult.error;
@@ -497,11 +506,14 @@ export async function applyCanonicalStalls(
       upsertedStalls += 1;
 
       const markInactiveResult = await Result.tryPromise(() =>
-        db.prepare(
-          `UPDATE stall_locations
+        db
+          .prepare(
+            `UPDATE stall_locations
            SET is_active = 0, is_primary = 0, updated_at = ?
-           WHERE stall_id = ?`
-        ).bind(syncedAtIso, stall.id).run()
+           WHERE stall_id = ?`,
+          )
+          .bind(syncedAtIso, stall.id)
+          .run(),
       );
       if (Result.isError(markInactiveResult)) {
         throw markInactiveResult.error;
@@ -509,8 +521,9 @@ export async function applyCanonicalStalls(
 
       for (const location of stall.locations) {
         const locationUpsertResult = await Result.tryPromise(() =>
-          db.prepare(
-            `INSERT INTO stall_locations (
+          db
+            .prepare(
+              `INSERT INTO stall_locations (
                id,
                stall_id,
                address,
@@ -530,19 +543,21 @@ export async function applyCanonicalStalls(
                maps_query = excluded.maps_query,
                is_primary = excluded.is_primary,
                is_active = excluded.is_active,
-               updated_at = excluded.updated_at`
-          ).bind(
-            location.id,
-            stall.id,
-            location.address,
-            location.lat,
-            location.lng,
-            location.youtubeVideoUrl,
-            location.mapsQuery,
-            location.isPrimary ? 1 : 0,
-            location.isActive ? 1 : 0,
-            syncedAtIso
-          ).run()
+               updated_at = excluded.updated_at`,
+            )
+            .bind(
+              location.id,
+              stall.id,
+              location.address,
+              location.lat,
+              location.lng,
+              location.youtubeVideoUrl,
+              location.mapsQuery,
+              location.isPrimary ? 1 : 0,
+              location.isActive ? 1 : 0,
+              syncedAtIso,
+            )
+            .run(),
         );
         if (Result.isError(locationUpsertResult)) {
           throw locationUpsertResult.error;
@@ -552,22 +567,28 @@ export async function applyCanonicalStalls(
     }
 
     const closeMissingResult = await Result.tryPromise(() =>
-      db.prepare(
-        `UPDATE stalls
+      db
+        .prepare(
+          `UPDATE stalls
          SET status = 'closed', updated_at = ?, last_synced_at = ?
-         WHERE status = 'active' AND last_synced_at <> ?`
-      ).bind(syncedAtIso, syncedAtIso, syncedAtIso).run()
+         WHERE status = 'active' AND last_synced_at <> ?`,
+        )
+        .bind(syncedAtIso, syncedAtIso, syncedAtIso)
+        .run(),
     );
     if (Result.isError(closeMissingResult)) {
       throw closeMissingResult.error;
     }
 
     const deactivateLocationsResult = await Result.tryPromise(() =>
-      db.prepare(
-        `UPDATE stall_locations
+      db
+        .prepare(
+          `UPDATE stall_locations
          SET is_active = 0, is_primary = 0, updated_at = ?
-         WHERE stall_id IN (SELECT id FROM stalls WHERE status = 'closed')`
-      ).bind(syncedAtIso).run()
+         WHERE stall_id IN (SELECT id FROM stalls WHERE status = 'closed')`,
+        )
+        .bind(syncedAtIso)
+        .run(),
     );
     if (Result.isError(deactivateLocationsResult)) {
       throw deactivateLocationsResult.error;
@@ -575,14 +596,16 @@ export async function applyCanonicalStalls(
   });
 
   if (Result.isError(workResult)) {
-    const reason = workResult.error instanceof Error ? workResult.error.message : String(workResult.error);
+    const reason =
+      workResult.error instanceof Error ? workResult.error.message : String(workResult.error);
     return Result.err(new Error(`Failed to apply canonical stalls to D1. Reason: ${reason}`));
   }
 
   const closedCountResult = await Result.tryPromise(() =>
-    db.prepare(
-      `SELECT COUNT(*) AS count FROM stalls WHERE status = 'closed' AND updated_at = ?`
-    ).bind(syncedAtIso).first<Record<string, unknown>>()
+    db
+      .prepare(`SELECT COUNT(*) AS count FROM stalls WHERE status = 'closed' AND updated_at = ?`)
+      .bind(syncedAtIso)
+      .first<Record<string, unknown>>(),
   );
 
   const closedStalls = Result.isError(closedCountResult)
@@ -599,8 +622,8 @@ export async function applyCanonicalStalls(
 export interface SyncRunRecord {
   id: string;
   triggerSource: string;
-  mode: 'dry-run' | 'apply';
-  status: 'success' | 'failed' | 'guarded';
+  mode: "dry-run" | "apply";
+  status: "success" | "failed" | "guarded";
   startedAt: string;
   finishedAt: string;
   summaryJson: string;
@@ -609,11 +632,12 @@ export interface SyncRunRecord {
 
 export async function insertSyncRun(
   db: D1Database,
-  run: SyncRunRecord
+  run: SyncRunRecord,
 ): Promise<Result<void, Error>> {
   const insertResult = await Result.tryPromise(() =>
-    db.prepare(
-      `INSERT INTO stall_sync_runs (
+    db
+      .prepare(
+        `INSERT INTO stall_sync_runs (
          id,
          trigger_source,
          mode,
@@ -622,21 +646,23 @@ export async function insertSyncRun(
          finished_at,
          summary_json,
          error_text
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-    ).bind(
-      run.id,
-      run.triggerSource,
-      run.mode,
-      run.status,
-      run.startedAt,
-      run.finishedAt,
-      run.summaryJson,
-      run.errorText
-    ).run()
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .bind(
+        run.id,
+        run.triggerSource,
+        run.mode,
+        run.status,
+        run.startedAt,
+        run.finishedAt,
+        run.summaryJson,
+        run.errorText,
+      )
+      .run(),
   );
 
   if (Result.isError(insertResult)) {
-    return Result.err(new Error('Failed to insert stall sync run record.'));
+    return Result.err(new Error("Failed to insert stall sync run record."));
   }
 
   return Result.ok();

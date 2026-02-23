@@ -9,11 +9,11 @@
     {
       "binding": "STALLS_DB",
       "database_name": "sg-food-guide-stalls",
-      "database_id": "36a8c75a-ea06-4f3c-b5d3-978899c46af8"
-    }
+      "database_id": "36a8c75a-ea06-4f3c-b5d3-978899c46af8",
+    },
   ],
   "ai": {
-    "binding": "AI"
+    "binding": "AI",
   },
   "vars": {
     "FOOD_GUIDE_SHEET_ID": "1UMOZE2SM3_y5oUHafwJFEB9RrPDMqBbWjWnMGkO4gGg",
@@ -24,15 +24,19 @@
     "STALL_SYNC_MAX_CHANGE_RATIO": "0.5",
     "STALL_SYNC_ALERT_MODE": "all",
     "COMMENT_SYNC_MODE": "apply",
-    "COMMENT_SYNC_MAX_VIDEOS_PER_RUN": "30",
+    "COMMENT_SYNC_MAX_VIDEOS_PER_RUN": "20",
     "COMMENT_SYNC_TOP_LEVEL_LIMIT": "50",
+    "COMMENT_SYNC_MAX_COMMENT_THREAD_PAGES": "1",
+    "COMMENT_SYNC_INCLUDE_REPLIES": "0",
     "COMMENT_SYNC_MIN_LIKES": "2",
     "COMMENT_SYNC_HIGH_CONFIDENCE_THRESHOLD": "80",
+    "COMMENT_SYNC_LLM_ENABLED": "0",
     "COMMENT_SYNC_LLM_MAX_COMMENTS_PER_RUN": "25",
+    "CLOUDFLARE_ACCESS_TEAM_DOMAIN": "adenxtreme.cloudflareaccess.com",
+    "CLOUDFLARE_ACCESS_AUD": "b45fdf8f42446d609bf34cc393912183840875b83b428701a92763de36440960",
     "WORKERS_AI_MODEL": "@cf/meta/llama-3.1-8b-instruct-fast",
-    "CLOUDFLARE_ACCESS_ADMIN_EMAILS": "aidanaden@hotmail.com"
   },
   "triggers": {
-    "crons": ["0 0 * * *"]
-  }
+    "crons": ["0 0 * * *"],
+  },
 }

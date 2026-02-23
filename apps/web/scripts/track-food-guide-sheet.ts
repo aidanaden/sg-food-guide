@@ -9,11 +9,11 @@
  *   FOOD_GUIDE_SHEET_GID
  */
 
-import { Result } from 'better-result';
-import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
-import * as z from 'zod/mini';
+import { Result } from "better-result";
+import { createHash } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import * as z from "zod/mini";
 
 interface FoodPlace {
   sourceRow: number;
@@ -39,14 +39,14 @@ interface SheetMeta {
   trackedPlaces: number;
 }
 
-const DEFAULT_SHEET_ID = '1UMOZE2SM3_y5oUHafwJFEB9RrPDMqBbWjWnMGkO4gGg';
-const DEFAULT_SHEET_GID = '1935025317';
+const DEFAULT_SHEET_ID = "1UMOZE2SM3_y5oUHafwJFEB9RrPDMqBbWjWnMGkO4gGg";
+const DEFAULT_SHEET_GID = "1935025317";
 
 const ROOT = process.cwd();
-const OUTPUT_DIR = join(ROOT, 'data', 'source');
-const CSV_OUTPUT_FILE = join(OUTPUT_DIR, 'food-guide-sheet.csv');
-const META_OUTPUT_FILE = join(OUTPUT_DIR, 'food-guide-sheet.meta.json');
-const PLACES_OUTPUT_FILE = join(OUTPUT_DIR, 'food-places.json');
+const OUTPUT_DIR = join(ROOT, "data", "source");
+const CSV_OUTPUT_FILE = join(OUTPUT_DIR, "food-guide-sheet.csv");
+const META_OUTPUT_FILE = join(OUTPUT_DIR, "food-guide-sheet.meta.json");
+const PLACES_OUTPUT_FILE = join(OUTPUT_DIR, "food-places.json");
 const sheetMetaSchema = z.object({
   contentSha256: z.optional(z.string()),
 });
@@ -63,10 +63,10 @@ function readOptionalEnv(name: string): string | null {
 
 function normalizeCsv(input: string): string {
   const normalized = input
-    .replace(/^\uFEFF/, '')
-    .replace(/\r\n/g, '\n')
-    .replace(/\r/g, '\n')
-    .replace(/\n+$/, '\n');
+    .replace(/^\uFEFF/, "")
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .replace(/\n+$/, "\n");
 
   return normalized;
 }
@@ -74,7 +74,7 @@ function normalizeCsv(input: string): string {
 function parseCsv(csv: string): string[][] {
   const rows: string[][] = [];
   let row: string[] = [];
-  let cell = '';
+  let cell = "";
   let inQuotes = false;
 
   for (let i = 0; i < csv.length; i += 1) {
@@ -99,17 +99,17 @@ function parseCsv(csv: string): string[][] {
       continue;
     }
 
-    if (char === ',') {
+    if (char === ",") {
       row.push(cell);
-      cell = '';
+      cell = "";
       continue;
     }
 
-    if (char === '\n') {
+    if (char === "\n") {
       row.push(cell);
       rows.push(row);
       row = [];
-      cell = '';
+      cell = "";
       continue;
     }
 
@@ -119,22 +119,22 @@ function parseCsv(csv: string): string[][] {
   row.push(cell);
   rows.push(row);
 
-  return rows.filter((currentRow) => currentRow.some((value) => value.trim() !== ''));
+  return rows.filter((currentRow) => currentRow.some((value) => value.trim() !== ""));
 }
 
 function normalizeHeader(value: string): string {
-  return value.toLowerCase().replace(/\s+/g, ' ').trim();
+  return value.toLowerCase().replace(/\s+/g, " ").trim();
 }
 
 function readCell(row: string[], index: number): string {
-  if (index < 0) return '';
-  return (row[index] ?? '').trim();
+  if (index < 0) return "";
+  return (row[index] ?? "").trim();
 }
 
 function findRequiredColumn(
   headers: string[],
   matches: Array<(header: string) => boolean>,
-  label: string
+  label: string,
 ): number {
   const index = headers.findIndex((header) => matches.some((match) => match(header)));
   if (index === -1) {
@@ -168,16 +168,28 @@ function parseFoodPlaces(rows: string[][]): FoodPlace[] {
 
   const headers = rows[0].map(normalizeHeader);
 
-  const episodeNumberCol = findRequiredColumn(headers, [(h) => h.includes('episode number')], 'episode number');
-  const placeCol = findRequiredColumn(headers, [(h) => h === 'place'], 'place');
-  const nameCol = findRequiredColumn(headers, [(h) => h === 'name'], 'name');
-  const addressCol = findRequiredColumn(headers, [(h) => h === 'address'], 'address');
-  const dishNameCol = findRequiredColumn(headers, [(h) => h.includes('dish name')], 'dish name');
-  const priceCol = findRequiredColumn(headers, [(h) => h === 'price'], 'price');
-  const ratingOriginalCol = findRequiredColumn(headers, [(h) => h.includes('at time of shoot')], 'rating original');
-  const ratingModeratedCol = findRequiredColumn(headers, [(h) => h.includes('rating (moderated)')], 'rating moderated');
-  const youtubeVideoLinkCol = findOptionalColumn(headers, (h) => h.includes('youtube video link'));
-  const awardsCol = findOptionalColumn(headers, (h) => h === 'awards');
+  const episodeNumberCol = findRequiredColumn(
+    headers,
+    [(h) => h.includes("episode number")],
+    "episode number",
+  );
+  const placeCol = findRequiredColumn(headers, [(h) => h === "place"], "place");
+  const nameCol = findRequiredColumn(headers, [(h) => h === "name"], "name");
+  const addressCol = findRequiredColumn(headers, [(h) => h === "address"], "address");
+  const dishNameCol = findRequiredColumn(headers, [(h) => h.includes("dish name")], "dish name");
+  const priceCol = findRequiredColumn(headers, [(h) => h === "price"], "price");
+  const ratingOriginalCol = findRequiredColumn(
+    headers,
+    [(h) => h.includes("at time of shoot")],
+    "rating original",
+  );
+  const ratingModeratedCol = findRequiredColumn(
+    headers,
+    [(h) => h.includes("rating (moderated)")],
+    "rating moderated",
+  );
+  const youtubeVideoLinkCol = findOptionalColumn(headers, (h) => h.includes("youtube video link"));
+  const awardsCol = findOptionalColumn(headers, (h) => h === "awards");
 
   const places: FoodPlace[] = [];
   // Carry these values forward across rows globally (including episode boundaries),
@@ -219,20 +231,20 @@ function parseFoodPlaces(rows: string[][]): FoodPlace[] {
 }
 
 function hashText(value: string): string {
-  return createHash('sha256').update(value).digest('hex');
+  return createHash("sha256").update(value).digest("hex");
 }
 
 function readPreviousHash(): string | null {
   if (!existsSync(META_OUTPUT_FILE)) return null;
 
-  const fileResult = Result.try(() => readFileSync(META_OUTPUT_FILE, 'utf-8'));
+  const fileResult = Result.try(() => readFileSync(META_OUTPUT_FILE, "utf-8"));
   if (Result.isError(fileResult)) return null;
 
   const parsedResult = Result.try(() => JSON.parse(fileResult.value));
   if (Result.isError(parsedResult)) return null;
 
   const parsedMeta = sheetMetaSchema.safeParse(parsedResult.value);
-  return parsedMeta.success ? parsedMeta.data.contentSha256 ?? null : null;
+  return parsedMeta.success ? (parsedMeta.data.contentSha256 ?? null) : null;
 }
 
 function writeJson(path: string, value: unknown) {
@@ -242,7 +254,7 @@ function writeJson(path: string, value: unknown) {
 async function fetchSheetCsv(sourceUrl: string): Promise<string> {
   const response = await fetch(sourceUrl, {
     headers: {
-      'User-Agent': 'sg-food-guide-sheet-tracker/1.0',
+      "User-Agent": "sg-food-guide-sheet-tracker/1.0",
     },
   });
 
@@ -254,14 +266,18 @@ async function fetchSheetCsv(sourceUrl: string): Promise<string> {
 }
 
 async function main() {
-  const sheetId = readEnv('FOOD_GUIDE_SHEET_ID', DEFAULT_SHEET_ID);
-  const gid = readEnv('FOOD_GUIDE_SHEET_GID', DEFAULT_SHEET_GID);
+  const sheetId = readEnv("FOOD_GUIDE_SHEET_ID", DEFAULT_SHEET_ID);
+  const gid = readEnv("FOOD_GUIDE_SHEET_GID", DEFAULT_SHEET_GID);
   const sourceUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`;
-  const csvPathOverride = readOptionalEnv('FOOD_GUIDE_SHEET_CSV_PATH');
+  const csvPathOverride = readOptionalEnv("FOOD_GUIDE_SHEET_CSV_PATH");
 
-  console.log(`Tracking Google Sheet source: ${sourceUrl}${csvPathOverride ? ` (from ${csvPathOverride})` : ''}`);
+  console.log(
+    `Tracking Google Sheet source: ${sourceUrl}${csvPathOverride ? ` (from ${csvPathOverride})` : ""}`,
+  );
 
-  const csvRaw = csvPathOverride ? readFileSync(csvPathOverride, 'utf-8') : await fetchSheetCsv(sourceUrl);
+  const csvRaw = csvPathOverride
+    ? readFileSync(csvPathOverride, "utf-8")
+    : await fetchSheetCsv(sourceUrl);
   const csv = normalizeCsv(csvRaw);
   const nextHash = hashText(csv);
   const previousHash = readPreviousHash();
@@ -275,7 +291,7 @@ async function main() {
     !existsSync(PLACES_OUTPUT_FILE);
 
   if (!shouldWrite) {
-    console.log('No source changes detected.');
+    console.log("No source changes detected.");
     return;
   }
 
@@ -298,7 +314,7 @@ async function main() {
   if (previousHash && previousHash !== nextHash) {
     console.log(`Source changed: ${previousHash.slice(0, 12)} -> ${nextHash.slice(0, 12)}`);
   } else if (!previousHash) {
-    console.log('Created initial source snapshot.');
+    console.log("Created initial source snapshot.");
   }
 
   console.log(`Tracked ${foodPlaces.length} food places.`);
@@ -306,7 +322,8 @@ async function main() {
 
 const mainResult = await Result.tryPromise(() => main());
 if (Result.isError(mainResult)) {
-  const message = mainResult.error instanceof Error ? mainResult.error.message : String(mainResult.error);
+  const message =
+    mainResult.error instanceof Error ? mainResult.error.message : String(mainResult.error);
   console.error(`track:sheet failed - ${message}`);
   process.exitCode = 1;
 }

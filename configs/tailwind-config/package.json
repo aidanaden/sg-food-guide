@@ -2,8 +2,8 @@
   "name": "@sg-food-guide/tailwind-config",
   "version": "0.0.0",
   "private": true,
-  "type": "module",
   "files": [
     "tailwind.config.js"
-  ]
+  ],
+  "type": "module"
 }

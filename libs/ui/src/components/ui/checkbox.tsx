@@ -11,8 +11,7 @@ const checkboxVariants = cva(
       variant: {
         default:
           "data-checked:bg-primary data-checked:border-primary data-checked:text-primary-foreground data-checked:hover:bg-primary-hover data-checked:hover:border-primary-hover",
-        tick:
-          "data-checked:bg-primary data-checked:border-primary data-checked:hover:bg-primary-hover data-checked:hover:border-primary-hover",
+        tick: "data-checked:bg-primary data-checked:border-primary data-checked:hover:bg-primary-hover data-checked:hover:border-primary-hover",
       },
     },
     defaultVariants: {

@@ -1,27 +1,60 @@
-import { Result } from 'better-result';
-import * as z from 'zod/mini';
+import { Result } from "better-result";
+import * as z from "zod/mini";
 
 export const draftStatusSchema = z.union([
-  z.literal('new'),
-  z.literal('reviewed'),
-  z.literal('approved'),
-  z.literal('rejected'),
+  z.literal("new"),
+  z.literal("reviewed"),
+  z.literal("approved"),
+  z.literal("rejected"),
 ]);
 
 export type DraftStatus = z.infer<typeof draftStatusSchema>;
 
 export const moderationFlagSchema = z.union([
-  z.literal('spam'),
-  z.literal('profanity'),
-  z.literal('self-promo'),
-  z.literal('insufficient-signal'),
+  z.literal("spam"),
+  z.literal("profanity"),
+  z.literal("self-promo"),
+  z.literal("insufficient-signal"),
 ]);
 
 export type ModerationFlag = z.infer<typeof moderationFlagSchema>;
 
-export const extractionMethodSchema = z.union([z.literal('rules'), z.literal('llm'), z.literal('mixed')]);
+export const extractionMethodSchema = z.union([
+  z.literal("rules"),
+  z.literal("llm"),
+  z.literal("mixed"),
+]);
 
 export type ExtractionMethod = z.infer<typeof extractionMethodSchema>;
+
+export const adminDraftSortFieldSchema = z.union([
+  z.literal("normalizedName"),
+  z.literal("country"),
+  z.literal("status"),
+  z.literal("extractionMethod"),
+  z.literal("confidenceScore"),
+  z.literal("supportCount"),
+  z.literal("topLikeCount"),
+  z.literal("createdAt"),
+  z.literal("updatedAt"),
+  z.literal("firstSeenAt"),
+  z.literal("lastSeenAt"),
+  z.literal("lastSyncedAt"),
+]);
+
+export type AdminDraftSortField = z.infer<typeof adminDraftSortFieldSchema>;
+
+export const adminDraftSortDirectionSchema = z.union([z.literal("asc"), z.literal("desc")]);
+
+export type AdminDraftSortDirection = z.infer<typeof adminDraftSortDirectionSchema>;
+
+export interface AdminDraftSortRule {
+  field: AdminDraftSortField;
+  direction: AdminDraftSortDirection;
+}
+
+export type AdminDraftLogicMode = "all" | "any";
+export type ModerationFlagMatchMode = "all" | "any" | "none";
 
 const dbDraftRowSchema = z.object({
   id: z.string(),
@@ -60,7 +93,7 @@ const dbApprovedStallRowSchema = z.object({
   confidence_score: z.union([z.number(), z.string()]),
   support_count: z.union([z.number(), z.string()]),
   top_like_count: z.union([z.number(), z.string()]),
-  status: z.union([z.literal('active'), z.literal('archived')]),
+  status: z.union([z.literal("active"), z.literal("archived")]),
   approved_by: z.string(),
   approved_at: z.string(),
   notes: z.string(),
@@ -91,12 +124,12 @@ const stringArraySchema = z.array(z.string());
 function parseStringArray(value: string): Result<string[], Error> {
   const parsedResult = Result.try(() => JSON.parse(value));
   if (Result.isError(parsedResult)) {
-    return Result.err(new Error('Invalid JSON array payload.'));
+    return Result.err(new Error("Invalid JSON array payload."));
   }
 
   const parsedArray = stringArraySchema.safeParse(parsedResult.value);
   if (!parsedArray.success) {
-    return Result.err(new Error('Invalid string array payload.'));
+    return Result.err(new Error("Invalid string array payload."));
   }
 
   return Result.ok(parsedArray.data);
@@ -165,7 +198,7 @@ export interface ApprovedCommentSourceStall {
   confidenceScore: number;
   supportCount: number;
   topLikeCount: number;
-  status: 'active' | 'archived';
+  status: "active" | "archived";
   approvedBy: string;
   approvedAt: string;
   notes: string;
@@ -206,10 +239,16 @@ export interface DraftSuggestionAggregate {
   extractionNotes: string;
 }
 
+export interface CommentSuggestionDraftListResult {
+  items: CommentSuggestionDraft[];
+  nextCursor: string | null;
+  totalCount: number | null;
+}
+
 export function mapDbDraftRow(row: unknown): Result<CommentSuggestionDraft, Error> {
   const parsedRow = dbDraftRowSchema.safeParse(row);
   if (!parsedRow.success) {
-    return Result.err(new Error('Invalid draft row payload from database.'));
+    return Result.err(new Error("Invalid draft row payload from database."));
   }
 
   const moderationFlagsResult = parseModerationFlags(parsedRow.data.moderation_flags_json);
@@ -263,7 +302,9 @@ export function mapDbDraftRow(row: unknown): Result<CommentSuggestionDraft, Erro
 export function mapDbApprovedStallRow(row: unknown): Result<ApprovedCommentSourceStall, Error> {
   const parsed = dbApprovedStallRowSchema.safeParse(row);
   if (!parsed.success) {
-    return Result.err(new Error('Invalid approved comment-source stall row payload from database.'));
+    return Result.err(
+      new Error("Invalid approved comment-source stall row payload from database."),
+    );
   }
 
   return Result.ok({
@@ -288,7 +329,7 @@ export function mapDbApprovedStallRow(row: unknown): Result<ApprovedCommentSourc
 export function mapDbCommentSourceRow(row: unknown): Result<YouTubeCommentSourceRecord, Error> {
   const parsed = dbCommentSourceRowSchema.safeParse(row);
   if (!parsed.success) {
-    return Result.err(new Error('Invalid YouTube comment-source row payload from database.'));
+    return Result.err(new Error("Invalid YouTube comment-source row payload from database."));
   }
 
   return Result.ok({

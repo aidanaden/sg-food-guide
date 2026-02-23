@@ -1,12 +1,12 @@
-import { Result } from 'better-result';
-import { createHash } from 'node:crypto';
+import { Result } from "better-result";
+import { createHash } from "node:crypto";
 
-import { slugify } from '../../data/shared';
+import { slugify } from "../../data/shared";
 
 const YOUTUBE_VIDEO_ID_RE = /^[A-Za-z0-9_-]{11}$/;
 
 function normalizeWhitespace(value: string): string {
-  return value.replace(/\s+/g, ' ').trim();
+  return value.replace(/\s+/g, " ").trim();
 }
 
 export function normalizeComparableText(value: string): string {
@@ -19,12 +19,12 @@ export function normalizeDisplayText(value: string): string {
 
 export function normalizeIdentityText(value: string): string {
   return normalizeComparableText(value)
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-');
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-");
 }
 
 export function makeStableHash(value: string): string {
-  return createHash('sha256').update(value).digest('hex');
+  return createHash("sha256").update(value).digest("hex");
 }
 
 export function makeStallSourceKey(name: string, country: string, cuisine: string): string {
@@ -45,10 +45,10 @@ export function makeLocationId(stallId: string, address: string): string {
 
 function isAllowedYouTubeHostname(hostname: string): boolean {
   return (
-    hostname === 'youtube.com' ||
-    hostname.endsWith('.youtube.com') ||
-    hostname === 'youtube-nocookie.com' ||
-    hostname.endsWith('.youtube-nocookie.com')
+    hostname === "youtube.com" ||
+    hostname.endsWith(".youtube.com") ||
+    hostname === "youtube-nocookie.com" ||
+    hostname.endsWith(".youtube-nocookie.com")
   );
 }
 
@@ -67,20 +67,17 @@ export function normalizeYouTubeVideoId(value: string | null | undefined): strin
     return null;
   }
 
-  const hostname = urlResult.value.hostname.replace(/^www\./, '');
-  let candidate = '';
+  const hostname = urlResult.value.hostname.replace(/^www\./, "");
+  let candidate = "";
 
-  if (hostname === 'youtu.be') {
-    candidate =
-      urlResult.value.pathname.split('/').find((segment) => segment.length > 0) || '';
+  if (hostname === "youtu.be") {
+    candidate = urlResult.value.pathname.split("/").find((segment) => segment.length > 0) || "";
   } else if (isAllowedYouTubeHostname(hostname)) {
-    candidate = urlResult.value.searchParams.get('v') || '';
+    candidate = urlResult.value.searchParams.get("v") || "";
     if (!candidate) {
-      const segments = urlResult.value.pathname
-        .split('/')
-        .filter((segment) => segment.length > 0);
-      if (segments[0] === 'embed' || segments[0] === 'shorts' || segments[0] === 'live') {
-        candidate = segments[1] || '';
+      const segments = urlResult.value.pathname.split("/").filter((segment) => segment.length > 0);
+      if (segments[0] === "embed" || segments[0] === "shorts" || segments[0] === "live") {
+        candidate = segments[1] || "";
       }
     }
   }

@@ -1,6 +1,6 @@
-import { stalls as staticStalls } from '../../data/stalls';
-import type { Stall } from '../../data/shared';
-import type { CanonicalStall, CountryCode } from '../stalls/contracts';
+import type { Stall } from "../../data/shared";
+import { stalls as staticStalls } from "../../data/stalls";
+import type { CanonicalStall, CountryCode } from "../stalls/contracts";
 import {
   buildYouTubeVideoUrl,
   deriveSlug,
@@ -10,19 +10,22 @@ import {
   makeStallSourceKey,
   normalizeDisplayText,
   normalizeYouTubeVideoId,
-} from './normalize';
+} from "./normalize";
 
 interface GroupAccumulator {
   sourceKey: string;
   best: Stall;
   bestScore: number;
-  locations: Map<string, { address: string; lat: number | null; lng: number | null; youtubeVideoUrl: string | null }>;
+  locations: Map<
+    string,
+    { address: string; lat: number | null; lng: number | null; youtubeVideoUrl: string | null }
+  >;
   hits: Set<string>;
   misses: Set<string>;
   awards: Set<string>;
 }
 
-function toCountryCode(value: Stall['country']): CountryCode {
+function toCountryCode(value: Stall["country"]): CountryCode {
   return value as CountryCode;
 }
 
@@ -110,8 +113,9 @@ export function buildCanonicalStallsFromStaticData(syncedAtIso: string): Canonic
 
     const preferredPrimaryAddress = normalizeDisplayText(best.address);
     const primaryLocation =
-      locations.find((location) => location.address.toLowerCase() === preferredPrimaryAddress.toLowerCase()) ??
-      locations[0];
+      locations.find(
+        (location) => location.address.toLowerCase() === preferredPrimaryAddress.toLowerCase(),
+      ) ?? locations[0];
 
     if (!primaryLocation) {
       continue;
@@ -149,10 +153,10 @@ export function buildCanonicalStallsFromStaticData(syncedAtIso: string): Canonic
       youtubeVideoId,
       googleMapsName: normalizeDisplayText(best.googleMapsName || best.name),
       awards: [...group.awards].sort((a, b) => a.localeCompare(b)),
-      status: 'active',
+      status: "active",
       sourceRank: 10,
-      sourceSheetHash: 'static-seed',
-      sourceYoutubeHash: 'static-seed',
+      sourceSheetHash: "static-seed",
+      sourceYoutubeHash: "static-seed",
       locations,
       lastSyncedAt: syncedAtIso,
     });

@@ -72,39 +72,47 @@ Re-platform SG Food Guide from Astro to TanStack Start + React, while mirroring 
 ## Implementation Steps
 
 1. Scaffold admin-style workspace foundation
+
 - Add `configs/tsconfig`, `configs/oxlint-config`, and supporting root config files aligned with admin conventions.
 - Add `libs/toolkit` and `libs/ui` baselines (minimal initially, expandable during port).
 - Update root `package.json`, workspace catalogs, and `turbo.json` to admin-like structure.
 
 2. Bootstrap TanStack Start app in `apps/web`
+
 - Replace Astro app runtime files with TanStack Start app entry, router, root route, and route generation script.
 - Configure Vite plugins (TanStack router/start plugin, react plugin, tsconfig paths, tailwind plugin).
 - Set up app tsconfig + route tree generation.
 
 3. Port SG Food Guide frontend routes
+
 - Rebuild index, cuisine, and stall pages as React routes with equivalent UI content and behaviors.
 - Migrate shared UI components (`FilterBar`, `StallCard`, route planner, badges/buttons/selects/inputs/checks) from Astro to React.
 - Port client-side preferences/filter/search logic.
 
 4. Port API behavior to TanStack Start server functions
+
 - Migrate geocode logic to Start server handler preserving response format and caching behavior.
 - Migrate transit planning endpoint preserving query contract, fallback logic, and warnings.
 - Ensure both endpoints are reachable at original URLs.
 - Ensure all endpoint parsing/validation uses `zod` and all failure paths use `better-result` patterns.
 
 5. Migrate styling, assets, and design tokens
+
 - Move global CSS, font imports, and icon pipeline to React app.
 - Preserve current visual baseline while adopting admin-style organization.
 
 6. Copy admin agent/config ecosystem
+
 - Import compatible `.agents` skills/content and top-level guidance patterns.
 - Merge with SG Food Guide-specific AGENTS constraints (beads workflow and deployment specifics).
 
 7. Remove Astro-specific runtime and stale scripts
+
 - Remove Astro config, pages/functions wiring, and obsolete scripts once parity is validated.
 - Update README and operational scripts to new workflow.
 
 8. Validation and hardening
+
 - Run install, typecheck, lint, tests, and build under new stack.
 - Manual smoke for key routes + API endpoints.
 - Address regressions and close parity gaps.

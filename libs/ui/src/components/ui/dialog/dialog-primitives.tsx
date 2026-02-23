@@ -25,7 +25,7 @@ const DialogOverlay: FC<DialogPrimitive.Backdrop.Props> = ({ className, ...props
     <DialogPrimitive.Backdrop
       data-slot="dialog-overlay"
       className={cn(
-        "fixed inset-0 isolate z-50 bg-black/10 transition-all duration-200 ease-out data-[starting-style]:opacity-0 data-[ending-style]:opacity-0 supports-backdrop-filter:backdrop-blur-xs motion-reduce:transition-none",
+        "fixed inset-0 isolate z-50 bg-black/10 transition-all duration-200 ease-out data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 supports-backdrop-filter:backdrop-blur-xs motion-reduce:transition-none",
         className,
       )}
       {...props}
@@ -49,7 +49,7 @@ const DialogContent: FC<DialogContentProps> = ({
       <DialogPrimitive.Popup
         data-slot="dialog-content"
         className={cn(
-          "bg-background ring-border fixed top-1/2 left-1/2 z-50 grid w-full -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl p-4 text-sm ring-1 transition-all duration-200 ease-out data-[ending-style]:duration-150 data-[starting-style]:opacity-0 data-[starting-style]:scale-95 data-[ending-style]:opacity-0 data-[ending-style]:scale-95 motion-reduce:transition-none sm:max-w-sm",
+          "bg-background ring-border fixed top-1/2 left-1/2 z-50 grid w-full -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl p-4 text-sm ring-1 transition-all duration-200 ease-out data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[ending-style]:duration-150 data-[starting-style]:scale-95 data-[starting-style]:opacity-0 motion-reduce:transition-none sm:max-w-sm",
           className,
         )}
         {...props}
@@ -60,7 +60,10 @@ const DialogContent: FC<DialogContentProps> = ({
             data-slot="dialog-close"
             render={<Button variant="ghost" className="absolute top-2 right-2" size="icon-sm" />}
           >
-            <span aria-hidden="true" className="iconify ph--x-bold text-foreground-muted size-4 shrink-0" />
+            <span
+              aria-hidden="true"
+              className="iconify ph--x-bold text-foreground-muted size-4 shrink-0"
+            />
             <span className="sr-only">Close</span>
           </DialogPrimitive.Close>
         )}

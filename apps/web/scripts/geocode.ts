@@ -6,26 +6,31 @@
  * Results are written back to the source .ts files in-place.
  */
 
-import { Result } from 'better-result';
-import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import * as z from 'zod/mini';
+import { Result } from "better-result";
+import { readFileSync, writeFileSync, readdirSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import * as z from "zod/mini";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = join(SCRIPT_DIR, '..', 'src', 'data');
-const CACHE_FILE = join(SCRIPT_DIR, '.geocode-cache.json');
-const cacheSchema = z.record(z.string(), z.object({
-  lat: z.number(),
-  lng: z.number(),
-}));
-const nominatimResponseSchema = z.array(z.object({
-  lat: z.union([z.string(), z.number()]),
-  lon: z.union([z.string(), z.number()]),
-}));
+const DATA_DIR = join(SCRIPT_DIR, "..", "src", "data");
+const CACHE_FILE = join(SCRIPT_DIR, ".geocode-cache.json");
+const cacheSchema = z.record(
+  z.string(),
+  z.object({
+    lat: z.number(),
+    lng: z.number(),
+  }),
+);
+const nominatimResponseSchema = z.array(
+  z.object({
+    lat: z.union([z.string(), z.number()]),
+    lon: z.union([z.string(), z.number()]),
+  }),
+);
 
 function loadCache(): Record<string, { lat: number; lng: number }> {
-  const fileResult = Result.try(() => readFileSync(CACHE_FILE, 'utf-8'));
+  const fileResult = Result.try(() => readFileSync(CACHE_FILE, "utf-8"));
   if (Result.isError(fileResult)) return {};
 
   const parsedResult = Result.try(() => JSON.parse(fileResult.value));
@@ -41,13 +46,13 @@ function saveCache() {
 }
 
 const COUNTRY_NAMES: Record<string, string> = {
-  sg: 'Singapore',
-  my: 'Malaysia',
-  jp: 'Japan',
-  th: 'Thailand',
-  hk: 'Hong Kong',
-  cn: 'China',
-  id: 'Indonesia',
+  sg: "Singapore",
+  my: "Malaysia",
+  jp: "Japan",
+  th: "Thailand",
+  hk: "Hong Kong",
+  cn: "China",
+  id: "Indonesia",
 };
 
 /**
@@ -58,17 +63,17 @@ const COUNTRY_NAMES: Record<string, string> = {
  */
 function cleanAddress(address: string): string {
   return address
-    .replace(/#\d{1,2}-\d{1,4}(?:\/\d+)?\s*,?\s*/g, '') // Remove unit numbers
-    .replace(/\bBlk\s*/gi, '')                             // Remove "Blk"
-    .replace(/\s{2,}/g, ' ')                               // Collapse whitespace
+    .replace(/#\d{1,2}-\d{1,4}(?:\/\d+)?\s*,?\s*/g, "") // Remove unit numbers
+    .replace(/\bBlk\s*/gi, "") // Remove "Blk"
+    .replace(/\s{2,}/g, " ") // Collapse whitespace
     .trim()
-    .replace(/^,\s*/, '')                                   // Leading comma
-    .replace(/,\s*,/g, ',');                                // Double commas
+    .replace(/^,\s*/, "") // Leading comma
+    .replace(/,\s*,/g, ","); // Double commas
 }
 
 /** Extract Singapore postal code (6 digits) */
 function extractPostalCode(address: string, country: string): string | null {
-  if (country.toLowerCase() !== 'sg') return null;
+  if (country.toLowerCase() !== "sg") return null;
   const match = address.match(/\b(\d{6})\b/);
   return match ? match[1] : null;
 }
@@ -80,12 +85,17 @@ function extractStreetName(address: string): string | null {
   return match ? match[1].trim() : null;
 }
 
-async function nominatimSearch(query: string, countryCode: string): Promise<{ lat: number; lng: number } | null> {
-  const cc = countryCode === 'hk' ? 'cn' : countryCode;
+async function nominatimSearch(
+  query: string,
+  countryCode: string,
+): Promise<{ lat: number; lng: number } | null> {
+  const cc = countryCode === "hk" ? "cn" : countryCode;
   const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1&countrycodes=${cc}`;
-  const responseResult = await Result.tryPromise(() => fetch(url, {
-    headers: { 'User-Agent': 'sg-food-guide-geocoder/1.0' },
-  }));
+  const responseResult = await Result.tryPromise(() =>
+    fetch(url, {
+      headers: { "User-Agent": "sg-food-guide-geocoder/1.0" },
+    }),
+  );
   if (Result.isError(responseResult)) {
     console.error(`  Error querying Nominatim:`, responseResult.error);
     return null;
@@ -107,12 +117,16 @@ async function nominatimSearch(query: string, countryCode: string): Promise<{ la
   return { lat, lng };
 }
 
-async function geocode(name: string, address: string, country: string): Promise<{ lat: number; lng: number } | null> {
+async function geocode(
+  name: string,
+  address: string,
+  country: string,
+): Promise<{ lat: number; lng: number } | null> {
   const cacheKey = `${name}|${address}`;
   if (cache[cacheKey]) return cache[cacheKey];
 
   const countryCode = country.toLowerCase();
-  const countryName = COUNTRY_NAMES[countryCode] || '';
+  const countryName = COUNTRY_NAMES[countryCode] || "";
   const cleaned = cleanAddress(address);
   const postalCode = extractPostalCode(address, country);
   const streetName = extractStreetName(address);
@@ -154,17 +168,17 @@ async function geocode(name: string, address: string, country: string): Promise<
 }
 
 async function processFile(filePath: string) {
-  let content = readFileSync(filePath, 'utf-8');
-  const fileName = filePath.split('/').pop();
+  let content = readFileSync(filePath, "utf-8");
+  const fileName = filePath.split("/").pop();
 
   // Each stall is on a single line. Match lines with lat: 0, lng: 0
-  const lines = content.split('\n');
+  const lines = content.split("\n");
   let geocodedCount = 0;
   let totalZero = 0;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    if (!line.includes('lat: 0, lng: 0')) continue;
+    if (!line.includes("lat: 0, lng: 0")) continue;
     totalZero++;
 
     // Extract fields from the line
@@ -182,7 +196,10 @@ async function processFile(filePath: string) {
     const coords = await geocode(name, address, country);
 
     if (coords) {
-      lines[i] = line.replace('lat: 0, lng: 0', `lat: ${coords.lat.toFixed(6)}, lng: ${coords.lng.toFixed(6)}`);
+      lines[i] = line.replace(
+        "lat: 0, lng: 0",
+        `lat: ${coords.lat.toFixed(6)}, lng: ${coords.lng.toFixed(6)}`,
+      );
       geocodedCount++;
       console.log(`    -> ${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}`);
     } else {
@@ -190,29 +207,29 @@ async function processFile(filePath: string) {
     }
   }
 
-  writeFileSync(filePath, lines.join('\n'));
+  writeFileSync(filePath, lines.join("\n"));
   console.log(`  -> ${geocodedCount}/${totalZero} geocoded in ${fileName}`);
 }
 
 async function main() {
-  console.log('Geocoding stalls with lat: 0, lng: 0...\n');
+  console.log("Geocoding stalls with lat: 0, lng: 0...\n");
 
   // Process cuisine files
-  const cuisineDir = join(DATA_DIR, 'cuisines');
+  const cuisineDir = join(DATA_DIR, "cuisines");
   const cuisineFiles = readdirSync(cuisineDir)
-    .filter((f: string) => f.endsWith('.ts'))
+    .filter((f: string) => f.endsWith(".ts"))
     .map((f: string) => join(cuisineDir, f));
   for (const file of cuisineFiles) {
-    console.log(`\nProcessing ${file.split('/').pop()}...`);
+    console.log(`\nProcessing ${file.split("/").pop()}...`);
     await processFile(file);
   }
 
   // Process stalls.ts (has inline hokkien mee data)
-  const stallsFile = join(DATA_DIR, 'stalls.ts');
+  const stallsFile = join(DATA_DIR, "stalls.ts");
   console.log(`\nProcessing stalls.ts...`);
   await processFile(stallsFile);
 
-  console.log('\nDone! Run `bun run build` to verify.');
+  console.log("\nDone! Run `bun run build` to verify.");
 }
 
 main();

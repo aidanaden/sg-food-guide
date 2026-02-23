@@ -44,12 +44,12 @@ const AccordionTrigger: React.FC<AccordionPrimitive.Trigger.Props> = ({
         <span
           aria-hidden="true"
           data-slot="accordion-trigger-icon"
-          className="iconify ph--caret-down pointer-events-none shrink-0 group-hover/accordion-trigger:text-foreground group-aria-expanded/accordion-trigger:hidden"
+          className="iconify ph--caret-down group-hover/accordion-trigger:text-foreground pointer-events-none shrink-0 group-aria-expanded/accordion-trigger:hidden"
         />
         <span
           aria-hidden="true"
           data-slot="accordion-trigger-icon"
-          className="iconify ph--caret-up pointer-events-none hidden shrink-0 group-hover/accordion-trigger:text-foreground group-aria-expanded/accordion-trigger:inline"
+          className="iconify ph--caret-up group-hover/accordion-trigger:text-foreground pointer-events-none hidden shrink-0 group-aria-expanded/accordion-trigger:inline"
         />
       </AccordionPrimitive.Trigger>
     </AccordionPrimitive.Header>

@@ -1,31 +1,31 @@
-import { Result } from 'better-result';
-import * as z from 'zod/mini';
+import { Result } from "better-result";
+import * as z from "zod/mini";
 
-import type { WorkerEnv } from '../cloudflare/runtime';
-import { normalizeComparableText, normalizeDisplayText, normalizeIdentityText } from './normalize';
-import type { YouTubeCommentEntry } from './youtube-comments-source';
+import type { WorkerEnv } from "../cloudflare/runtime";
+import { normalizeComparableText, normalizeDisplayText, normalizeIdentityText } from "./normalize";
+import type { YouTubeCommentEntry } from "./youtube-comments-source";
 
 const EXCLUDED_NAME_TOKENS = new Set([
-  'food',
-  'stall',
-  'stalls',
-  'place',
-  'places',
-  'this',
-  'that',
-  'there',
-  'here',
-  'episode',
-  'video',
-  'review',
-  'channel',
-  'restaurant',
-  'restaurants',
-  'hawker',
-  'centre',
-  'center',
-  'please',
-  'thanks',
+  "food",
+  "stall",
+  "stalls",
+  "place",
+  "places",
+  "this",
+  "that",
+  "there",
+  "here",
+  "episode",
+  "video",
+  "review",
+  "channel",
+  "restaurant",
+  "restaurants",
+  "hawker",
+  "centre",
+  "center",
+  "please",
+  "thanks",
 ]);
 
 const PROFANITY_PATTERNS = [
@@ -56,7 +56,7 @@ const openAiResponseSchema = z.object({
       message: z.object({
         content: z.optional(z.string()),
       }),
-    })
+    }),
   ),
 });
 
@@ -64,12 +64,12 @@ const llmJsonPayloadSchema = z.object({
   stalls: z.array(z.string()),
 });
 
-const DEFAULT_WORKERS_AI_MODEL = '@cf/meta/llama-3.1-8b-instruct-fast';
-const DEFAULT_OPENAI_MODEL = 'gpt-4o-mini';
+const DEFAULT_WORKERS_AI_MODEL = "@cf/meta/llama-3.1-8b-instruct-fast";
+const DEFAULT_OPENAI_MODEL = "gpt-4o-mini";
 const LLM_SYSTEM_PROMPT =
   'Extract food stall names from user text. Return strict JSON: {"stalls": string[]} with no explanation. Keep only plausible stall/place names.';
 
-export type CommentModerationFlag = 'spam' | 'profanity' | 'self-promo' | 'insufficient-signal';
+export type CommentModerationFlag = "spam" | "profanity" | "self-promo" | "insufficient-signal";
 
 export interface ExtractedStallSuggestion {
   normalizedName: string;
@@ -77,7 +77,7 @@ export interface ExtractedStallSuggestion {
   confidenceScore: number;
   moderationFlags: CommentModerationFlag[];
   mapsUrls: string[];
-  extractionMethod: 'rules' | 'llm' | 'mixed';
+  extractionMethod: "rules" | "llm" | "mixed";
   extractionNotes: string;
 }
 
@@ -94,7 +94,7 @@ export function extractMapsUrls(input: string): string[] {
   const seen = new Set<string>();
 
   for (const match of input.matchAll(MAPS_URL_PATTERN)) {
-    const candidate = normalizeDisplayText(match[0] ?? '');
+    const candidate = normalizeDisplayText(match[0] ?? "");
     if (!candidate || seen.has(candidate)) {
       continue;
     }
@@ -112,41 +112,41 @@ export function moderateCommentText(input: string): CommentModerationFlag[] {
   const flags = new Set<CommentModerationFlag>();
 
   if (!text || text.length < 4) {
-    flags.add('insufficient-signal');
+    flags.add("insufficient-signal");
   }
 
   if (PROFANITY_PATTERNS.some((pattern) => pattern.test(text))) {
-    flags.add('profanity');
+    flags.add("profanity");
   }
 
   if (SPAM_PATTERNS.some((pattern) => pattern.test(text))) {
-    flags.add('spam');
+    flags.add("spam");
   }
 
   if (SELF_PROMO_PATTERNS.some((pattern) => pattern.test(text))) {
-    flags.add('self-promo');
+    flags.add("self-promo");
   }
 
   const externalLinks = [...lowered.matchAll(/https?:\/\/[^\s]+/g)];
   const mapsLinks = extractMapsUrls(text);
   if (externalLinks.length >= 2 && mapsLinks.length === 0) {
-    flags.add('spam');
+    flags.add("spam");
   }
 
   return [...flags];
 }
 
 export function hasBlockingModerationFlags(flags: CommentModerationFlag[]): boolean {
-  return flags.includes('spam') || flags.includes('profanity') || flags.includes('self-promo');
+  return flags.includes("spam") || flags.includes("profanity") || flags.includes("self-promo");
 }
 
 function normalizeCandidateName(value: string): string {
   return normalizeDisplayText(value)
-    .replace(/^[@#\-•*\s]+/, '')
-    .replace(/\b(?:at|in|near|around|the|a|an)\b\s+/i, '')
-    .replace(/\s+(?:please|thanks|thank\s+you)$/i, '')
-    .replace(/^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$/g, '')
-    .replace(/\s{2,}/g, ' ')
+    .replace(/^[@#\-•*\s]+/, "")
+    .replace(/\b(?:at|in|near|around|the|a|an)\b\s+/i, "")
+    .replace(/\s+(?:please|thanks|thank\s+you)$/i, "")
+    .replace(/^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$/g, "")
+    .replace(/\s{2,}/g, " ")
     .trim();
 }
 
@@ -186,7 +186,7 @@ function extractRuleBasedCandidates(commentText: string): string[] {
 
   for (const segment of sentenceSegments(normalizedText)) {
     const directMatch = segment.match(
-      /(?:try|recommend|suggest|must\s+try|go\s+to|check\s+out|should\s+visit)\s+(.+)/i
+      /(?:try|recommend|suggest|must\s+try|go\s+to|check\s+out|should\s+visit)\s+(.+)/i,
     );
 
     if (directMatch?.[1]) {
@@ -196,9 +196,7 @@ function extractRuleBasedCandidates(commentText: string): string[] {
       }
     }
 
-    const listParts = segment
-      .split(/\band\b|\/+|\+/i)
-      .map((part) => normalizeCandidateName(part));
+    const listParts = segment.split(/\band\b|\/+|\+/i).map((part) => normalizeCandidateName(part));
 
     for (const listPart of listParts) {
       if (!isLikelyStallName(listPart)) {
@@ -232,7 +230,8 @@ function qualityScoreForName(name: string): number {
   const containsNumber = /\d/.test(name);
   if (containsNumber) score += 1;
 
-  const hasBusinessSignal = /\b(mee|noodle|rice|bak|teh|kway|laksa|ramen|soup|satay|stall|house|shop)\b/i.test(name);
+  const hasBusinessSignal =
+    /\b(mee|noodle|rice|bak|teh|kway|laksa|ramen|soup|satay|stall|house|shop)\b/i.test(name);
   if (hasBusinessSignal) score += 3;
 
   return Math.min(15, score);
@@ -242,8 +241,8 @@ function scoreSuggestion(
   comment: YouTubeCommentEntry,
   name: string,
   mapsUrls: string[],
-  extractionMethod: 'rules' | 'llm' | 'mixed',
-  moderationFlags: CommentModerationFlag[]
+  extractionMethod: "rules" | "llm" | "mixed",
+  moderationFlags: CommentModerationFlag[],
 ): number {
   let score = 20;
   score += Math.min(35, Math.max(0, comment.likeCount) * 4);
@@ -252,29 +251,35 @@ function scoreSuggestion(
   if (mapsUrls.length > 0) score += 10;
   score += qualityScoreForName(name);
 
-  if (extractionMethod === 'llm') score += 8;
-  if (extractionMethod === 'mixed') score += 5;
+  if (extractionMethod === "llm") score += 8;
+  if (extractionMethod === "mixed") score += 5;
 
   if (!comment.isTopLevel) score -= 3;
 
-  if (moderationFlags.includes('insufficient-signal')) score -= 10;
+  if (moderationFlags.includes("insufficient-signal")) score -= 10;
   if (hasBlockingModerationFlags(moderationFlags)) score -= 45;
 
   return clampScore(score);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
+  return typeof value === "object" && value !== null;
 }
 
 function normalizeLlmCandidates(candidates: string[]): string[] {
-  return [...new Set(candidates.map((name) => normalizeCandidateName(name)).filter((name) => isLikelyStallName(name)))];
+  return [
+    ...new Set(
+      candidates
+        .map((name) => normalizeCandidateName(name))
+        .filter((name) => isLikelyStallName(name)),
+    ),
+  ];
 }
 
 function parseLlmPayloadObject(payload: unknown): Result<string[], Error> {
   const parsedPayload = llmJsonPayloadSchema.safeParse(payload);
   if (!parsedPayload.success) {
-    return Result.err(new Error('LLM extraction JSON payload did not match schema.'));
+    return Result.err(new Error("LLM extraction JSON payload did not match schema."));
   }
 
   return Result.ok(normalizeLlmCandidates(parsedPayload.data.stalls));
@@ -291,16 +296,16 @@ function parseLlmJsonString(rawContent: string): Result<string[], Error> {
     return parseLlmPayloadObject(parsedJson.value);
   }
 
-  const objectStart = normalizedContent.indexOf('{');
-  const objectEnd = normalizedContent.lastIndexOf('}');
+  const objectStart = normalizedContent.indexOf("{");
+  const objectEnd = normalizedContent.lastIndexOf("}");
   if (objectStart === -1 || objectEnd <= objectStart) {
-    return Result.err(new Error('LLM extraction response was not valid JSON.'));
+    return Result.err(new Error("LLM extraction response was not valid JSON."));
   }
 
   const slicedJson = normalizedContent.slice(objectStart, objectEnd + 1);
   const parsedSlicedJson = Result.try(() => JSON.parse(slicedJson));
   if (Result.isError(parsedSlicedJson)) {
-    return Result.err(new Error('LLM extraction response was not valid JSON.'));
+    return Result.err(new Error("LLM extraction response was not valid JSON."));
   }
 
   return parseLlmPayloadObject(parsedSlicedJson.value);
@@ -317,7 +322,7 @@ function parseNamesFromLlmPayload(payload: unknown): Result<string[], Error> {
     }
     visited.add(current);
 
-    if (typeof current === 'string') {
+    if (typeof current === "string") {
       const parsedStringPayload = parseLlmJsonString(current);
       if (!Result.isError(parsedStringPayload)) {
         return parsedStringPayload;
@@ -340,16 +345,21 @@ function parseNamesFromLlmPayload(payload: unknown): Result<string[], Error> {
     queue.push(current.content);
   }
 
-  return Result.err(new Error('LLM response did not contain a valid stalls payload.'));
+  return Result.err(new Error("LLM response did not contain a valid stalls payload."));
 }
 
-async function extractNamesWithWorkersAi(env: WorkerEnv, commentText: string): Promise<Result<string[], Error>> {
+async function extractNamesWithWorkersAi(
+  env: WorkerEnv,
+  commentText: string,
+): Promise<Result<string[], Error>> {
   const aiBinding = env.AI;
   if (!aiBinding) {
     return Result.ok([]);
   }
 
-  const model = normalizeDisplayText(env.WORKERS_AI_MODEL ?? DEFAULT_WORKERS_AI_MODEL) || DEFAULT_WORKERS_AI_MODEL;
+  const model =
+    normalizeDisplayText(env.WORKERS_AI_MODEL ?? DEFAULT_WORKERS_AI_MODEL) ||
+    DEFAULT_WORKERS_AI_MODEL;
 
   const responseResult = await Result.tryPromise(() =>
     aiBinding.run(model, {
@@ -357,37 +367,41 @@ async function extractNamesWithWorkersAi(env: WorkerEnv, commentText: string): P
       max_tokens: 192,
       messages: [
         {
-          role: 'system',
+          role: "system",
           content: LLM_SYSTEM_PROMPT,
         },
         {
-          role: 'user',
+          role: "user",
           content: commentText,
         },
       ],
-    })
+    }),
   );
 
   if (Result.isError(responseResult)) {
-    return Result.err(new Error('Failed to call Workers AI for comment extraction.'));
+    return Result.err(new Error("Failed to call Workers AI for comment extraction."));
   }
 
   return parseNamesFromLlmPayload(responseResult.value);
 }
 
-async function extractNamesWithOpenAi(env: WorkerEnv, commentText: string): Promise<Result<string[], Error>> {
-  const apiKey = normalizeDisplayText(env.OPENAI_API_KEY ?? '');
+async function extractNamesWithOpenAi(
+  env: WorkerEnv,
+  commentText: string,
+): Promise<Result<string[], Error>> {
+  const apiKey = normalizeDisplayText(env.OPENAI_API_KEY ?? "");
   if (!apiKey) {
     return Result.ok([]);
   }
 
-  const model = normalizeDisplayText(env.OPENAI_MODEL ?? DEFAULT_OPENAI_MODEL) || DEFAULT_OPENAI_MODEL;
+  const model =
+    normalizeDisplayText(env.OPENAI_MODEL ?? DEFAULT_OPENAI_MODEL) || DEFAULT_OPENAI_MODEL;
 
   const responseResult = await Result.tryPromise(() =>
-    fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
+    fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
       headers: {
-        'content-type': 'application/json',
+        "content-type": "application/json",
         authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
@@ -395,50 +409,55 @@ async function extractNamesWithOpenAi(env: WorkerEnv, commentText: string): Prom
         temperature: 0,
         messages: [
           {
-            role: 'system',
+            role: "system",
             content: LLM_SYSTEM_PROMPT,
           },
           {
-            role: 'user',
+            role: "user",
             content: commentText,
           },
         ],
       }),
-    })
+    }),
   );
 
   if (Result.isError(responseResult)) {
-    return Result.err(new Error('Failed to call OpenAI for comment extraction.'));
+    return Result.err(new Error("Failed to call OpenAI for comment extraction."));
   }
 
   if (!responseResult.value.ok) {
-    return Result.err(new Error(`OpenAI extraction request failed with HTTP ${responseResult.value.status}.`));
+    return Result.err(
+      new Error(`OpenAI extraction request failed with HTTP ${responseResult.value.status}.`),
+    );
   }
 
   const payloadResult = await Result.tryPromise(() => responseResult.value.json());
   if (Result.isError(payloadResult)) {
-    return Result.err(new Error('Failed to parse OpenAI extraction response JSON.'));
+    return Result.err(new Error("Failed to parse OpenAI extraction response JSON."));
   }
 
   const parsedResponse = openAiResponseSchema.safeParse(payloadResult.value);
   if (!parsedResponse.success) {
-    return Result.err(new Error('Invalid OpenAI extraction response shape.'));
+    return Result.err(new Error("Invalid OpenAI extraction response shape."));
   }
 
-  const rawContent = parsedResponse.data.choices[0]?.message.content ?? '';
+  const rawContent = parsedResponse.data.choices[0]?.message.content ?? "";
   if (!rawContent) {
     return Result.ok([]);
   }
 
   const parsedNames = parseNamesFromLlmPayload(rawContent);
   if (Result.isError(parsedNames)) {
-    return Result.err(new Error('Invalid OpenAI extraction JSON payload.'));
+    return Result.err(new Error("Invalid OpenAI extraction JSON payload."));
   }
 
   return Result.ok(parsedNames.value);
 }
 
-async function extractNamesWithLlm(env: WorkerEnv, commentText: string): Promise<Result<string[], Error>> {
+async function extractNamesWithLlm(
+  env: WorkerEnv,
+  commentText: string,
+): Promise<Result<string[], Error>> {
   if (env.AI) {
     const workersAiResult = await extractNamesWithWorkersAi(env, commentText);
     if (!Result.isError(workersAiResult)) {
@@ -459,7 +478,7 @@ async function extractNamesWithLlm(env: WorkerEnv, commentText: string): Promise
 export async function extractStallSuggestionsFromComment(
   env: WorkerEnv,
   comment: YouTubeCommentEntry,
-  options: ExtractionOptions
+  options: ExtractionOptions,
 ): Promise<Result<ExtractedStallSuggestion[], Error>> {
   const normalizedText = normalizeDisplayText(comment.text);
   if (!normalizedText) {
@@ -480,12 +499,12 @@ export async function extractStallSuggestionsFromComment(
   }
 
   const mergedCandidates = mergeCandidateNames(ruleCandidates, llmCandidates);
-  const extractionMethod: 'rules' | 'llm' | 'mixed' =
+  const extractionMethod: "rules" | "llm" | "mixed" =
     llmCandidates.length > 0 && ruleCandidates.length > 0
-      ? 'mixed'
+      ? "mixed"
       : llmCandidates.length > 0
-        ? 'llm'
-        : 'rules';
+        ? "llm"
+        : "rules";
 
   const suggestions: ExtractedStallSuggestion[] = [];
   for (const candidate of mergedCandidates) {
@@ -494,7 +513,13 @@ export async function extractStallSuggestionsFromComment(
       continue;
     }
 
-    const confidenceScore = scoreSuggestion(comment, candidate, mapsUrls, extractionMethod, moderationFlags);
+    const confidenceScore = scoreSuggestion(
+      comment,
+      candidate,
+      mapsUrls,
+      extractionMethod,
+      moderationFlags,
+    );
     suggestions.push({
       normalizedName,
       displayName: candidate,

@@ -52,7 +52,7 @@ const SelectTrigger: React.FC<SelectTriggerProps> = ({
         render={
           <span
             aria-hidden="true"
-            className="iconify ph--caret-down text-foreground-muted pointer-events-none size-4 transition-colors group-hover/select-trigger:text-foreground group-data-[popup-open]/select-trigger:text-foreground"
+            className="iconify ph--caret-down text-foreground-muted group-hover/select-trigger:text-foreground group-data-[popup-open]/select-trigger:text-foreground pointer-events-none size-4 transition-colors"
           />
         }
       />

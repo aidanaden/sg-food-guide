@@ -11,17 +11,17 @@
  *   bun scripts/backfill-missing-youtube-urls.ts --youtube-api-key <key>
  */
 
-import { Result } from 'better-result';
-import { execFile } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { promisify } from 'node:util';
-import * as z from 'zod';
+import { Result } from "better-result";
+import { execFile } from "node:child_process";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { promisify } from "node:util";
+import * as z from "zod";
 
-const DEFAULT_DB_NAME = 'sg-food-guide-stalls';
-const DEFAULT_CHANNEL_ID = 'UCH-dJYvV8UiemFsLZRO0X4A';
-const YOUTUBE_DATA_API_BASE = 'https://www.googleapis.com/youtube/v3';
+const DEFAULT_DB_NAME = "sg-food-guide-stalls";
+const DEFAULT_CHANNEL_ID = "UCH-dJYvV8UiemFsLZRO0X4A";
+const YOUTUBE_DATA_API_BASE = "https://www.googleapis.com/youtube/v3";
 const MAX_PLAYLIST_PAGES = 200;
 const VIDEO_ID_RE = /^[A-Za-z0-9_-]{11}$/;
 
@@ -32,7 +32,7 @@ const wranglerEnvelopeSchema = z.array(
     results: z.array(z.record(z.string(), z.unknown())),
     success: z.boolean().optional(),
     meta: z.record(z.string(), z.unknown()).optional(),
-  })
+  }),
 );
 
 const missingStallSchema = z.object({
@@ -65,7 +65,7 @@ const youtubeChannelsResponseSchema = z.object({
           uploads: z.string().min(1),
         }),
       }),
-    })
+    }),
   ),
 });
 
@@ -88,7 +88,7 @@ const youtubePlaylistItemsResponseSchema = z.object({
           videoId: z.string().optional(),
         })
         .optional(),
-    })
+    }),
   ),
 });
 
@@ -132,39 +132,39 @@ function parseArgs(argv: string[]): CliOptions {
   let remote = true;
   let dbName = DEFAULT_DB_NAME;
   let channelId = DEFAULT_CHANNEL_ID;
-  let youtubeApiKey = process.env.YOUTUBE_DATA_API_KEY?.trim() ?? '';
+  let youtubeApiKey = process.env.YOUTUBE_DATA_API_KEY?.trim() ?? "";
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
-    if (arg === '--apply') {
+    if (arg === "--apply") {
       apply = true;
       continue;
     }
-    if (arg === '--local') {
+    if (arg === "--local") {
       remote = false;
       continue;
     }
-    if (arg === '--remote') {
+    if (arg === "--remote") {
       remote = true;
       continue;
     }
-    if (arg === '--db') {
+    if (arg === "--db") {
       const value = argv[i + 1];
-      if (!value) throw new Error('Missing value for --db');
+      if (!value) throw new Error("Missing value for --db");
       dbName = value;
       i += 1;
       continue;
     }
-    if (arg === '--channel-id') {
+    if (arg === "--channel-id") {
       const value = argv[i + 1];
-      if (!value) throw new Error('Missing value for --channel-id');
+      if (!value) throw new Error("Missing value for --channel-id");
       channelId = value.trim();
       i += 1;
       continue;
     }
-    if (arg === '--youtube-api-key') {
+    if (arg === "--youtube-api-key") {
       const value = argv[i + 1];
-      if (!value) throw new Error('Missing value for --youtube-api-key');
+      if (!value) throw new Error("Missing value for --youtube-api-key");
       youtubeApiKey = value.trim();
       i += 1;
       continue;
@@ -173,12 +173,12 @@ function parseArgs(argv: string[]): CliOptions {
   }
 
   if (!channelId) {
-    throw new Error('Missing YouTube channel ID. Provide --channel-id or set default.');
+    throw new Error("Missing YouTube channel ID. Provide --channel-id or set default.");
   }
 
   if (!youtubeApiKey) {
     throw new Error(
-      'Missing YouTube Data API key. Set YOUTUBE_DATA_API_KEY or pass --youtube-api-key.'
+      "Missing YouTube Data API key. Set YOUTUBE_DATA_API_KEY or pass --youtube-api-key.",
     );
   }
 
@@ -186,23 +186,23 @@ function parseArgs(argv: string[]): CliOptions {
 }
 
 function normalizeComparableText(value: string | null | undefined): string {
-  return (value ?? '')
-    .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')
+  return (value ?? "")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, ' ')
-    .replace(/\s+/g, ' ')
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
     .trim();
 }
 
 function extractEpisodeKey(value: unknown): string {
-  if (typeof value === 'number') {
+  if (typeof value === "number") {
     if (Number.isInteger(value)) return String(value);
     return String(value);
   }
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     const trimmed = value.trim();
-    if (!trimmed) return '';
+    if (!trimmed) return "";
     const numeric = Number(trimmed);
     if (Number.isFinite(numeric)) {
       if (Number.isInteger(numeric)) return String(numeric);
@@ -210,11 +210,11 @@ function extractEpisodeKey(value: unknown): string {
     }
     return trimmed;
   }
-  return '';
+  return "";
 }
 
 function extractVideoId(value: string | null | undefined): string | null {
-  const input = (value ?? '').trim();
+  const input = (value ?? "").trim();
   if (!input) return null;
   if (VIDEO_ID_RE.test(input)) return input;
 
@@ -247,59 +247,59 @@ function sqlQuote(value: string): string {
 }
 
 function isMembersVideo(title: string): boolean {
-  return normalizeComparableText(title).includes('members');
+  return normalizeComparableText(title).includes("members");
 }
 
 function episodeTokenMatchesTitle(episode: string, title: string): boolean {
   if (!episode) return false;
-  const escaped = episode.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const pattern = new RegExp(`\\b(?:episode|ep)\\s*${escaped}(?:\\b|[^0-9])`, 'i');
+  const escaped = episode.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const pattern = new RegExp(`\\b(?:episode|ep)\\s*${escaped}(?:\\b|[^0-9])`, "i");
   return pattern.test(title);
 }
 
 function getSignificantNameTokens(name: string): string[] {
   const stopWords = new Set([
-    'the',
-    'and',
-    'with',
-    'for',
-    'road',
-    'street',
-    'singapore',
-    'restaurant',
-    'stall',
-    'bak',
-    'kut',
-    'teh',
-    'mee',
-    'noodle',
-    'noodles',
-    'kway',
-    'teow',
-    'char',
-    'hokkien',
-    'laksa',
-    'prawn',
-    'wanton',
-    'wonton',
+    "the",
+    "and",
+    "with",
+    "for",
+    "road",
+    "street",
+    "singapore",
+    "restaurant",
+    "stall",
+    "bak",
+    "kut",
+    "teh",
+    "mee",
+    "noodle",
+    "noodles",
+    "kway",
+    "teow",
+    "char",
+    "hokkien",
+    "laksa",
+    "prawn",
+    "wanton",
+    "wonton",
   ]);
 
   return normalizeComparableText(name)
-    .split(' ')
+    .split(" ")
     .filter((token) => token.length >= 4 && !stopWords.has(token));
 }
 
 async function runCommand(
   command: string,
   args: string[],
-  cwd: string
+  cwd: string,
 ): Promise<Result<{ stdout: string; stderr: string }, Error>> {
   const runResult = await Result.tryPromise(() =>
     execFileAsync(command, args, {
       cwd,
       maxBuffer: 32 * 1024 * 1024,
       env: process.env,
-    })
+    }),
   );
 
   if (Result.isError(runResult)) {
@@ -313,15 +313,15 @@ async function runCommand(
 }
 
 function parseJsonFromWranglerStdout(stdout: string): Result<unknown, Error> {
-  const start = stdout.indexOf('[');
-  const end = stdout.lastIndexOf(']');
+  const start = stdout.indexOf("[");
+  const end = stdout.lastIndexOf("]");
   if (start === -1 || end === -1 || end < start) {
-    return Result.err(new Error('Failed to find JSON payload in wrangler output.'));
+    return Result.err(new Error("Failed to find JSON payload in wrangler output."));
   }
 
   const payloadResult = Result.try(() => JSON.parse(stdout.slice(start, end + 1)));
   if (Result.isError(payloadResult)) {
-    return Result.err(new Error('Failed to parse wrangler JSON payload.'));
+    return Result.err(new Error("Failed to parse wrangler JSON payload."));
   }
   return Result.ok(payloadResult.value);
 }
@@ -330,13 +330,13 @@ async function queryD1Rows(
   projectRoot: string,
   dbName: string,
   remote: boolean,
-  query: string
+  query: string,
 ): Promise<Result<Array<Record<string, unknown>>, Error>> {
-  const args = ['wrangler', 'd1', 'execute', dbName, '--json', '--command', query];
-  if (remote) args.push('--remote');
-  else args.push('--local');
+  const args = ["wrangler", "d1", "execute", dbName, "--json", "--command", query];
+  if (remote) args.push("--remote");
+  else args.push("--local");
 
-  const runResult = await runCommand('bunx', args, projectRoot);
+  const runResult = await runCommand("bunx", args, projectRoot);
   if (Result.isError(runResult)) {
     return Result.err(new Error(`Failed running wrangler query. ${runResult.error.message}`));
   }
@@ -348,7 +348,7 @@ async function queryD1Rows(
 
   const parsed = wranglerEnvelopeSchema.safeParse(payloadResult.value);
   if (!parsed.success) {
-    return Result.err(new Error('Invalid wrangler query response shape.'));
+    return Result.err(new Error("Invalid wrangler query response shape."));
   }
 
   return Result.ok(parsed.data[0]?.results ?? []);
@@ -358,13 +358,13 @@ async function runD1SqlFile(
   projectRoot: string,
   dbName: string,
   remote: boolean,
-  sqlFilePath: string
+  sqlFilePath: string,
 ): Promise<Result<void, Error>> {
-  const args = ['wrangler', 'd1', 'execute', dbName, '--file', sqlFilePath];
-  if (remote) args.push('--remote');
-  else args.push('--local');
+  const args = ["wrangler", "d1", "execute", dbName, "--file", sqlFilePath];
+  if (remote) args.push("--remote");
+  else args.push("--local");
 
-  const runResult = await runCommand('bunx', args, projectRoot);
+  const runResult = await runCommand("bunx", args, projectRoot);
   if (Result.isError(runResult)) {
     return Result.err(new Error(`Failed applying SQL file. ${runResult.error.message}`));
   }
@@ -372,8 +372,11 @@ async function runD1SqlFile(
   if (runResult.value.stderr.trim().length > 0) {
     // Wrangler prints non-fatal diagnostics to stderr; only fail on explicit command errors.
     const stderr = runResult.value.stderr;
-    if (stderr.includes('[ERROR]') && !stderr.includes('Failed to write to log file Error: EPERM')) {
-      return Result.err(new Error('Wrangler reported an error while applying SQL file.'));
+    if (
+      stderr.includes("[ERROR]") &&
+      !stderr.includes("Failed to write to log file Error: EPERM")
+    ) {
+      return Result.err(new Error("Wrangler reported an error while applying SQL file."));
     }
   }
 
@@ -399,14 +402,14 @@ function truncateApiErrorBody(value: string): string {
 async function fetchYouTubeApiJson<TSchema extends z.ZodTypeAny>(
   sourceUrl: string,
   schema: TSchema,
-  label: string
+  label: string,
 ): Promise<Result<z.infer<TSchema>, Error>> {
   const responseResult = await Result.tryPromise(() =>
     fetch(sourceUrl, {
       headers: {
-        'User-Agent': 'sg-food-guide-stall-sync/1.0',
+        "User-Agent": "sg-food-guide-stall-sync/1.0",
       },
-    })
+    }),
   );
 
   if (Result.isError(responseResult)) {
@@ -415,10 +418,12 @@ async function fetchYouTubeApiJson<TSchema extends z.ZodTypeAny>(
 
   if (!responseResult.value.ok) {
     const bodyResult = await Result.tryPromise(() => responseResult.value.text());
-    const bodyText = Result.isError(bodyResult) ? '' : truncateApiErrorBody(bodyResult.value);
-    const details = bodyText ? ` (${bodyText})` : '';
+    const bodyText = Result.isError(bodyResult) ? "" : truncateApiErrorBody(bodyResult.value);
+    const details = bodyText ? ` (${bodyText})` : "";
     return Result.err(
-      new Error(`YouTube Data API ${label} request failed with HTTP ${responseResult.value.status}.${details}`)
+      new Error(
+        `YouTube Data API ${label} request failed with HTTP ${responseResult.value.status}.${details}`,
+      ),
     );
   }
 
@@ -437,25 +442,26 @@ async function fetchYouTubeApiJson<TSchema extends z.ZodTypeAny>(
 
 async function fetchUploadsPlaylistId(
   channelId: string,
-  youtubeApiKey: string
+  youtubeApiKey: string,
 ): Promise<Result<string, Error>> {
-  const sourceUrl = buildYouTubeApiUrl('channels', {
-    part: 'contentDetails',
+  const sourceUrl = buildYouTubeApiUrl("channels", {
+    part: "contentDetails",
     id: channelId,
-    maxResults: '1',
+    maxResults: "1",
     key: youtubeApiKey,
   });
 
   const responseResult = await fetchYouTubeApiJson(
     sourceUrl,
     youtubeChannelsResponseSchema,
-    'channels.list'
+    "channels.list",
   );
   if (Result.isError(responseResult)) {
     return Result.err(responseResult.error);
   }
 
-  const uploadsPlaylistId = responseResult.value.items[0]?.contentDetails.relatedPlaylists.uploads ?? '';
+  const uploadsPlaylistId =
+    responseResult.value.items[0]?.contentDetails.relatedPlaylists.uploads ?? "";
   if (!uploadsPlaylistId) {
     return Result.err(new Error(`No uploads playlist found for channel ${channelId}.`));
   }
@@ -465,7 +471,7 @@ async function fetchUploadsPlaylistId(
 
 async function fetchChannelVideoMap(
   channelId: string,
-  youtubeApiKey: string
+  youtubeApiKey: string,
 ): Promise<Result<Map<string, string>, Error>> {
   const uploadsPlaylistResult = await fetchUploadsPlaylistId(channelId, youtubeApiKey);
   if (Result.isError(uploadsPlaylistResult)) {
@@ -473,13 +479,13 @@ async function fetchChannelVideoMap(
   }
 
   const map = new Map<string, string>();
-  let pageToken = '';
+  let pageToken = "";
 
   for (let pageIndex = 0; pageIndex < MAX_PLAYLIST_PAGES; pageIndex += 1) {
-    const sourceUrl = buildYouTubeApiUrl('playlistItems', {
-      part: 'snippet,contentDetails',
+    const sourceUrl = buildYouTubeApiUrl("playlistItems", {
+      part: "snippet,contentDetails",
       playlistId: uploadsPlaylistResult.value,
-      maxResults: '50',
+      maxResults: "50",
       key: youtubeApiKey,
       ...(pageToken ? { pageToken } : {}),
     });
@@ -487,28 +493,30 @@ async function fetchChannelVideoMap(
     const pageResult = await fetchYouTubeApiJson(
       sourceUrl,
       youtubePlaylistItemsResponseSchema,
-      'playlistItems.list'
+      "playlistItems.list",
     );
     if (Result.isError(pageResult)) {
       return Result.err(pageResult.error);
     }
 
     for (const entry of pageResult.value.items) {
-      const videoId = extractVideoId(entry.contentDetails?.videoId) ?? extractVideoId(entry.snippet?.resourceId?.videoId);
+      const videoId =
+        extractVideoId(entry.contentDetails?.videoId) ??
+        extractVideoId(entry.snippet?.resourceId?.videoId);
       if (!videoId) continue;
-      map.set(videoId, (entry.snippet?.title ?? '').trim());
+      map.set(videoId, (entry.snippet?.title ?? "").trim());
     }
 
-    pageToken = pageResult.value.nextPageToken?.trim() ?? '';
+    pageToken = pageResult.value.nextPageToken?.trim() ?? "";
     if (!pageToken) {
       if (map.size === 0) {
-        return Result.err(new Error('No videos returned from YouTube uploads playlist.'));
+        return Result.err(new Error("No videos returned from YouTube uploads playlist."));
       }
       return Result.ok(map);
     }
   }
 
-  return Result.err(new Error('YouTube uploads pagination exceeded safety limit.'));
+  return Result.err(new Error("YouTube uploads pagination exceeded safety limit."));
 }
 
 function parseMissingRows(rows: Array<Record<string, unknown>>): Result<MissingStall[], Error> {
@@ -517,13 +525,15 @@ function parseMissingRows(rows: Array<Record<string, unknown>>): Result<MissingS
   for (const row of rows) {
     const candidate = missingStallSchema.safeParse(row);
     if (!candidate.success) {
-      return Result.err(new Error('Invalid missing-stall row payload.'));
+      return Result.err(new Error("Invalid missing-stall row payload."));
     }
 
     const episode = extractEpisodeKey(candidate.data.episode_number);
     if (!episode) {
       return Result.err(
-        new Error(`Missing episode number for stall "${candidate.data.slug}" (${candidate.data.name}).`)
+        new Error(
+          `Missing episode number for stall "${candidate.data.slug}" (${candidate.data.name}).`,
+        ),
       );
     }
 
@@ -543,25 +553,27 @@ function parseMissingRows(rows: Array<Record<string, unknown>>): Result<MissingS
 
 function parsePresentRows(
   rows: Array<Record<string, unknown>>,
-  channelVideoMap: Map<string, string>
+  channelVideoMap: Map<string, string>,
 ): Result<VideoCandidate[], Error> {
   const parsed: VideoCandidate[] = [];
 
   for (const row of rows) {
     const candidate = presentStallSchema.safeParse(row);
     if (!candidate.success) {
-      return Result.err(new Error('Invalid present-stall row payload.'));
+      return Result.err(new Error("Invalid present-stall row payload."));
     }
 
     const episode = extractEpisodeKey(candidate.data.episode_number);
     if (!episode) continue;
 
-    const videoId = extractVideoId(candidate.data.youtube_video_id) ?? extractVideoId(candidate.data.youtube_video_url);
+    const videoId =
+      extractVideoId(candidate.data.youtube_video_id) ??
+      extractVideoId(candidate.data.youtube_video_url);
     if (!videoId) continue;
 
     const videoUrl = buildWatchUrl(videoId);
-    const titleFromRow = (candidate.data.youtube_title ?? '').trim();
-    const youtubeTitle = titleFromRow || channelVideoMap.get(videoId) || '';
+    const titleFromRow = (candidate.data.youtube_title ?? "").trim();
+    const youtubeTitle = titleFromRow || channelVideoMap.get(videoId) || "";
 
     parsed.push({
       videoId,
@@ -594,7 +606,7 @@ function dedupeCandidates(candidates: VideoCandidate[]): VideoCandidate[] {
 
 function scoreCandidate(stall: MissingStall, candidate: VideoCandidate): number {
   const title = normalizeComparableText(candidate.youtubeTitle);
-  const cuisine = normalizeComparableText(stall.cuisineLabel || stall.cuisine.replaceAll('-', ' '));
+  const cuisine = normalizeComparableText(stall.cuisineLabel || stall.cuisine.replaceAll("-", " "));
   const nameTokens = getSignificantNameTokens(stall.name);
 
   let score = 0;
@@ -605,8 +617,8 @@ function scoreCandidate(stall: MissingStall, candidate: VideoCandidate): number 
   if (!isMembersVideo(candidate.youtubeTitle)) score += 4;
   if (isMembersVideo(candidate.youtubeTitle)) score -= 4;
 
-  if (stall.country === 'SG' && title.includes('singapore')) score += 2;
-  if (stall.country === 'MY' && title.includes('malaysia')) score += 2;
+  if (stall.country === "SG" && title.includes("singapore")) score += 2;
+  if (stall.country === "MY" && title.includes("malaysia")) score += 2;
 
   for (const token of nameTokens) {
     if (title.includes(token)) {
@@ -619,7 +631,7 @@ function scoreCandidate(stall: MissingStall, candidate: VideoCandidate): number 
 
 function chooseBestCandidate(
   stall: MissingStall,
-  candidates: VideoCandidate[]
+  candidates: VideoCandidate[],
 ): Result<{ candidate: VideoCandidate; reason: string }, Error> {
   if (candidates.length === 0) {
     return Result.err(new Error(`No candidate videos found for ${stall.slug}.`));
@@ -628,7 +640,7 @@ function chooseBestCandidate(
   if (candidates.length === 1) {
     return Result.ok({
       candidate: candidates[0],
-      reason: 'single-candidate',
+      reason: "single-candidate",
     });
   }
 
@@ -640,7 +652,10 @@ function chooseBestCandidate(
     .sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
       if (isMembersVideo(a.candidate.youtubeTitle) !== isMembersVideo(b.candidate.youtubeTitle)) {
-        return Number(isMembersVideo(a.candidate.youtubeTitle)) - Number(isMembersVideo(b.candidate.youtubeTitle));
+        return (
+          Number(isMembersVideo(a.candidate.youtubeTitle)) -
+          Number(isMembersVideo(b.candidate.youtubeTitle))
+        );
       }
       return a.candidate.videoId.localeCompare(b.candidate.videoId);
     });
@@ -650,8 +665,8 @@ function chooseBestCandidate(
   if (second && best.score === second.score) {
     return Result.err(
       new Error(
-        `Ambiguous candidate scores for ${stall.slug}: ${best.candidate.videoId} vs ${second.candidate.videoId}.`
-      )
+        `Ambiguous candidate scores for ${stall.slug}: ${best.candidate.videoId} vs ${second.candidate.videoId}.`,
+      ),
     );
   }
 
@@ -664,7 +679,7 @@ function chooseBestCandidate(
 function buildAssignments(
   missing: MissingStall[],
   present: VideoCandidate[],
-  channelVideoMap: Map<string, string>
+  channelVideoMap: Map<string, string>,
 ): Result<Assignment[], Error> {
   const byGroupCountry = new Map<string, VideoCandidate[]>();
   const byGroup = new Map<string, VideoCandidate[]>();
@@ -688,7 +703,10 @@ function buildAssignments(
   for (const stall of missing) {
     const candidatesByCountry =
       byGroupCountry.get(groupCountryKey(stall.cuisine, stall.episode, stall.country)) ?? [];
-    const candidates = candidatesByCountry.length > 0 ? candidatesByCountry : byGroup.get(groupKey(stall.cuisine, stall.episode)) ?? [];
+    const candidates =
+      candidatesByCountry.length > 0
+        ? candidatesByCountry
+        : (byGroup.get(groupKey(stall.cuisine, stall.episode)) ?? []);
 
     const selectedResult = chooseBestCandidate(stall, candidates);
     if (Result.isError(selectedResult)) {
@@ -698,7 +716,9 @@ function buildAssignments(
     const selected = selectedResult.value.candidate;
     if (!channelVideoMap.has(selected.videoId)) {
       return Result.err(
-        new Error(`Selected video ID ${selected.videoId} for ${stall.slug} was not found in channel feed.`)
+        new Error(
+          `Selected video ID ${selected.videoId} for ${stall.slug} was not found in channel feed.`,
+        ),
       );
     }
 
@@ -706,7 +726,7 @@ function buildAssignments(
       stall,
       videoId: selected.videoId,
       videoUrl: selected.videoUrl,
-      youtubeTitle: selected.youtubeTitle || channelVideoMap.get(selected.videoId) || '',
+      youtubeTitle: selected.youtubeTitle || channelVideoMap.get(selected.videoId) || "",
       reason: selectedResult.value.reason,
     });
   }
@@ -725,7 +745,7 @@ SET youtube_video_url = ${sqlQuote(assignment.videoUrl)},
     source_youtube_hash = ${sqlQuote(assignment.videoId)},
     updated_at = CURRENT_TIMESTAMP
 WHERE id = ${sqlQuote(assignment.stall.id)}
-  AND (youtube_video_url IS NULL OR TRIM(youtube_video_url) = '');`
+  AND (youtube_video_url IS NULL OR TRIM(youtube_video_url) = '');`,
     );
 
     lines.push(
@@ -734,11 +754,11 @@ SET youtube_video_url = ${sqlQuote(assignment.videoUrl)},
     updated_at = CURRENT_TIMESTAMP
 WHERE stall_id = ${sqlQuote(assignment.stall.id)}
   AND is_active = 1
-  AND (youtube_video_url IS NULL OR TRIM(youtube_video_url) = '');`
+  AND (youtube_video_url IS NULL OR TRIM(youtube_video_url) = '');`,
     );
   }
 
-  return `${lines.join('\n')}\n`;
+  return `${lines.join("\n")}\n`;
 }
 
 function printAssignmentPreview(assignments: Assignment[]): void {
@@ -750,7 +770,7 @@ function printAssignmentPreview(assignments: Assignment[]): void {
         `${assignment.stall.cuisine} ep${assignment.stall.episode}`,
         assignment.videoId,
         assignment.reason,
-      ].join(' | ')
+      ].join(" | "),
     );
   }
 }
@@ -777,7 +797,7 @@ async function main(): Promise<void> {
      FROM stalls
      WHERE status = 'active'
        AND (youtube_video_url IS NULL OR TRIM(youtube_video_url) = '')
-     ORDER BY cuisine, episode_number, name`
+     ORDER BY cuisine, episode_number, name`,
   );
   if (Result.isError(missingRowsResult)) {
     throw missingRowsResult.error;
@@ -790,7 +810,7 @@ async function main(): Promise<void> {
   const missing = missingParseResult.value;
 
   if (missing.length === 0) {
-    console.log('No missing YouTube URLs found. Nothing to do.');
+    console.log("No missing YouTube URLs found. Nothing to do.");
     return;
   }
 
@@ -803,7 +823,7 @@ async function main(): Promise<void> {
      WHERE status = 'active'
        AND youtube_video_url IS NOT NULL
        AND TRIM(youtube_video_url) <> ''
-     ORDER BY cuisine, episode_number, country, name`
+     ORDER BY cuisine, episode_number, country, name`,
   );
   if (Result.isError(presentRowsResult)) {
     throw presentRowsResult.error;
@@ -823,13 +843,13 @@ async function main(): Promise<void> {
   printAssignmentPreview(assignments);
 
   if (!cli.apply) {
-    console.log('\nDry-run mode. Re-run with --apply to persist changes.');
+    console.log("\nDry-run mode. Re-run with --apply to persist changes.");
     return;
   }
 
-  const tmpDir = mkdtempSync(join(tmpdir(), 'sg-food-guide-youtube-backfill-'));
-  const sqlFile = join(tmpDir, 'backfill.sql');
-  writeFileSync(sqlFile, buildApplySql(assignments), 'utf8');
+  const tmpDir = mkdtempSync(join(tmpdir(), "sg-food-guide-youtube-backfill-"));
+  const sqlFile = join(tmpDir, "backfill.sql");
+  writeFileSync(sqlFile, buildApplySql(assignments), "utf8");
 
   const applyResult = await runD1SqlFile(projectRoot, cli.dbName, cli.remote, sqlFile);
   rmSync(tmpDir, { recursive: true, force: true });
@@ -844,19 +864,22 @@ async function main(): Promise<void> {
     `SELECT COUNT(*) AS missing_youtube
      FROM stalls
      WHERE status = 'active'
-       AND (youtube_video_url IS NULL OR TRIM(youtube_video_url) = '')`
+       AND (youtube_video_url IS NULL OR TRIM(youtube_video_url) = '')`,
   );
   if (Result.isError(verifyResult)) {
     throw verifyResult.error;
   }
 
-  const verifyCount = Number((verifyResult.value[0]?.missing_youtube as number | string | undefined) ?? 0);
+  const verifyCount = Number(
+    (verifyResult.value[0]?.missing_youtube as number | string | undefined) ?? 0,
+  );
   console.log(`\nApply complete. Remaining missing YouTube URLs: ${verifyCount}`);
 }
 
 const mainResult = await Result.tryPromise(() => main());
 if (Result.isError(mainResult)) {
-  const message = mainResult.error instanceof Error ? mainResult.error.message : String(mainResult.error);
+  const message =
+    mainResult.error instanceof Error ? mainResult.error.message : String(mainResult.error);
   console.error(`Backfill failed: ${message}`);
   process.exitCode = 1;
 }

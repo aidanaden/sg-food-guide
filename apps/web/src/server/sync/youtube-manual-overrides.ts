@@ -1,13 +1,13 @@
-import { Result } from 'better-result';
-import * as z from 'zod/mini';
+import { Result } from "better-result";
+import * as z from "zod/mini";
 
-import type { WorkerEnv } from '../cloudflare/runtime';
+import type { WorkerEnv } from "../cloudflare/runtime";
 import {
   buildYouTubeVideoUrl,
   makeStallSourceKey,
   normalizeDisplayText,
   normalizeYouTubeVideoId,
-} from './normalize';
+} from "./normalize";
 
 const manualOverrideEntrySchema = z.object({
   sourceStallKey: z.optional(z.string()),
@@ -33,21 +33,21 @@ export interface ManualYouTubeOverride {
 
 function deriveSourceStallKey(
   entry: z.infer<typeof manualOverrideEntrySchema>,
-  sourceLabel: string
+  sourceLabel: string,
 ): Result<string, Error> {
-  const explicitSourceKey = normalizeDisplayText(entry.sourceStallKey ?? '');
+  const explicitSourceKey = normalizeDisplayText(entry.sourceStallKey ?? "");
   if (explicitSourceKey) {
     return Result.ok(explicitSourceKey);
   }
 
-  const name = normalizeDisplayText(entry.name ?? '');
-  const cuisine = normalizeDisplayText(entry.cuisine ?? '');
-  const country = normalizeDisplayText(entry.country ?? '');
+  const name = normalizeDisplayText(entry.name ?? "");
+  const cuisine = normalizeDisplayText(entry.cuisine ?? "");
+  const country = normalizeDisplayText(entry.country ?? "");
   if (!name || !cuisine || !country) {
     return Result.err(
       new Error(
-        `${sourceLabel}: every override entry must define "sourceStallKey", or all of "name", "cuisine", and "country".`
-      )
+        `${sourceLabel}: every override entry must define "sourceStallKey", or all of "name", "cuisine", and "country".`,
+      ),
     );
   }
 
@@ -56,7 +56,7 @@ function deriveSourceStallKey(
 
 function parseOverrideEntries(
   sourceLabel: string,
-  input: unknown
+  input: unknown,
 ): Result<ManualYouTubeOverride[], Error> {
   const parsedEntries = manualOverrideListSchema.safeParse(input);
   if (!parsedEntries.success) {
@@ -73,14 +73,16 @@ function parseOverrideEntries(
 
     const canonicalVideoUrl = buildYouTubeVideoUrl(entry.youtubeVideoUrl);
     if (!canonicalVideoUrl) {
-      return Result.err(new Error(`${sourceLabel}: invalid YouTube URL/value "${entry.youtubeVideoUrl}".`));
+      return Result.err(
+        new Error(`${sourceLabel}: invalid YouTube URL/value "${entry.youtubeVideoUrl}".`),
+      );
     }
 
     const override: ManualYouTubeOverride = {
       sourceStallKey: sourceKeyResult.value,
       youtubeVideoUrl: canonicalVideoUrl,
       youtubeVideoId: normalizeYouTubeVideoId(canonicalVideoUrl),
-      youtubeTitle: normalizeDisplayText(entry.youtubeTitle ?? ''),
+      youtubeTitle: normalizeDisplayText(entry.youtubeTitle ?? ""),
     };
 
     bySourceKey.set(override.sourceStallKey, override);
@@ -90,15 +92,17 @@ function parseOverrideEntries(
 }
 
 export function loadManualYouTubeOverrides(env: WorkerEnv): Result<ManualYouTubeOverride[], Error> {
-  const envPayload = normalizeDisplayText(env.STALL_SYNC_MANUAL_YOUTUBE_OVERRIDES_JSON ?? '');
+  const envPayload = normalizeDisplayText(env.STALL_SYNC_MANUAL_YOUTUBE_OVERRIDES_JSON ?? "");
   if (!envPayload) {
-    return parseOverrideEntries('default manual override list', defaultManualOverrideEntries);
+    return parseOverrideEntries("default manual override list", defaultManualOverrideEntries);
   }
 
   const parsedEnvPayload = Result.try(() => JSON.parse(envPayload));
   if (Result.isError(parsedEnvPayload)) {
-    return Result.err(new Error('Failed to parse STALL_SYNC_MANUAL_YOUTUBE_OVERRIDES_JSON as JSON.'));
+    return Result.err(
+      new Error("Failed to parse STALL_SYNC_MANUAL_YOUTUBE_OVERRIDES_JSON as JSON."),
+    );
   }
 
-  return parseOverrideEntries('STALL_SYNC_MANUAL_YOUTUBE_OVERRIDES_JSON', parsedEnvPayload.value);
+  return parseOverrideEntries("STALL_SYNC_MANUAL_YOUTUBE_OVERRIDES_JSON", parsedEnvPayload.value);
 }

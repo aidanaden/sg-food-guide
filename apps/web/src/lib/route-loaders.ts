@@ -1,7 +1,7 @@
-import { z } from 'zod';
+import { z } from "zod";
 
-import type { Stall } from '../data/shared';
-import { getAllStalls, getStallBySlug, getStallsByCuisine } from '../server/stalls/read.functions';
+import type { Stall } from "../data/shared";
+import { getAllStalls, getStallBySlug, getStallsByCuisine } from "../server/stalls/read.functions";
 
 const cuisineParamsSchema = z.object({
   cuisine: z.string().min(1),
@@ -35,7 +35,7 @@ export async function loadHomeRouteData(nowIso = new Date().toISOString()): Prom
 
 export async function loadCuisineRouteData(
   params: unknown,
-  nowIso = new Date().toISOString()
+  nowIso = new Date().toISOString(),
 ): Promise<CuisineRouteData | null> {
   const parsed = cuisineParamsSchema.safeParse(params);
   if (!parsed.success) {
@@ -62,7 +62,7 @@ export async function loadCuisineRouteData(
 
 export async function loadStallRouteData(
   params: unknown,
-  nowIso = new Date().toISOString()
+  nowIso = new Date().toISOString(),
 ): Promise<StallRouteData | null> {
   const parsed = stallParamsSchema.safeParse(params);
   if (!parsed.success) {

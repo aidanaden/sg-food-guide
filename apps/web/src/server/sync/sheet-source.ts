@@ -1,9 +1,9 @@
-import { Result } from 'better-result';
-import * as z from 'zod/mini';
+import { Result } from "better-result";
+import * as z from "zod/mini";
 
-import type { WorkerEnv } from '../cloudflare/runtime';
-import { countryCodeSchema } from '../stalls/contracts';
-import { makeStableHash, normalizeDisplayText } from './normalize';
+import type { WorkerEnv } from "../cloudflare/runtime";
+import { countryCodeSchema } from "../stalls/contracts";
+import { makeStableHash, normalizeDisplayText } from "./normalize";
 
 export interface SheetStallRow {
   sourceRow: number;
@@ -42,19 +42,19 @@ interface ParseSheetRowsOptions {
   sourceIdentityPrefix?: string;
 }
 
-const DEFAULT_SHEET_ID = '1UMOZE2SM3_y5oUHafwJFEB9RrPDMqBbWjWnMGkO4gGg';
-const DEFAULT_SHEET_GID = '1935025317';
+const DEFAULT_SHEET_ID = "1UMOZE2SM3_y5oUHafwJFEB9RrPDMqBbWjWnMGkO4gGg";
+const DEFAULT_SHEET_GID = "1935025317";
 const SHEET_GID_CUISINE_LABELS: Record<string, string> = {
-  '1935025317': 'Prawn Mee',
-  '1044192284': 'Bak Chor Mee',
-  '0': 'Bak Kut Teh',
-  '913918732': 'Wanton Mee',
-  '1491689747': 'Mala',
-  '1468657282': 'Laksa',
-  '1136105343': 'Nasi Lemak',
-  '1150004859': 'Ramen',
-  '1906548174': 'Char Kway Teow',
-  '1147413423': 'Hokkien Mee',
+  "1935025317": "Prawn Mee",
+  "1044192284": "Bak Chor Mee",
+  "0": "Bak Kut Teh",
+  "913918732": "Wanton Mee",
+  "1491689747": "Mala",
+  "1468657282": "Laksa",
+  "1136105343": "Nasi Lemak",
+  "1150004859": "Ramen",
+  "1906548174": "Char Kway Teow",
+  "1147413423": "Hokkien Mee",
 };
 
 const sheetSourceSchema = z.object({
@@ -74,7 +74,7 @@ function buildSheetCsvExportUrl(sheetId: string, gid: string): string {
 
 function parseSheetGidList(rawGids: string): string[] {
   const parsed = rawGids
-    .split(',')
+    .split(",")
     .map((gid) => normalizeDisplayText(gid))
     .filter((gid) => gid.length > 0);
 
@@ -91,30 +91,30 @@ function extractSheetIdFromGoogleSheetsUrl(source: string): string | null {
     return null;
   }
 
-  const host = parsedUrl.value.hostname.replace(/^www\./, '').toLowerCase();
-  if (host !== 'docs.google.com') {
+  const host = parsedUrl.value.hostname.replace(/^www\./, "").toLowerCase();
+  if (host !== "docs.google.com") {
     return null;
   }
 
   const sheetIdMatch = parsedUrl.value.pathname.match(/^\/spreadsheets\/d\/([^/]+)/);
-  const sheetId = normalizeDisplayText(sheetIdMatch?.[1] ?? '');
+  const sheetId = normalizeDisplayText(sheetIdMatch?.[1] ?? "");
   return sheetId.length > 0 ? sheetId : null;
 }
 
 function extractGidFromHash(hash: string): string | null {
-  const normalizedHash = hash.replace(/^#/, '');
+  const normalizedHash = hash.replace(/^#/, "");
   if (!normalizedHash) {
     return null;
   }
 
   const hashParams = new URLSearchParams(normalizedHash);
-  const hashGid = normalizeDisplayText(hashParams.get('gid') ?? '');
+  const hashGid = normalizeDisplayText(hashParams.get("gid") ?? "");
   if (hashGid.length > 0) {
     return hashGid;
   }
 
   const match = normalizedHash.match(/(?:^|&)gid=([^&]+)/);
-  return normalizeDisplayText(match?.[1] ?? '') || null;
+  return normalizeDisplayText(match?.[1] ?? "") || null;
 }
 
 function resolveExplicitSheetSourceToCsvUrl(explicitSource: string, fallbackGid: string): string {
@@ -123,7 +123,7 @@ function resolveExplicitSheetSourceToCsvUrl(explicitSource: string, fallbackGid:
   }
 
   // Treat a bare spreadsheet id as shorthand.
-  if (!explicitSource.includes('/')) {
+  if (!explicitSource.includes("/")) {
     return buildSheetCsvExportUrl(explicitSource, fallbackGid);
   }
 
@@ -132,18 +132,18 @@ function resolveExplicitSheetSourceToCsvUrl(explicitSource: string, fallbackGid:
     return explicitSource;
   }
 
-  const host = parsedUrl.value.hostname.replace(/^www\./, '').toLowerCase();
-  if (host !== 'docs.google.com') {
+  const host = parsedUrl.value.hostname.replace(/^www\./, "").toLowerCase();
+  if (host !== "docs.google.com") {
     return explicitSource;
   }
 
   const sheetIdMatch = parsedUrl.value.pathname.match(/^\/spreadsheets\/d\/([^/]+)/);
-  const sheetId = normalizeDisplayText(sheetIdMatch?.[1] ?? '');
+  const sheetId = normalizeDisplayText(sheetIdMatch?.[1] ?? "");
   if (sheetId.length === 0) {
     return explicitSource;
   }
 
-  const gidFromQuery = normalizeDisplayText(parsedUrl.value.searchParams.get('gid') ?? '');
+  const gidFromQuery = normalizeDisplayText(parsedUrl.value.searchParams.get("gid") ?? "");
   const gidFromHash = extractGidFromHash(parsedUrl.value.hash);
   const gid = gidFromQuery || gidFromHash || fallbackGid;
 
@@ -156,22 +156,22 @@ function extractGidFromSourceUrl(sourceUrl: string, fallbackGid: string): string
     return fallbackGid;
   }
 
-  const gid = normalizeDisplayText(parsedUrlResult.value.searchParams.get('gid') ?? '');
+  const gid = normalizeDisplayText(parsedUrlResult.value.searchParams.get("gid") ?? "");
   return gid || fallbackGid;
 }
 
 function normalizeCsv(input: string): string {
   return input
-    .replace(/^\uFEFF/, '')
-    .replace(/\r\n/g, '\n')
-    .replace(/\r/g, '\n')
-    .replace(/\n+$/, '\n');
+    .replace(/^\uFEFF/, "")
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .replace(/\n+$/, "\n");
 }
 
 function parseCsv(csv: string): string[][] {
   const rows: string[][] = [];
   let row: string[] = [];
-  let cell = '';
+  let cell = "";
   let inQuotes = false;
 
   for (let i = 0; i < csv.length; i += 1) {
@@ -196,17 +196,17 @@ function parseCsv(csv: string): string[][] {
       continue;
     }
 
-    if (char === ',') {
+    if (char === ",") {
       row.push(cell);
-      cell = '';
+      cell = "";
       continue;
     }
 
-    if (char === '\n') {
+    if (char === "\n") {
       row.push(cell);
       rows.push(row);
       row = [];
-      cell = '';
+      cell = "";
       continue;
     }
 
@@ -220,21 +220,21 @@ function parseCsv(csv: string): string[][] {
 }
 
 function normalizeHeader(value: string): string {
-  return value.toLowerCase().replace(/\s+/g, ' ').trim();
+  return value.toLowerCase().replace(/\s+/g, " ").trim();
 }
 
 function readCell(row: string[], index: number): string {
   if (index < 0) {
-    return '';
+    return "";
   }
 
-  return normalizeDisplayText(row[index] ?? '');
+  return normalizeDisplayText(row[index] ?? "");
 }
 
 function findRequiredColumn(
   headers: string[],
   matches: Array<(header: string) => boolean>,
-  label: string
+  label: string,
 ): Result<number, Error> {
   const index = headers.findIndex((header) => matches.some((match) => match(header)));
   if (index === -1) {
@@ -286,21 +286,21 @@ function normalizeGoogleMapsUrl(value: string): string | null {
   }
 
   const url = parsedUrlResult.value;
-  const hostname = url.hostname.replace(/^www\./, '').toLowerCase();
+  const hostname = url.hostname.replace(/^www\./, "").toLowerCase();
   const isGoogleMapsHost =
-    hostname === 'google.com' ||
-    hostname.endsWith('.google.com') ||
-    hostname === 'maps.app.goo.gl' ||
-    hostname.endsWith('.maps.app.goo.gl') ||
-    hostname === 'goo.gl';
+    hostname === "google.com" ||
+    hostname.endsWith(".google.com") ||
+    hostname === "maps.app.goo.gl" ||
+    hostname.endsWith(".maps.app.goo.gl") ||
+    hostname === "goo.gl";
 
   if (!isGoogleMapsHost) {
     return null;
   }
 
-  if (hostname.endsWith('google.com')) {
+  if (hostname.endsWith("google.com")) {
     const pathname = url.pathname.toLowerCase();
-    if (!(pathname.startsWith('/maps') || pathname.startsWith('/search'))) {
+    if (!(pathname.startsWith("/maps") || pathname.startsWith("/search"))) {
       return null;
     }
   }
@@ -308,22 +308,27 @@ function normalizeGoogleMapsUrl(value: string): string | null {
   return url.toString();
 }
 
-function normalizeCuisine(rawCuisine: string, fallbackDishName: string): { cuisine: string; cuisineLabel: string } {
-  const label = normalizeDisplayText(rawCuisine || fallbackDishName || 'Unknown');
+function normalizeCuisine(
+  rawCuisine: string,
+  fallbackDishName: string,
+): { cuisine: string; cuisineLabel: string } {
+  const label = normalizeDisplayText(rawCuisine || fallbackDishName || "Unknown");
   const cuisine = label
     .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '');
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
 
   return {
-    cuisine: cuisine || 'unknown',
-    cuisineLabel: label || 'Unknown',
+    cuisine: cuisine || "unknown",
+    cuisineLabel: label || "Unknown",
   };
 }
 
-export function resolveSheetCuisineOverride(gid: string): { cuisine: string; cuisineLabel: string } | null {
+export function resolveSheetCuisineOverride(
+  gid: string,
+): { cuisine: string; cuisineLabel: string } | null {
   const normalizedGid = normalizeDisplayText(gid);
   const cuisineLabel = SHEET_GID_CUISINE_LABELS[normalizedGid];
   if (!cuisineLabel) {
@@ -340,13 +345,15 @@ function normalizeCountry(rawCountry: string): z.infer<typeof countryCodeSchema>
     return parsed.data;
   }
 
-  return 'SG';
+  return "SG";
 }
 
 export async function fetchSheetCsv(env: WorkerEnv): Promise<Result<SheetCsvPayload, Error>> {
-  const explicitUrl = normalizeDisplayText(env.FOOD_GUIDE_SHEET_CSV_URL ?? '');
-  const sheetId = normalizeDisplayText(env.FOOD_GUIDE_SHEET_ID ?? DEFAULT_SHEET_ID) || DEFAULT_SHEET_ID;
-  const configuredGids = normalizeDisplayText(env.FOOD_GUIDE_SHEET_GID ?? DEFAULT_SHEET_GID) || DEFAULT_SHEET_GID;
+  const explicitUrl = normalizeDisplayText(env.FOOD_GUIDE_SHEET_CSV_URL ?? "");
+  const sheetId =
+    normalizeDisplayText(env.FOOD_GUIDE_SHEET_ID ?? DEFAULT_SHEET_ID) || DEFAULT_SHEET_ID;
+  const configuredGids =
+    normalizeDisplayText(env.FOOD_GUIDE_SHEET_GID ?? DEFAULT_SHEET_GID) || DEFAULT_SHEET_GID;
   const gidList = parseSheetGidList(configuredGids);
   const fallbackGid = gidList[0] ?? DEFAULT_SHEET_GID;
   const effectiveSheetId = extractSheetIdFromGoogleSheetsUrl(explicitUrl) ?? sheetId;
@@ -366,9 +373,9 @@ export async function fetchSheetCsv(env: WorkerEnv): Promise<Result<SheetCsvPayl
     const responseResult = await Result.tryPromise(() =>
       fetch(sourceUrl, {
         headers: {
-          'User-Agent': 'sg-food-guide-stall-sync/1.0',
+          "User-Agent": "sg-food-guide-stall-sync/1.0",
         },
-      })
+      }),
     );
 
     if (Result.isError(responseResult)) {
@@ -377,13 +384,17 @@ export async function fetchSheetCsv(env: WorkerEnv): Promise<Result<SheetCsvPayl
 
     if (!responseResult.value.ok) {
       return Result.err(
-        new Error(`Google Sheet CSV fetch failed with HTTP ${responseResult.value.status}: ${sourceUrl}`)
+        new Error(
+          `Google Sheet CSV fetch failed with HTTP ${responseResult.value.status}: ${sourceUrl}`,
+        ),
       );
     }
 
     const textResult = await Result.tryPromise(() => responseResult.value.text());
     if (Result.isError(textResult)) {
-      return Result.err(new Error(`Failed reading CSV response body from Google Sheet source: ${sourceUrl}`));
+      return Result.err(
+        new Error(`Failed reading CSV response body from Google Sheet source: ${sourceUrl}`),
+      );
     }
 
     const normalizedCsv = normalizeCsv(textResult.value);
@@ -396,19 +407,22 @@ export async function fetchSheetCsv(env: WorkerEnv): Promise<Result<SheetCsvPayl
   }
 
   const payload = fetchPayloadSchema.safeParse({
-    sourceUrl: sourceUrls.join(','),
-    csv: normalizeCsv(csvParts.join('\n')),
+    sourceUrl: sourceUrls.join(","),
+    csv: normalizeCsv(csvParts.join("\n")),
     sources: fetchedSources,
   });
 
   if (!payload.success) {
-    return Result.err(new Error('Invalid Google Sheet CSV fetch payload.'));
+    return Result.err(new Error("Invalid Google Sheet CSV fetch payload."));
   }
 
   return Result.ok(payload.data);
 }
 
-export function parseSheetRows(csv: string, options?: ParseSheetRowsOptions): Result<SheetStallRow[], Error> {
+export function parseSheetRows(
+  csv: string,
+  options?: ParseSheetRowsOptions,
+): Result<SheetStallRow[], Error> {
   const rows = parseCsv(csv);
   if (rows.length === 0) {
     return Result.ok([]);
@@ -421,40 +435,62 @@ export function parseSheetRows(csv: string, options?: ParseSheetRowsOptions): Re
 
   const headers = headerRow.map(normalizeHeader);
 
-  const nameColResult = findRequiredColumn(headers, [(header) => header === 'name'], 'name');
+  const nameColResult = findRequiredColumn(headers, [(header) => header === "name"], "name");
   if (Result.isError(nameColResult)) {
     return Result.err(nameColResult.error);
   }
 
-  const addressColResult = findRequiredColumn(headers, [(header) => header === 'address'], 'address');
+  const addressColResult = findRequiredColumn(
+    headers,
+    [(header) => header === "address"],
+    "address",
+  );
   if (Result.isError(addressColResult)) {
     return Result.err(addressColResult.error);
   }
 
-  const cuisineCol = findOptionalColumn(headers, (header) => header === 'cuisine' || header === 'food type');
-  const countryCol = findOptionalColumn(headers, (header) => header === 'country' || header === 'country code');
-  const openingTimesCol = findOptionalColumn(headers, (header) => header.includes('opening times') || header.includes('hours'));
-  const episodeCol = findOptionalColumn(headers, (header) => header.includes('episode number'));
-  const dishNameCol = findOptionalColumn(headers, (header) => header.includes('dish name'));
-  const priceCol = findOptionalColumn(headers, (header) => header === 'price');
-  const ratingOriginalCol = findOptionalColumn(headers, (header) => header.includes('at time of shoot'));
-  const ratingModeratedCol = findOptionalColumn(headers, (header) => header.includes('rating (moderated)'));
+  const cuisineCol = findOptionalColumn(
+    headers,
+    (header) => header === "cuisine" || header === "food type",
+  );
+  const countryCol = findOptionalColumn(
+    headers,
+    (header) => header === "country" || header === "country code",
+  );
+  const openingTimesCol = findOptionalColumn(
+    headers,
+    (header) => header.includes("opening times") || header.includes("hours"),
+  );
+  const episodeCol = findOptionalColumn(headers, (header) => header.includes("episode number"));
+  const dishNameCol = findOptionalColumn(headers, (header) => header.includes("dish name"));
+  const priceCol = findOptionalColumn(headers, (header) => header === "price");
+  const ratingOriginalCol = findOptionalColumn(headers, (header) =>
+    header.includes("at time of shoot"),
+  );
+  const ratingModeratedCol = findOptionalColumn(headers, (header) =>
+    header.includes("rating (moderated)"),
+  );
   const googleMapsUrlCol = findOptionalColumn(
     headers,
     (header) =>
-      header === 'google maps' ||
-      header === 'google maps url' ||
-      header === 'google map url' ||
-      header === 'maps url' ||
-      header === 'map url' ||
-      header === 'maps link' ||
-      header === 'google maps link' ||
-      header === 'google map link' ||
-      (header.includes('google maps') && (header.includes('url') || header.includes('link')))
+      header === "google maps" ||
+      header === "google maps url" ||
+      header === "google map url" ||
+      header === "maps url" ||
+      header === "map url" ||
+      header === "maps link" ||
+      header === "google maps link" ||
+      header === "google map link" ||
+      (header.includes("google maps") && (header.includes("url") || header.includes("link"))),
   );
-  const youtubeVideoLinkCol = findOptionalColumn(headers, (header) => header.includes('youtube video link'));
-  const youtubeTitleCol = findOptionalColumn(headers, (header) => header === 'youtube title' || header === 'video title');
-  const awardsCol = findOptionalColumn(headers, (header) => header === 'awards');
+  const youtubeVideoLinkCol = findOptionalColumn(headers, (header) =>
+    header.includes("youtube video link"),
+  );
+  const youtubeTitleCol = findOptionalColumn(
+    headers,
+    (header) => header === "youtube title" || header === "video title",
+  );
+  const awardsCol = findOptionalColumn(headers, (header) => header === "awards");
 
   const parsedRows: SheetStallRow[] = [];
   let lastYoutubeUrl: string | null = null;
@@ -467,7 +503,10 @@ export function parseSheetRows(csv: string, options?: ParseSheetRowsOptions): Re
 
     const nameCell = normalizeHeader(readCell(row, nameColResult.value));
     const addressCell = normalizeHeader(readCell(row, addressColResult.value));
-    if (nameCell === headers[nameColResult.value] && addressCell === headers[addressColResult.value]) {
+    if (
+      nameCell === headers[nameColResult.value] &&
+      addressCell === headers[addressColResult.value]
+    ) {
       continue;
     }
 
@@ -500,12 +539,13 @@ export function parseSheetRows(csv: string, options?: ParseSheetRowsOptions): Re
     const youtubeVideoUrl = rawYoutube || lastYoutubeUrl;
     const youtubeTitle = readCell(row, youtubeTitleCol);
     const awards = parseAwards(readCell(row, awardsCol));
-    const sourceIdentityPrefix = normalizeDisplayText(options?.sourceIdentityPrefix ?? '');
-    const sourceIdentityPrefixText = sourceIdentityPrefix.length > 0 ? `${sourceIdentityPrefix}|` : '';
+    const sourceIdentityPrefix = normalizeDisplayText(options?.sourceIdentityPrefix ?? "");
+    const sourceIdentityPrefixText =
+      sourceIdentityPrefix.length > 0 ? `${sourceIdentityPrefix}|` : "";
     const sourceRowIdentity =
       googleMapsUrl && googleMapsUrl.length > 0
-        ? `${sourceIdentityPrefixText}${name}|${address}|${country}|${cuisine.cuisine}|${dishName}|${episodeNumber ?? ''}|${googleMapsUrl}|${youtubeVideoUrl ?? ''}`
-        : `${sourceIdentityPrefixText}${name}|${address}|${country}|${cuisine.cuisine}|${dishName}|${episodeNumber ?? ''}|${youtubeVideoUrl ?? ''}`;
+        ? `${sourceIdentityPrefixText}${name}|${address}|${country}|${cuisine.cuisine}|${dishName}|${episodeNumber ?? ""}|${googleMapsUrl}|${youtubeVideoUrl ?? ""}`
+        : `${sourceIdentityPrefixText}${name}|${address}|${country}|${cuisine.cuisine}|${dishName}|${episodeNumber ?? ""}|${youtubeVideoUrl ?? ""}`;
     const sourceRowKey = `sheet-row-${makeStableHash(sourceRowIdentity).slice(0, 24)}`;
 
     parsedRows.push({

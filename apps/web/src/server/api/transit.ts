@@ -1,5 +1,5 @@
-import { Result, type Result as ResultType } from 'better-result';
-import * as z from 'zod/mini';
+import { Result, type Result as ResultType } from "better-result";
+import * as z from "zod/mini";
 
 interface Env {
   ONEMAP_EMAIL?: string;
@@ -7,10 +7,10 @@ interface Env {
   LTA_ACCOUNT_KEY?: string;
 }
 
-type TransitMode = 'bus' | 'train';
-type ProviderStatus = 'ok' | 'partial' | 'fallback';
+type TransitMode = "bus" | "train";
+type ProviderStatus = "ok" | "partial" | "fallback";
 
-type TransitKind = 'bus' | 'train';
+type TransitKind = "bus" | "train";
 
 interface Coord {
   lat: number;
@@ -47,7 +47,7 @@ interface TransitLeg {
 
 interface TransitResponse {
   status: ProviderStatus;
-  provider: 'onemap_lta';
+  provider: "onemap_lta";
   legs: TransitLeg[];
   warnings: string[];
 }
@@ -57,10 +57,10 @@ interface CacheEntry<T> {
   value: T;
 }
 
-const ONE_MAP_AUTH_URL = 'https://www.onemap.gov.sg/api/auth/post/getToken';
-const ONE_MAP_ROUTE_URL = 'https://www.onemap.gov.sg/api/public/routingsvc/route';
-const LTA_BUS_ARRIVAL_URL = 'https://datamall2.mytransport.sg/ltaodataservice/v3/BusArrival';
-const LTA_TRAIN_ALERT_URL = 'https://datamall2.mytransport.sg/ltaodataservice/TrainServiceAlerts';
+const ONE_MAP_AUTH_URL = "https://www.onemap.gov.sg/api/auth/post/getToken";
+const ONE_MAP_ROUTE_URL = "https://www.onemap.gov.sg/api/public/routingsvc/route";
+const LTA_BUS_ARRIVAL_URL = "https://datamall2.mytransport.sg/ltaodataservice/v3/BusArrival";
+const LTA_TRAIN_ALERT_URL = "https://datamall2.mytransport.sg/ltaodataservice/TrainServiceAlerts";
 
 const ONE_MAP_TOKEN_SKEW_MS = 60_000;
 const ONE_MAP_ROUTE_TTL_MS = 60_000;
@@ -72,7 +72,7 @@ const SPEED_KMPH: Record<TransitMode, number> = {
   train: 32,
 };
 
-const DEFAULT_WARNING = 'Exact transit details unavailable. Showing estimated route.';
+const DEFAULT_WARNING = "Exact transit details unavailable. Showing estimated route.";
 const MAX_STOPS = 25;
 
 let oneMapTokenCache: CacheEntry<string> | null = null;
@@ -82,7 +82,7 @@ const transitQuerySchema = z.object({
   mode: z.string(),
   stops: z.string(),
 });
-const modeSchema = z.enum(['bus', 'train']);
+const modeSchema = z.enum(["bus", "train"]);
 const coordSchema = z.object({
   lat: z.number(),
   lng: z.number(),
@@ -113,9 +113,11 @@ const oneMapLegSchema = z.object({
   tripHeadsign: z.optional(z.union([z.string(), z.number()])),
   from: z.optional(oneMapLegNodeSchema),
   to: z.optional(oneMapLegNodeSchema),
-  legGeometry: z.optional(z.object({
-    points: z.optional(z.string()),
-  })),
+  legGeometry: z.optional(
+    z.object({
+      points: z.optional(z.string()),
+    }),
+  ),
 });
 const oneMapItinerarySchema = z.object({
   duration: z.optional(z.union([z.string(), z.number()])),
@@ -129,24 +131,30 @@ const oneMapRouteSchema = z.object({
   plan: z.optional(
     z.object({
       itineraries: z.optional(z.array(oneMapItinerarySchema)),
-    })
+    }),
   ),
 });
 const ltaBusServiceSchema = z.object({
   ServiceNo: z.optional(z.union([z.string(), z.number()])),
-  NextBus: z.optional(z.object({
-    EstimatedArrival: z.optional(z.string()),
-    Monitored: z.optional(z.union([z.number(), z.string()])),
-  })),
+  NextBus: z.optional(
+    z.object({
+      EstimatedArrival: z.optional(z.string()),
+      Monitored: z.optional(z.union([z.number(), z.string()])),
+    }),
+  ),
 });
 const ltaBusPayloadSchema = z.object({
   Services: z.optional(z.array(ltaBusServiceSchema)),
 });
 const ltaTrainPayloadSchema = z.object({
-  value: z.optional(z.array(z.object({
-    Status: z.optional(z.union([z.number(), z.string()])),
-    Message: z.optional(z.string()),
-  }))),
+  value: z.optional(
+    z.array(
+      z.object({
+        Status: z.optional(z.union([z.number(), z.string()])),
+        Message: z.optional(z.string()),
+      }),
+    ),
+  ),
 });
 
 type OneMapRoutePayload = z.infer<typeof oneMapRouteSchema>;
@@ -171,7 +179,7 @@ export async function onRequestGet(context: { request: Request; env: Env }): Pro
       {
         error: parsedQuery.error,
       },
-      400
+      400,
     );
   }
 
@@ -181,7 +189,7 @@ export async function onRequestGet(context: { request: Request; env: Env }): Pro
 
   if (!env.ONEMAP_EMAIL || !env.ONEMAP_PASSWORD) {
     const fallback = buildFallbackResponse(legPairs, mode, [
-      'OneMap credentials are not configured on the server.',
+      "OneMap credentials are not configured on the server.",
       DEFAULT_WARNING,
     ]);
     return json(fallback, 200);
@@ -190,33 +198,33 @@ export async function onRequestGet(context: { request: Request; env: Env }): Pro
   const token = await getOneMapToken(env);
   if (!token) {
     const fallback = buildFallbackResponse(legPairs, mode, [
-      'Unable to authenticate with OneMap transit service.',
+      "Unable to authenticate with OneMap transit service.",
       DEFAULT_WARNING,
     ]);
     return json(fallback, 200);
   }
 
   const plannedLegs = await Promise.all(
-    legPairs.map(([from, to]) => planOneMapLeg({
-      env,
-      token,
-      mode,
-      from,
-      to,
-    }))
+    legPairs.map(([from, to]) =>
+      planOneMapLeg({
+        env,
+        token,
+        mode,
+        from,
+        to,
+      }),
+    ),
   );
 
   const exactCount = plannedLegs.filter((leg) => leg.exact).length;
   const status: ProviderStatus =
-    exactCount === plannedLegs.length ? 'ok' : exactCount > 0 ? 'partial' : 'fallback';
+    exactCount === plannedLegs.length ? "ok" : exactCount > 0 ? "partial" : "fallback";
 
-  const warnings = dedupe(
-    plannedLegs.flatMap((leg) => leg.warnings).filter(Boolean)
-  );
+  const warnings = dedupe(plannedLegs.flatMap((leg) => leg.warnings).filter(Boolean));
 
   const response: TransitResponse = {
     status,
-    provider: 'onemap_lta',
+    provider: "onemap_lta",
     legs: plannedLegs,
     warnings,
   };
@@ -226,11 +234,11 @@ export async function onRequestGet(context: { request: Request; env: Env }): Pro
 
 function parseTransitQuery(searchParams: URLSearchParams): ResultType<TransitQuery, string> {
   const parsed = transitQuerySchema.safeParse({
-    mode: searchParams.get('mode') ?? '',
-    stops: searchParams.get('stops') ?? '',
+    mode: searchParams.get("mode") ?? "",
+    stops: searchParams.get("stops") ?? "",
   });
   if (!parsed.success) {
-    return Result.err('Invalid transit query parameters.');
+    return Result.err("Invalid transit query parameters.");
   }
 
   const modeResult = modeSchema.safeParse(parsed.data.mode);
@@ -256,16 +264,21 @@ function parseStops(value: string): Coord[] {
   const parsedStops: Coord[] = [];
 
   value
-    .split('|')
+    .split("|")
     .map((chunk) => chunk.trim())
     .filter(Boolean)
     .forEach((chunk) => {
-      const [latRaw, lngRaw] = chunk.split(',');
+      const [latRaw, lngRaw] = chunk.split(",");
       const lat = Number(latRaw);
       const lng = Number(lngRaw);
       const parsed = coordSchema.safeParse({ lat, lng });
       if (!parsed.success) return;
-      if (parsed.data.lat < -90 || parsed.data.lat > 90 || parsed.data.lng < -180 || parsed.data.lng > 180) {
+      if (
+        parsed.data.lat < -90 ||
+        parsed.data.lat > 90 ||
+        parsed.data.lng < -180 ||
+        parsed.data.lng > 180
+      ) {
         return;
       }
       parsedStops.push(parsed.data);
@@ -288,11 +301,11 @@ function buildLegPairs(stops: Coord[]): Array<[Coord, Coord]> {
 function buildFallbackResponse(
   pairs: Array<[Coord, Coord]>,
   mode: TransitMode,
-  warnings: string[]
+  warnings: string[],
 ): TransitResponse {
   return {
-    status: 'fallback',
-    provider: 'onemap_lta',
+    status: "fallback",
+    provider: "onemap_lta",
     legs: pairs.map(([from, to]) => buildFallbackLeg(from, to, mode, warnings)),
     warnings: dedupe(warnings),
   };
@@ -304,16 +317,18 @@ async function getOneMapToken(env: Env): Promise<string | null> {
     return oneMapTokenCache.value;
   }
 
-  const responseResult = await Result.tryPromise(() => fetch(ONE_MAP_AUTH_URL, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({
-      email: env.ONEMAP_EMAIL,
-      password: env.ONEMAP_PASSWORD,
+  const responseResult = await Result.tryPromise(() =>
+    fetch(ONE_MAP_AUTH_URL, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        email: env.ONEMAP_EMAIL,
+        password: env.ONEMAP_PASSWORD,
+      }),
     }),
-  }));
+  );
   if (Result.isError(responseResult)) return null;
 
   const response = responseResult.value;
@@ -326,12 +341,8 @@ async function getOneMapToken(env: Env): Promise<string | null> {
   if (!payload.success || !payload.data.access_token) return null;
 
   const rawExpiry = Number(payload.data.expiry_timestamp || 0);
-  const rawExpiryMs =
-    rawExpiry > 1_000_000_000_000 ? rawExpiry : rawExpiry * 1000;
-  const expiresAt =
-    rawExpiry > 0
-      ? rawExpiryMs - ONE_MAP_TOKEN_SKEW_MS
-      : now + 30 * 60_000;
+  const rawExpiryMs = rawExpiry > 1_000_000_000_000 ? rawExpiry : rawExpiry * 1000;
+  const expiresAt = rawExpiry > 0 ? rawExpiryMs - ONE_MAP_TOKEN_SKEW_MS : now + 30 * 60_000;
 
   oneMapTokenCache = {
     value: payload.data.access_token,
@@ -355,7 +366,7 @@ async function planOneMapLeg(args: PlanLegArgs): Promise<TransitLeg> {
   const routeData = await fetchOneMapRoute(token, from, to, mode);
   if (!routeData) {
     return buildFallbackLeg(from, to, mode, [
-      'OneMap routing response was unavailable for this leg.',
+      "OneMap routing response was unavailable for this leg.",
       DEFAULT_WARNING,
     ]);
   }
@@ -363,7 +374,7 @@ async function planOneMapLeg(args: PlanLegArgs): Promise<TransitLeg> {
   const itinerary = pickPrimaryItinerary(routeData);
   if (!itinerary) {
     return buildFallbackLeg(from, to, mode, [
-      'OneMap returned no itinerary for this leg.',
+      "OneMap returned no itinerary for this leg.",
       DEFAULT_WARNING,
     ]);
   }
@@ -381,8 +392,9 @@ async function planOneMapLeg(args: PlanLegArgs): Promise<TransitLeg> {
   const headsignOrDirection = extractHeadsign(transitLegRaw);
 
   const warnings: string[] = [];
-  if (!serviceOrLine) warnings.push('Service or line was not returned for this leg.');
-  if (!boardName || !alightName) warnings.push('Boarding or alighting stop was not returned for this leg.');
+  if (!serviceOrLine) warnings.push("Service or line was not returned for this leg.");
+  if (!boardName || !alightName)
+    warnings.push("Boarding or alighting stop was not returned for this leg.");
 
   const transit: TransitDetails = {
     kind: mode,
@@ -393,14 +405,14 @@ async function planOneMapLeg(args: PlanLegArgs): Promise<TransitLeg> {
     headsignOrDirection: headsignOrDirection || undefined,
   };
 
-  if (mode === 'bus') {
+  if (mode === "bus") {
     const boardStopCode = extractStopCode(transitLegRaw?.from, boardName);
     const serviceNo = normalizeServiceNo(serviceOrLine);
     const live = await getBusArrivalLive(env, boardStopCode, serviceNo);
     if (live) {
       transit.live = live;
     } else {
-      warnings.push('Live bus arrival was unavailable for this leg.');
+      warnings.push("Live bus arrival was unavailable for this leg.");
     }
   } else {
     const alerts = await getTrainAlerts(env);
@@ -438,7 +450,7 @@ async function fetchOneMapRoute(
   token: string,
   from: Coord,
   to: Coord,
-  mode: TransitMode
+  mode: TransitMode,
 ): Promise<OneMapRoutePayload | null> {
   const key = `${mode}:${roundCoord(from)}>${roundCoord(to)}`;
   const cached = oneMapRouteCache.get(key);
@@ -448,18 +460,20 @@ async function fetchOneMapRoute(
   const { dateStr, timeStr } = getSingaporeDateTimeStrings();
 
   const url = new URL(ONE_MAP_ROUTE_URL);
-  url.searchParams.set('start', `${from.lat},${from.lng}`);
-  url.searchParams.set('end', `${to.lat},${to.lng}`);
-  url.searchParams.set('routeType', 'pt');
-  url.searchParams.set('mode', mode.toUpperCase());
-  url.searchParams.set('date', dateStr);
-  url.searchParams.set('time', timeStr);
+  url.searchParams.set("start", `${from.lat},${from.lng}`);
+  url.searchParams.set("end", `${to.lat},${to.lng}`);
+  url.searchParams.set("routeType", "pt");
+  url.searchParams.set("mode", mode.toUpperCase());
+  url.searchParams.set("date", dateStr);
+  url.searchParams.set("time", timeStr);
 
-  const responseResult = await Result.tryPromise(() => fetch(url.toString(), {
-    headers: {
-      authorization: `Bearer ${token}`,
-    },
-  }));
+  const responseResult = await Result.tryPromise(() =>
+    fetch(url.toString(), {
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+    }),
+  );
   if (Result.isError(responseResult)) return null;
 
   const response = responseResult.value;
@@ -479,25 +493,25 @@ async function fetchOneMapRoute(
 }
 
 function getSingaporeDateTimeStrings(value = new Date()): { dateStr: string; timeStr: string } {
-  const parts = new Intl.DateTimeFormat('en-SG', {
-    timeZone: 'Asia/Singapore',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
+  const parts = new Intl.DateTimeFormat("en-SG", {
+    timeZone: "Asia/Singapore",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
     hour12: false,
   }).formatToParts(value);
 
   const map = new Map(parts.map((part) => [part.type, part.value]));
-  const month = map.get('month') || '01';
-  const day = map.get('day') || '01';
-  const year = map.get('year') || '1970';
-  const hourRaw = map.get('hour') || '00';
-  const hour = hourRaw === '24' ? '00' : hourRaw;
-  const minute = map.get('minute') || '00';
-  const second = map.get('second') || '00';
+  const month = map.get("month") || "01";
+  const day = map.get("day") || "01";
+  const year = map.get("year") || "1970";
+  const hourRaw = map.get("hour") || "00";
+  const hour = hourRaw === "24" ? "00" : hourRaw;
+  const minute = map.get("minute") || "00";
+  const second = map.get("second") || "00";
 
   return {
     dateStr: `${month}-${day}-${year}`,
@@ -543,16 +557,21 @@ function inferDurationMin(rawDuration: unknown, distanceKm: number, mode: Transi
 
 function pickTransitLeg(rawLegs: OneMapLeg[], mode: TransitMode): OneMapLeg | null {
   const predicate = (leg: OneMapLeg) => {
-    const modeName = String(leg?.mode || '').toUpperCase();
-    if (mode === 'bus') return modeName.includes('BUS');
-    return modeName.includes('RAIL') || modeName.includes('SUBWAY') || modeName.includes('TRAIN') || modeName.includes('MRT');
+    const modeName = String(leg?.mode || "").toUpperCase();
+    if (mode === "bus") return modeName.includes("BUS");
+    return (
+      modeName.includes("RAIL") ||
+      modeName.includes("SUBWAY") ||
+      modeName.includes("TRAIN") ||
+      modeName.includes("MRT")
+    );
   };
 
   return rawLegs.find(predicate) || null;
 }
 
 function extractServiceOrLine(rawLeg: OneMapLeg | null | undefined, mode: TransitMode): string {
-  if (!rawLeg) return '';
+  if (!rawLeg) return "";
   const primary = [
     rawLeg.routeShortName,
     rawLeg.route,
@@ -562,11 +581,11 @@ function extractServiceOrLine(rawLeg: OneMapLeg | null | undefined, mode: Transi
     rawLeg.headsign,
     rawLeg.line,
   ]
-    .map((v) => (v == null ? '' : String(v).trim()))
+    .map((v) => (v == null ? "" : String(v).trim()))
     .find((value) => value.length > 0);
 
-  if (!primary) return '';
-  if (mode === 'bus') {
+  if (!primary) return "";
+  if (mode === "bus") {
     const match = primary.match(/[0-9]{1,3}[A-Z]?/i);
     return match ? match[0].toUpperCase() : primary;
   }
@@ -574,29 +593,24 @@ function extractServiceOrLine(rawLeg: OneMapLeg | null | undefined, mode: Transi
 }
 
 function extractStopName(rawNode: OneMapLegNode | null | undefined): string {
-  if (!rawNode) return '';
+  if (!rawNode) return "";
   const primary = [rawNode.name, rawNode.stopName, rawNode.label]
-    .map((v) => (v == null ? '' : String(v).trim()))
+    .map((v) => (v == null ? "" : String(v).trim()))
     .find((value) => value.length > 0);
-  return primary || '';
+  return primary || "";
 }
 
 function extractHeadsign(rawLeg: OneMapLeg | null | undefined): string {
-  if (!rawLeg) return '';
+  if (!rawLeg) return "";
   const primary = [rawLeg.headsign, rawLeg.direction, rawLeg.tripHeadsign]
-    .map((v) => (v == null ? '' : String(v).trim()))
+    .map((v) => (v == null ? "" : String(v).trim()))
     .find((value) => value.length > 0);
-  return primary || '';
+  return primary || "";
 }
 
-function extractStopCode(rawNode: OneMapLegNode | null | undefined, fallbackName = ''): string {
-  const candidates = [
-    rawNode?.stopCode,
-    rawNode?.stopId,
-    rawNode?.code,
-    fallbackName,
-  ]
-    .map((v) => (v == null ? '' : String(v)))
+function extractStopCode(rawNode: OneMapLegNode | null | undefined, fallbackName = ""): string {
+  const candidates = [rawNode?.stopCode, rawNode?.stopId, rawNode?.code, fallbackName]
+    .map((v) => (v == null ? "" : String(v)))
     .filter(Boolean);
 
   for (const candidate of candidates) {
@@ -604,12 +618,14 @@ function extractStopCode(rawNode: OneMapLegNode | null | undefined, fallbackName
     if (match) return match[0];
   }
 
-  return '';
+  return "";
 }
 
 function normalizeServiceNo(value: string): string {
-  const text = String(value || '').trim().toUpperCase();
-  if (!text) return '';
+  const text = String(value || "")
+    .trim()
+    .toUpperCase();
+  if (!text) return "";
   const match = text.match(/[0-9]{1,3}[A-Z]?/);
   return match ? match[0] : text;
 }
@@ -617,7 +633,7 @@ function normalizeServiceNo(value: string): string {
 async function getBusArrivalLive(
   env: Env,
   busStopCode: string,
-  serviceNo: string
+  serviceNo: string,
 ): Promise<TransitLive | undefined> {
   const ltaAccountKey = env.LTA_ACCOUNT_KEY;
   if (!ltaAccountKey || !busStopCode || !serviceNo) return undefined;
@@ -628,15 +644,17 @@ async function getBusArrivalLive(
   if (cached && cached.expiresAt > now) return cached.value || undefined;
 
   const url = new URL(LTA_BUS_ARRIVAL_URL);
-  url.searchParams.set('BusStopCode', busStopCode);
-  url.searchParams.set('ServiceNo', serviceNo);
+  url.searchParams.set("BusStopCode", busStopCode);
+  url.searchParams.set("ServiceNo", serviceNo);
 
-  const responseResult = await Result.tryPromise(() => fetch(url.toString(), {
-    headers: {
-      AccountKey: ltaAccountKey,
-      accept: 'application/json',
-    },
-  }));
+  const responseResult = await Result.tryPromise(() =>
+    fetch(url.toString(), {
+      headers: {
+        AccountKey: ltaAccountKey,
+        accept: "application/json",
+      },
+    }),
+  );
   if (Result.isError(responseResult)) {
     ltaBusCache.set(key, { value: null, expiresAt: now + LTA_BUS_TTL_MS });
     return undefined;
@@ -657,8 +675,9 @@ async function getBusArrivalLive(
   const payload = ltaBusPayloadSchema.safeParse(jsonResult.value);
   const services = payload.success ? payload.data.Services || [] : [];
   const service =
-    services.find((item) => String(item.ServiceNo || '').toUpperCase() === serviceNo.toUpperCase()) ||
-    services[0];
+    services.find(
+      (item) => String(item.ServiceNo || "").toUpperCase() === serviceNo.toUpperCase(),
+    ) || services[0];
 
   const arrivalIso = service?.NextBus?.EstimatedArrival;
   if (!arrivalIso) {
@@ -673,7 +692,7 @@ async function getBusArrivalLive(
   }
 
   const etaMinutes = Math.max(0, Math.ceil((arrivalMs - now) / 60_000));
-  const confidence = Number(service?.NextBus?.Monitored) === 1 ? 'realtime' : 'estimated';
+  const confidence = Number(service?.NextBus?.Monitored) === 1 ? "realtime" : "estimated";
   const live: TransitLive = {
     etaMinutes,
     sampledAtIso: new Date(now).toISOString(),
@@ -696,12 +715,14 @@ async function getTrainAlerts(env: Env): Promise<string[] | null> {
     return ltaTrainCache.value;
   }
 
-  const responseResult = await Result.tryPromise(() => fetch(LTA_TRAIN_ALERT_URL, {
-    headers: {
-      AccountKey: ltaAccountKey,
-      accept: 'application/json',
-    },
-  }));
+  const responseResult = await Result.tryPromise(() =>
+    fetch(LTA_TRAIN_ALERT_URL, {
+      headers: {
+        AccountKey: ltaAccountKey,
+        accept: "application/json",
+      },
+    }),
+  );
   if (Result.isError(responseResult)) {
     ltaTrainCache = { value: null, expiresAt: now + LTA_TRAIN_TTL_MS };
     return null;
@@ -723,9 +744,7 @@ async function getTrainAlerts(env: Env): Promise<string[] | null> {
   const value = payload.success ? payload.data.value || [] : [];
 
   const disruptions = value.filter((item) => Number(item.Status) === 2);
-  const messages = disruptions
-    .map((item) => String(item.Message || '').trim())
-    .filter(Boolean);
+  const messages = disruptions.map((item) => String(item.Message || "").trim()).filter(Boolean);
 
   const result = messages.length > 0 ? messages : null;
   ltaTrainCache = {
@@ -754,36 +773,41 @@ function buildTransitSteps(args: BuildStepArgs): string[] {
 
   const steps = rawLegs
     .map((rawLeg) => {
-      const modeName = String(rawLeg?.mode || '').toUpperCase();
+      const modeName = String(rawLeg?.mode || "").toUpperCase();
       const toName = extractStopName(rawLeg?.to);
       const fromName = extractStopName(rawLeg?.from);
       const distanceKm = Math.max(0.05, toFiniteNumber(rawLeg?.distance) / 1000 || 0);
 
-      if (modeName.includes('WALK')) {
-        return `Walk ${formatDistance(distanceKm)} to ${toName || 'the next transfer point'}.`;
+      if (modeName.includes("WALK")) {
+        return `Walk ${formatDistance(distanceKm)} to ${toName || "the next transfer point"}.`;
       }
 
-      if (modeName.includes('BUS')) {
-        const service = extractServiceOrLine(rawLeg, 'bus') || serviceOrLine || 'the bus service';
+      if (modeName.includes("BUS")) {
+        const service = extractServiceOrLine(rawLeg, "bus") || serviceOrLine || "the bus service";
         const stops = Number.isFinite(toFiniteNumber(rawLeg?.numStops))
           ? ` (${Math.round(toFiniteNumber(rawLeg?.numStops))} stops)`
-          : '';
-        return `Take bus ${service} from ${fromName || boardName || 'the boarding stop'} to ${toName || alightName || 'the alighting stop'}${stops}.`;
+          : "";
+        return `Take bus ${service} from ${fromName || boardName || "the boarding stop"} to ${toName || alightName || "the alighting stop"}${stops}.`;
       }
 
-      if (modeName.includes('RAIL') || modeName.includes('SUBWAY') || modeName.includes('TRAIN') || modeName.includes('MRT')) {
-        const line = extractServiceOrLine(rawLeg, 'train') || serviceOrLine || 'the train line';
+      if (
+        modeName.includes("RAIL") ||
+        modeName.includes("SUBWAY") ||
+        modeName.includes("TRAIN") ||
+        modeName.includes("MRT")
+      ) {
+        const line = extractServiceOrLine(rawLeg, "train") || serviceOrLine || "the train line";
         const stops = Number.isFinite(toFiniteNumber(rawLeg?.numStops))
           ? ` (${Math.round(toFiniteNumber(rawLeg?.numStops))} stops)`
-          : '';
-        return `Take ${line} from ${fromName || boardName || 'the boarding station'} to ${toName || alightName || 'the alighting station'}${stops}.`;
+          : "";
+        return `Take ${line} from ${fromName || boardName || "the boarding station"} to ${toName || alightName || "the alighting station"}${stops}.`;
       }
 
       if (fromName || toName) {
-        return `Continue from ${fromName || 'current point'} to ${toName || 'next point'} (${formatDistance(distanceKm)}).`;
+        return `Continue from ${fromName || "current point"} to ${toName || "next point"} (${formatDistance(distanceKm)}).`;
       }
 
-      return '';
+      return "";
     })
     .filter(Boolean);
 
@@ -797,22 +821,22 @@ function genericModeSteps(
   boardName: string,
   alightName: string,
   numStops: number,
-  durationMin: number
+  durationMin: number,
 ): string[] {
-  const board = boardName || (mode === 'bus' ? 'a nearby bus stop' : 'a nearby MRT/LRT station');
-  const alight = alightName || 'your destination stop';
-  if (mode === 'bus') {
+  const board = boardName || (mode === "bus" ? "a nearby bus stop" : "a nearby MRT/LRT station");
+  const alight = alightName || "your destination stop";
+  if (mode === "bus") {
     return [
       `Walk to ${board}.`,
-      `Take bus ${serviceOrLine || 'service'} for about ${durationMin} min.`,
-      `Alight at ${alight}${Number.isFinite(numStops) ? ` (${Math.max(1, Math.round(numStops))} stops)` : ''}.`,
+      `Take bus ${serviceOrLine || "service"} for about ${durationMin} min.`,
+      `Alight at ${alight}${Number.isFinite(numStops) ? ` (${Math.max(1, Math.round(numStops))} stops)` : ""}.`,
     ];
   }
 
   return [
     `Walk to ${board}.`,
-    `Take ${serviceOrLine || 'the MRT/LRT line'} for about ${durationMin} min.`,
-    `Exit at ${alight}${Number.isFinite(numStops) ? ` (${Math.max(1, Math.round(numStops))} stops)` : ''}.`,
+    `Take ${serviceOrLine || "the MRT/LRT line"} for about ${durationMin} min.`,
+    `Exit at ${alight}${Number.isFinite(numStops) ? ` (${Math.max(1, Math.round(numStops))} stops)` : ""}.`,
   ];
 }
 
@@ -821,7 +845,7 @@ function decodeItineraryGeometry(rawLegs: OneMapLeg[], from: Coord, to: Coord): 
 
   rawLegs.forEach((rawLeg, idx) => {
     const encoded = rawLeg?.legGeometry?.points;
-    const decoded = typeof encoded === 'string' ? decodePolyline(encoded) : [];
+    const decoded = typeof encoded === "string" ? decodePolyline(encoded) : [];
     const coords = decoded.length > 0 ? decoded : inferLegFallbackCoords(rawLeg);
 
     if (coords.length === 0) return;
@@ -891,7 +915,12 @@ function decodePolyline(encoded: string): [number, number][] {
   return coords;
 }
 
-function buildFallbackLeg(from: Coord, to: Coord, mode: TransitMode, warnings: string[]): TransitLeg {
+function buildFallbackLeg(
+  from: Coord,
+  to: Coord,
+  mode: TransitMode,
+  warnings: string[],
+): TransitLeg {
   const distanceKm = Math.max(0.1, haversineKm(from, to));
   const durationMin = Math.max(1, Math.round((distanceKm / SPEED_KMPH[mode]) * 60));
 
@@ -907,7 +936,7 @@ function buildFallbackLeg(from: Coord, to: Coord, mode: TransitMode, warnings: s
     to,
     distanceKm,
     durationMin,
-    steps: genericModeSteps(mode, '', '', '', NaN, durationMin),
+    steps: genericModeSteps(mode, "", "", "", NaN, durationMin),
     latlngs: [
       [from.lat, from.lng],
       [to.lat, to.lng],
@@ -950,7 +979,7 @@ function dedupe(values: string[]): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
   values.forEach((value) => {
-    const text = String(value || '').trim();
+    const text = String(value || "").trim();
     if (!text || seen.has(text)) return;
     seen.add(text);
     out.push(text);
@@ -962,8 +991,8 @@ function json(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), {
     status,
     headers: {
-      'content-type': 'application/json; charset=utf-8',
-      'cache-control': 'no-store',
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "no-store",
     },
   });
 }

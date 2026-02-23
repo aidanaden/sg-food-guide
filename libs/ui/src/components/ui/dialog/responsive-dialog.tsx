@@ -99,7 +99,10 @@ const ResponsiveDialogTrigger: FC<ResponsiveDialogTriggerProps> = ({ children, c
     <Button
       type="button"
       variant="ghost"
-      className={cn("h-auto min-h-0 border-0 bg-transparent p-0 font-inherit hover:bg-transparent", className)}
+      className={cn(
+        "font-inherit h-auto min-h-0 border-0 bg-transparent p-0 hover:bg-transparent",
+        className,
+      )}
       onClick={() => setOpen(true)}
     >
       {children}
@@ -223,7 +226,7 @@ const ResponsiveDialogClose: FC<{
   return (
     <button
       type="button"
-      className="border-border-input hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-ring inline-flex size-7 items-center justify-center rounded-md border border-transparent text-foreground-muted transition-colors outline-none focus-visible:ring-2"
+      className="border-border-input hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-ring text-foreground-muted inline-flex size-7 items-center justify-center rounded-md border border-transparent transition-colors outline-none focus-visible:ring-2"
       aria-label={ariaLabel ?? (typeof children !== "string" ? "Close dialog" : undefined)}
       onClick={() => setOpen(false)}
     >

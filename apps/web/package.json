@@ -1,8 +1,8 @@
 {
   "name": "@sg-food-guide/web",
+  "version": "0.0.1",
   "private": true,
   "type": "module",
-  "version": "0.0.1",
   "imports": {
     "#/*": "./src/*"
   },
@@ -43,10 +43,11 @@
     "@tanstack/react-router-devtools": "catalog:tanstack",
     "@tanstack/react-router-ssr-query": "catalog:tanstack",
     "@tanstack/react-start": "catalog:tanstack",
-    "@tanstack/start-storage-context": "catalog:tanstack",
     "@tanstack/router-plugin": "catalog:tanstack",
+    "@tanstack/start-storage-context": "catalog:tanstack",
     "better-result": "catalog:toolkit",
     "clsx": "catalog:ui",
+    "jose": "catalog:api",
     "lucide-react": "catalog:ui",
     "react": "catalog:ui",
     "react-dom": "catalog:ui",

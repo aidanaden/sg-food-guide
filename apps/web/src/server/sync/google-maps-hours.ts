@@ -1,16 +1,16 @@
-import { Result } from 'better-result';
-import * as z from 'zod/mini';
+import { Result } from "better-result";
+import * as z from "zod/mini";
 
-import type { WorkerEnv } from '../cloudflare/runtime';
-import { normalizeComparableText, normalizeDisplayText } from './normalize';
-import type { SheetStallRow } from './sheet-source';
+import type { WorkerEnv } from "../cloudflare/runtime";
+import { normalizeComparableText, normalizeDisplayText } from "./normalize";
+import type { SheetStallRow } from "./sheet-source";
 
-const GOOGLE_PLACES_TEXT_SEARCH_URL = 'https://places.googleapis.com/v1/places:searchText';
-const GOOGLE_PLACES_DETAILS_URL = 'https://places.googleapis.com/v1/places';
+const GOOGLE_PLACES_TEXT_SEARCH_URL = "https://places.googleapis.com/v1/places:searchText";
+const GOOGLE_PLACES_DETAILS_URL = "https://places.googleapis.com/v1/places";
 const GOOGLE_PLACES_DETAILS_FIELD_MASK =
-  'id,displayName.text,formattedAddress,regularOpeningHours.weekdayDescriptions,currentOpeningHours.weekdayDescriptions';
+  "id,displayName.text,formattedAddress,regularOpeningHours.weekdayDescriptions,currentOpeningHours.weekdayDescriptions";
 const GOOGLE_PLACES_TEXT_SEARCH_FIELD_MASK =
-  'places.id,places.displayName.text,places.formattedAddress,places.regularOpeningHours.weekdayDescriptions,places.currentOpeningHours.weekdayDescriptions';
+  "places.id,places.displayName.text,places.formattedAddress,places.regularOpeningHours.weekdayDescriptions,places.currentOpeningHours.weekdayDescriptions";
 const MAX_MAPS_LOOKUPS_PER_RUN = 10;
 
 const placeCandidateSchema = z.object({
@@ -18,18 +18,18 @@ const placeCandidateSchema = z.object({
   displayName: z.optional(
     z.object({
       text: z.string(),
-    })
+    }),
   ),
   formattedAddress: z.optional(z.string()),
   regularOpeningHours: z.optional(
     z.object({
       weekdayDescriptions: z.optional(z.array(z.string())),
-    })
+    }),
   ),
   currentOpeningHours: z.optional(
     z.object({
       weekdayDescriptions: z.optional(z.array(z.string())),
-    })
+    }),
   ),
 });
 
@@ -65,7 +65,7 @@ interface LocationBias {
 }
 
 function readApiKey(env: WorkerEnv): string {
-  return normalizeDisplayText(env.GOOGLE_PLACES_API_KEY ?? '');
+  return normalizeDisplayText(env.GOOGLE_PLACES_API_KEY ?? "");
 }
 
 function buildDerivedMapsSearchUrl(name: string, address: string): string {
@@ -74,7 +74,7 @@ function buildDerivedMapsSearchUrl(name: string, address: string): string {
 }
 
 function normalizePlaceId(value: string): string {
-  return normalizeDisplayText(value).replace(/^places\//i, '');
+  return normalizeDisplayText(value).replace(/^places\//i, "");
 }
 
 function decodeSafe(value: string): string {
@@ -88,23 +88,23 @@ function decodeSafe(value: string): string {
 
 function isLikelyGoogleMapsHost(hostname: string): boolean {
   return (
-    hostname === 'google.com' ||
-    hostname.endsWith('.google.com') ||
-    hostname === 'maps.app.goo.gl' ||
-    hostname.endsWith('.maps.app.goo.gl') ||
-    hostname === 'goo.gl'
+    hostname === "google.com" ||
+    hostname.endsWith(".google.com") ||
+    hostname === "maps.app.goo.gl" ||
+    hostname.endsWith(".maps.app.goo.gl") ||
+    hostname === "goo.gl"
   );
 }
 
 function parseMapsUrl(value: string): Result<URL, Error> {
   const parsedUrlResult = Result.try(() => new URL(value));
   if (Result.isError(parsedUrlResult)) {
-    return Result.err(new Error('Invalid Google Maps URL.'));
+    return Result.err(new Error("Invalid Google Maps URL."));
   }
 
-  const hostname = parsedUrlResult.value.hostname.replace(/^www\./, '').toLowerCase();
+  const hostname = parsedUrlResult.value.hostname.replace(/^www\./, "").toLowerCase();
   if (!isLikelyGoogleMapsHost(hostname)) {
-    return Result.err(new Error('Unsupported Google Maps host.'));
+    return Result.err(new Error("Unsupported Google Maps host."));
   }
 
   return Result.ok(parsedUrlResult.value);
@@ -118,10 +118,10 @@ function extractPlaceIdFromMapsUrl(mapsUrl: string): string | null {
 
   const url = parsedResult.value;
   const queryCandidates = [
-    url.searchParams.get('q') ?? '',
-    url.searchParams.get('query') ?? '',
-    url.searchParams.get('place_id') ?? '',
-    url.searchParams.get('ftid') ?? '',
+    url.searchParams.get("q") ?? "",
+    url.searchParams.get("query") ?? "",
+    url.searchParams.get("place_id") ?? "",
+    url.searchParams.get("ftid") ?? "",
   ];
 
   for (const candidate of queryCandidates) {
@@ -147,27 +147,27 @@ function extractPlaceIdFromMapsUrl(mapsUrl: string): string | null {
 }
 
 function sanitizeTextQuery(value: string): string {
-  const decoded = decodeSafe(value).replace(/\+/g, ' ');
+  const decoded = decodeSafe(value).replace(/\+/g, " ");
   const normalized = normalizeDisplayText(decoded);
   if (normalized.length === 0) {
-    return '';
+    return "";
   }
 
-  const withoutPrefix = normalized.replace(/^place_id:\s*/i, '');
+  const withoutPrefix = normalized.replace(/^place_id:\s*/i, "");
   return normalizeDisplayText(withoutPrefix);
 }
 
 function extractTextQueryFromMapsUrl(mapsUrl: string): string {
   const parsedResult = parseMapsUrl(mapsUrl);
   if (Result.isError(parsedResult)) {
-    return '';
+    return "";
   }
 
   const url = parsedResult.value;
   const queryCandidates = [
-    url.searchParams.get('q') ?? '',
-    url.searchParams.get('query') ?? '',
-    url.searchParams.get('destination') ?? '',
+    url.searchParams.get("q") ?? "",
+    url.searchParams.get("query") ?? "",
+    url.searchParams.get("destination") ?? "",
   ];
 
   for (const candidate of queryCandidates) {
@@ -177,7 +177,7 @@ function extractTextQueryFromMapsUrl(mapsUrl: string): string {
     }
   }
 
-  const decodedPath = decodeSafe(url.pathname).replace(/\+/g, ' ');
+  const decodedPath = decodeSafe(url.pathname).replace(/\+/g, " ");
   const placePathMatch = decodedPath.match(/\/maps\/place\/([^/]+)/i);
   if (placePathMatch?.[1]) {
     const pathQuery = sanitizeTextQuery(placePathMatch[1]);
@@ -186,7 +186,7 @@ function extractTextQueryFromMapsUrl(mapsUrl: string): string {
     }
   }
 
-  return '';
+  return "";
 }
 
 function parseLocationBias(mapsUrl: string): LocationBias | null {
@@ -197,9 +197,9 @@ function parseLocationBias(mapsUrl: string): LocationBias | null {
 
   const url = parsedResult.value;
 
-  const llValue = normalizeDisplayText(url.searchParams.get('ll') ?? '');
+  const llValue = normalizeDisplayText(url.searchParams.get("ll") ?? "");
   if (llValue.length > 0) {
-    const [latRaw, lngRaw] = llValue.split(',');
+    const [latRaw, lngRaw] = llValue.split(",");
     const latitude = Number(latRaw);
     const longitude = Number(lngRaw);
     if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
@@ -244,11 +244,11 @@ function formatWeekdayDescriptions(place: PlaceCandidate): string | null {
     return null;
   }
 
-  return lines.join('; ');
+  return lines.join("; ");
 }
 
 function hasMeaningfulNameMatch(rowName: string, place: PlaceCandidate): boolean {
-  const placeName = normalizeComparableText(place.displayName?.text ?? '');
+  const placeName = normalizeComparableText(place.displayName?.text ?? "");
   if (placeName.length === 0) {
     return true;
   }
@@ -266,28 +266,30 @@ function hasMeaningfulNameMatch(rowName: string, place: PlaceCandidate): boolean
 
 function decodeMapsPayloadForText(payload: string): string {
   return payload
-    .replace(/\\u003c/g, '<')
-    .replace(/\\u003e/g, '>')
-    .replace(/\\u0026/g, '&')
-    .replace(/\\u202f/g, ' ')
-    .replace(/\\u00a0/g, ' ')
-    .replace(/\\u2013/g, '–')
-    .replace(/\\u2014/g, '—')
-    .replace(/\\n/g, ' ');
+    .replace(/\\u003c/g, "<")
+    .replace(/\\u003e/g, ">")
+    .replace(/\\u0026/g, "&")
+    .replace(/\\u202f/g, " ")
+    .replace(/\\u00a0/g, " ")
+    .replace(/\\u2013/g, "–")
+    .replace(/\\u2014/g, "—")
+    .replace(/\\n/g, " ");
 }
 
 function parseHoursFromMapsPayload(payload: string): string | null {
   const normalized = decodeMapsPayloadForText(payload);
 
-  const dayMatches = [...normalized.matchAll(
-    /\b(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\b\s*[:-]?\s*([^<;"\n]{2,80})/gi
-  )];
+  const dayMatches = [
+    ...normalized.matchAll(
+      /\b(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\b\s*[:-]?\s*([^<;"\n]{2,80})/gi,
+    ),
+  ];
 
   if (dayMatches.length >= 3) {
     const uniqueLines = new Map<string, string>();
     for (const match of dayMatches) {
-      const day = normalizeDisplayText(match[1] ?? '');
-      const hours = normalizeDisplayText(match[2] ?? '');
+      const day = normalizeDisplayText(match[1] ?? "");
+      const hours = normalizeDisplayText(match[2] ?? "");
       if (day.length === 0 || hours.length === 0) {
         continue;
       }
@@ -295,12 +297,12 @@ function parseHoursFromMapsPayload(payload: string): string | null {
     }
 
     if (uniqueLines.size > 0) {
-      return [...uniqueLines.values()].join('; ');
+      return [...uniqueLines.values()].join("; ");
     }
   }
 
   const quickStatusMatch = normalized.match(
-    /\b(Open 24 hours|Open now|Closed now|Opens?\s+[^\n<;")]{1,60}|Closes?\s+[^\n<;")]{1,60})\b/i
+    /\b(Open 24 hours|Open now|Closed now|Opens?\s+[^\n<;")]{1,60}|Closes?\s+[^\n<;")]{1,60})\b/i,
   );
   if (quickStatusMatch?.[1]) {
     return normalizeDisplayText(quickStatusMatch[1]);
@@ -308,14 +310,14 @@ function parseHoursFromMapsPayload(payload: string): string | null {
 
   const timeRangeMatches = [
     ...normalized.matchAll(
-      /\b\d{1,2}(?::\d{2})?\s?(?:AM|PM)\s*[–-]\s*\d{1,2}(?::\d{2})?\s?(?:AM|PM)\b/g
+      /\b\d{1,2}(?::\d{2})?\s?(?:AM|PM)\s*[–-]\s*\d{1,2}(?::\d{2})?\s?(?:AM|PM)\b/g,
     ),
   ];
 
   if (timeRangeMatches.length > 0) {
     const uniqueRanges = new Set<string>();
     for (const match of timeRangeMatches) {
-      const range = normalizeDisplayText(match[0] ?? '');
+      const range = normalizeDisplayText(match[0] ?? "");
       if (range.length > 0) {
         uniqueRanges.add(range);
       }
@@ -325,43 +327,48 @@ function parseHoursFromMapsPayload(payload: string): string | null {
     }
 
     if (uniqueRanges.size > 0) {
-      return [...uniqueRanges].join('; ');
+      return [...uniqueRanges].join("; ");
     }
   }
 
   return null;
 }
 
-async function scrapeOpeningHoursFromMapsPage(mapsUrl: string): Promise<Result<string | null, Error>> {
+async function scrapeOpeningHoursFromMapsPage(
+  mapsUrl: string,
+): Promise<Result<string | null, Error>> {
   const responseResult = await Result.tryPromise(() =>
     fetch(mapsUrl, {
       headers: {
-        'User-Agent': 'sg-food-guide-stall-sync/1.0',
-        'Accept-Language': 'en-SG,en;q=0.9',
+        "User-Agent": "sg-food-guide-stall-sync/1.0",
+        "Accept-Language": "en-SG,en;q=0.9",
       },
-      redirect: 'follow',
-    })
+      redirect: "follow",
+    }),
   );
 
   if (Result.isError(responseResult)) {
-    return Result.err(new Error('Failed to fetch Google Maps page for hours scraping.'));
+    return Result.err(new Error("Failed to fetch Google Maps page for hours scraping."));
   }
 
   if (!responseResult.value.ok) {
     return Result.err(
-      new Error(`Google Maps page fetch failed with HTTP ${responseResult.value.status}.`)
+      new Error(`Google Maps page fetch failed with HTTP ${responseResult.value.status}.`),
     );
   }
 
   const bodyResult = await Result.tryPromise(() => responseResult.value.text());
   if (Result.isError(bodyResult)) {
-    return Result.err(new Error('Failed reading Google Maps page body.'));
+    return Result.err(new Error("Failed reading Google Maps page body."));
   }
 
   return Result.ok(parseHoursFromMapsPayload(bodyResult.value));
 }
 
-async function fetchPlaceDetailsById(apiKey: string, placeId: string): Promise<Result<PlaceCandidate | null, Error>> {
+async function fetchPlaceDetailsById(
+  apiKey: string,
+  placeId: string,
+): Promise<Result<PlaceCandidate | null, Error>> {
   const normalizedPlaceId = normalizePlaceId(placeId);
   if (normalizedPlaceId.length === 0) {
     return Result.ok(null);
@@ -371,15 +378,15 @@ async function fetchPlaceDetailsById(apiKey: string, placeId: string): Promise<R
   const responseResult = await Result.tryPromise(() =>
     fetch(endpoint, {
       headers: {
-        'X-Goog-Api-Key': apiKey,
-        'X-Goog-FieldMask': GOOGLE_PLACES_DETAILS_FIELD_MASK,
-        'User-Agent': 'sg-food-guide-stall-sync/1.0',
+        "X-Goog-Api-Key": apiKey,
+        "X-Goog-FieldMask": GOOGLE_PLACES_DETAILS_FIELD_MASK,
+        "User-Agent": "sg-food-guide-stall-sync/1.0",
       },
-    })
+    }),
   );
 
   if (Result.isError(responseResult)) {
-    return Result.err(new Error('Failed to fetch Google Places details.'));
+    return Result.err(new Error("Failed to fetch Google Places details."));
   }
 
   if (!responseResult.value.ok) {
@@ -387,25 +394,28 @@ async function fetchPlaceDetailsById(apiKey: string, placeId: string): Promise<R
       return Result.ok(null);
     }
     return Result.err(
-      new Error(`Google Places details request failed with HTTP ${responseResult.value.status}.`)
+      new Error(`Google Places details request failed with HTTP ${responseResult.value.status}.`),
     );
   }
 
   const bodyResult = await Result.tryPromise(() => responseResult.value.json());
   if (Result.isError(bodyResult)) {
-    return Result.err(new Error('Failed parsing Google Places details JSON payload.'));
+    return Result.err(new Error("Failed parsing Google Places details JSON payload."));
   }
 
   const parsed = placeCandidateSchema.safeParse(bodyResult.value);
   if (!parsed.success) {
-    return Result.err(new Error('Invalid Google Places details payload.'));
+    return Result.err(new Error("Invalid Google Places details payload."));
   }
 
   return Result.ok(parsed.data);
 }
 
-async function fetchPlaceFromTextSearch(args: PlacesTextSearchArgs): Promise<Result<PlaceCandidate | null, Error>> {
-  const textQuery = extractTextQueryFromMapsUrl(args.mapsUrl) || normalizeDisplayText(args.fallbackTextQuery);
+async function fetchPlaceFromTextSearch(
+  args: PlacesTextSearchArgs,
+): Promise<Result<PlaceCandidate | null, Error>> {
+  const textQuery =
+    extractTextQueryFromMapsUrl(args.mapsUrl) || normalizeDisplayText(args.fallbackTextQuery);
   if (textQuery.length === 0) {
     return Result.ok(null);
   }
@@ -413,7 +423,7 @@ async function fetchPlaceFromTextSearch(args: PlacesTextSearchArgs): Promise<Res
   const requestBody: Record<string, unknown> = {
     textQuery,
     maxResultCount: 1,
-    languageCode: 'en',
+    languageCode: "en",
   };
 
   const regionCode = normalizeDisplayText(args.countryCode).toUpperCase();
@@ -436,35 +446,37 @@ async function fetchPlaceFromTextSearch(args: PlacesTextSearchArgs): Promise<Res
 
   const responseResult = await Result.tryPromise(() =>
     fetch(GOOGLE_PLACES_TEXT_SEARCH_URL, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'content-type': 'application/json; charset=utf-8',
-        'X-Goog-Api-Key': args.apiKey,
-        'X-Goog-FieldMask': GOOGLE_PLACES_TEXT_SEARCH_FIELD_MASK,
-        'User-Agent': 'sg-food-guide-stall-sync/1.0',
+        "content-type": "application/json; charset=utf-8",
+        "X-Goog-Api-Key": args.apiKey,
+        "X-Goog-FieldMask": GOOGLE_PLACES_TEXT_SEARCH_FIELD_MASK,
+        "User-Agent": "sg-food-guide-stall-sync/1.0",
       },
       body: JSON.stringify(requestBody),
-    })
+    }),
   );
 
   if (Result.isError(responseResult)) {
-    return Result.err(new Error('Failed to fetch Google Places text search results.'));
+    return Result.err(new Error("Failed to fetch Google Places text search results."));
   }
 
   if (!responseResult.value.ok) {
     return Result.err(
-      new Error(`Google Places text search request failed with HTTP ${responseResult.value.status}.`)
+      new Error(
+        `Google Places text search request failed with HTTP ${responseResult.value.status}.`,
+      ),
     );
   }
 
   const bodyResult = await Result.tryPromise(() => responseResult.value.json());
   if (Result.isError(bodyResult)) {
-    return Result.err(new Error('Failed parsing Google Places text search JSON payload.'));
+    return Result.err(new Error("Failed parsing Google Places text search JSON payload."));
   }
 
   const parsed = placesTextSearchResponseSchema.safeParse(bodyResult.value);
   if (!parsed.success) {
-    return Result.err(new Error('Invalid Google Places text search payload.'));
+    return Result.err(new Error("Invalid Google Places text search payload."));
   }
 
   const firstPlace = parsed.data.places?.[0] ?? null;
@@ -515,7 +527,9 @@ async function lookupOpeningHours(args: PlaceLookupArgs): Promise<Result<string 
   if (Result.isError(scrapeResult)) {
     if (apiLookupError) {
       return Result.err(
-        new Error(`${apiLookupError.message} Fallback scrape failed: ${scrapeResult.error.message}`)
+        new Error(
+          `${apiLookupError.message} Fallback scrape failed: ${scrapeResult.error.message}`,
+        ),
       );
     }
 
@@ -535,7 +549,7 @@ async function lookupOpeningHours(args: PlaceLookupArgs): Promise<Result<string 
 
 export async function enrichOpeningTimesFromGoogleMaps(
   rows: SheetStallRow[],
-  env: WorkerEnv
+  env: WorkerEnv,
 ): Promise<Result<OpeningHoursEnrichmentResult, Error>> {
   const apiKey = readApiKey(env);
   const hasPlacesApiKey = apiKey.length > 0;
@@ -585,7 +599,9 @@ export async function enrichOpeningTimesFromGoogleMaps(
   let failedLookupCount = 0;
   let sampleError: string | null = null;
 
-  const lookupEntries = [...lookupGroups.values()].sort((left, right) => right.rows.length - left.rows.length);
+  const lookupEntries = [...lookupGroups.values()].sort(
+    (left, right) => right.rows.length - left.rows.length,
+  );
   const limitedLookupEntries = lookupEntries.slice(0, MAX_MAPS_LOOKUPS_PER_RUN);
   const skippedLookupCount = Math.max(lookupEntries.length - limitedLookupEntries.length, 0);
 
@@ -619,28 +635,30 @@ export async function enrichOpeningTimesFromGoogleMaps(
 
   if (skippedLookupCount > 0) {
     warnings.push(
-      `Google Maps hours enrichment skipped ${skippedLookupCount} lookup(s) to stay within Worker subrequest budget (max ${MAX_MAPS_LOOKUPS_PER_RUN} lookups per run).`
+      `Google Maps hours enrichment skipped ${skippedLookupCount} lookup(s) to stay within Worker subrequest budget (max ${MAX_MAPS_LOOKUPS_PER_RUN} lookups per run).`,
     );
   }
 
   if (failedLookupCount > 0) {
     warnings.push(
-      `Google Maps hours enrichment failed for ${failedLookupCount} lookup(s).${sampleError ? ` Sample: ${sampleError}` : ''}`
+      `Google Maps hours enrichment failed for ${failedLookupCount} lookup(s).${sampleError ? ` Sample: ${sampleError}` : ""}`,
     );
   }
 
   if (!hasPlacesApiKey) {
     warnings.push(
-      'GOOGLE_PLACES_API_KEY is not set; opening-hours enrichment is using best-effort Google Maps page scraping.'
+      "GOOGLE_PLACES_API_KEY is not set; opening-hours enrichment is using best-effort Google Maps page scraping.",
     );
   }
 
   if (enrichedRowsCount === 0 && failedLookupCount === 0) {
     if (hasPlacesApiKey) {
-      warnings.push('Google Maps hours enrichment did not find usable hours for any candidate rows.');
+      warnings.push(
+        "Google Maps hours enrichment did not find usable hours for any candidate rows.",
+      );
     } else {
       warnings.push(
-        'Google Maps hours enrichment did not find usable hours for any candidate rows with scraper fallback. Configure GOOGLE_PLACES_API_KEY for higher reliability.'
+        "Google Maps hours enrichment did not find usable hours for any candidate rows with scraper fallback. Configure GOOGLE_PLACES_API_KEY for higher reliability.",
       );
     }
   }

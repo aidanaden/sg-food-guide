@@ -164,7 +164,9 @@ const TableRowInner = <T,>({
           {rowCells}
         </div>
       )}
-      {expandedRowContent != null && <Collapsible open={isExpanded}>{expandedRowContent}</Collapsible>}
+      {expandedRowContent != null && (
+        <Collapsible open={isExpanded}>{expandedRowContent}</Collapsible>
+      )}
     </div>
   );
 };
@@ -253,7 +255,7 @@ const VirtualTableContainerHeaderInner = <T,>({
             aria-sort={getColumnAriaSortValue(column, sorting)}
             className={cn(
               headerClassName,
-              "hover:text-foreground focus-visible:ring-ring h-auto min-h-0 w-full cursor-pointer select-none border-0 bg-transparent hover:bg-transparent focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
+              "hover:text-foreground focus-visible:ring-ring h-auto min-h-0 w-full cursor-pointer border-0 bg-transparent select-none hover:bg-transparent focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
             )}
             onClick={() => onHeaderClick(column)}
           >
@@ -474,7 +476,7 @@ function VirtualTableContainerInner<T>(
       shouldShowExpandIndicator,
       onRowClick,
       renderExpandedRow,
-      ],
+    ],
   );
 
   if (data.length === 0 && emptyState != null) {

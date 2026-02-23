@@ -1,15 +1,15 @@
-import { resolve as resolvePath } from 'node:path';
-import { defineConfig } from 'vite';
-import { devtools } from '@tanstack/devtools-vite';
-import tsconfigPaths from 'vite-tsconfig-paths';
-import { tanstackStart } from '@tanstack/react-start/plugin/vite';
-import viteReact from '@vitejs/plugin-react';
-import tailwindcss from '@tailwindcss/vite';
-import { cloudflare } from '@cloudflare/vite-plugin';
+import { cloudflare } from "@cloudflare/vite-plugin";
+import tailwindcss from "@tailwindcss/vite";
+import { devtools } from "@tanstack/devtools-vite";
+import { tanstackStart } from "@tanstack/react-start/plugin/vite";
+import viteReact from "@vitejs/plugin-react";
+import { resolve as resolvePath } from "node:path";
+import { defineConfig } from "vite";
+import tsconfigPaths from "vite-tsconfig-paths";
 
-const webNodeModules = resolvePath(import.meta.dirname, 'node_modules');
-const devtoolsEventBusPort = Number(process.env.TANSTACK_DEVTOOLS_EVENT_BUS_PORT ?? '0');
-const devtoolsEventBusEnabled = process.env.TANSTACK_DEVTOOLS_EVENT_BUS === '1';
+const webNodeModules = resolvePath(import.meta.dirname, "node_modules");
+const devtoolsEventBusPort = Number(process.env.TANSTACK_DEVTOOLS_EVENT_BUS_PORT ?? "0");
+const devtoolsEventBusEnabled = process.env.TANSTACK_DEVTOOLS_EVENT_BUS === "1";
 
 export default defineConfig({
   plugins: [
@@ -20,8 +20,8 @@ export default defineConfig({
         port: Number.isFinite(devtoolsEventBusPort) ? devtoolsEventBusPort : 0,
       },
     }),
-    cloudflare({ viteEnvironment: { name: 'ssr' } }),
-    tsconfigPaths({ projects: ['./tsconfig.json'] }),
+    cloudflare({ viteEnvironment: { name: "ssr" } }),
+    tsconfigPaths({ projects: ["./tsconfig.json"] }),
     tailwindcss(),
     tanstackStart(),
     viteReact(),
@@ -29,21 +29,21 @@ export default defineConfig({
   optimizeDeps: {
     // Avoid prebundling React Query for SSR. When optimized separately it can
     // load a different React module instance and trigger invalid hook calls.
-    exclude: ['@tanstack/react-query', '@tanstack/react-query-devtools'],
+    exclude: ["@tanstack/react-query", "@tanstack/react-query-devtools"],
   },
   resolve: {
-    dedupe: ['react', 'react-dom'],
+    dedupe: ["react", "react-dom"],
     alias: {
-      react: resolvePath(webNodeModules, 'react'),
-      'react-dom': resolvePath(webNodeModules, 'react-dom'),
-      'react/jsx-runtime': resolvePath(webNodeModules, 'react/jsx-runtime.js'),
-      'react/jsx-dev-runtime': resolvePath(webNodeModules, 'react/jsx-dev-runtime.js'),
+      react: resolvePath(webNodeModules, "react"),
+      "react-dom": resolvePath(webNodeModules, "react-dom"),
+      "react/jsx-runtime": resolvePath(webNodeModules, "react/jsx-runtime.js"),
+      "react/jsx-dev-runtime": resolvePath(webNodeModules, "react/jsx-dev-runtime.js"),
     },
   },
   ssr: {
     optimizeDeps: {
       // Scan app source eagerly so SSR prebundling settles before first request.
-      entries: ['src/**/*.ts', 'src/**/*.tsx'],
+      entries: ["src/**/*.ts", "src/**/*.tsx"],
     },
   },
   server: {

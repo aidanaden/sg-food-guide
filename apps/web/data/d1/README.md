@@ -36,13 +36,16 @@ Set via `wrangler.jsonc` vars and/or secrets:
 - `STALL_SYNC_MANUAL_YOUTUBE_OVERRIDES_JSON` (optional JSON array of manual member-only YouTube overrides)
 - `COMMENT_SYNC_MODE` (`dry-run` or `apply`)
 - `COMMENT_SYNC_FORCE_APPLY` (`1`/`0`, optional)
-- `COMMENT_SYNC_MAX_VIDEOS_PER_RUN` (default `30`)
+- `COMMENT_SYNC_MAX_VIDEOS_PER_RUN` (default `30`; production recommendation: `20` to keep subrequest headroom)
 - `COMMENT_SYNC_TOP_LEVEL_LIMIT` (default `50`)
+- `COMMENT_SYNC_MAX_COMMENT_THREAD_PAGES` (default `1`, max `4`)
+- `COMMENT_SYNC_INCLUDE_REPLIES` (`1`/`0`, default `0` to prevent reply-crawl subrequest spikes)
 - `COMMENT_SYNC_MIN_LIKES` (default `2`)
 - `COMMENT_SYNC_HIGH_CONFIDENCE_THRESHOLD` (default `80`)
 - `COMMENT_SYNC_LLM_ENABLED` (`1`/`0`, optional)
 - `COMMENT_SYNC_LLM_MAX_COMMENTS_PER_RUN` (default `25`)
-- `CLOUDFLARE_ACCESS_ADMIN_EMAILS` (required for `/admin/comment-drafts`, comma-separated emails)
+- `CLOUDFLARE_ACCESS_TEAM_DOMAIN` (required for `/admin/comment-drafts` JWT verification, e.g. `your-team.cloudflareaccess.com`)
+- `CLOUDFLARE_ACCESS_AUD` (required for `/admin/comment-drafts`, Access Application AUD tag)
 - `AI` Wrangler binding (optional but recommended; enables free Workers AI extraction from comments)
 - `WORKERS_AI_MODEL` (optional, default `@cf/meta/llama-3.1-8b-instruct-fast`)
 - `OPENAI_API_KEY` (optional fallback if Workers AI binding is unavailable/fails)
@@ -70,10 +73,10 @@ You can also provide `name`, `cuisine`, and `country` instead of `sourceStallKey
 ### Cloudflare Access Admin Onboarding
 
 1. Ensure Cloudflare Access policy for your app includes the admin identity.
-2. Set `CLOUDFLARE_ACCESS_ADMIN_EMAILS` in Wrangler vars/secrets (comma-separated, lowercase recommended).
+2. Set `CLOUDFLARE_ACCESS_TEAM_DOMAIN` and `CLOUDFLARE_ACCESS_AUD` in Wrangler vars/secrets.
 3. Verify access:
    - authorized identity can load `/admin/comment-drafts`
-   - non-allowlisted identity receives admin access error
+   - identity not permitted by Access policy receives admin access error
 
 ## Manual Trigger
 

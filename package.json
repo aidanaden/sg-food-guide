@@ -1,7 +1,6 @@
 {
   "name": "sg-food-guide",
   "private": true,
-  "packageManager": "bun@1.3.3",
   "workspaces": {
     "packages": [
       "apps/*",
@@ -45,7 +44,8 @@
       },
       "api": {
         "@cloudflare/vite-plugin": "1.13.8",
-        "wrangler": "4.63.0"
+        "wrangler": "4.63.0",
+        "jose": "5.10.0"
       },
       "toolkit": {
         "zod": "4.3.6",
@@ -92,5 +92,6 @@
     "turbo": "catalog:dev",
     "typescript": "catalog:dev",
     "wrangler": "catalog:api"
-  }
+  },
+  "packageManager": "bun@1.3.3"
 }

@@ -1,11 +1,8 @@
-import { Result } from 'better-result';
+import { Result } from "better-result";
 
-import { parseTimeCategories } from '../../data/shared';
-import type {
-  WorkerEnv,
-  WorkerExecutionContextLike,
-} from '../cloudflare/runtime';
-import type { CanonicalStall } from '../stalls/contracts';
+import { parseTimeCategories } from "../../data/shared";
+import type { WorkerEnv, WorkerExecutionContextLike } from "../cloudflare/runtime";
+import type { CanonicalStall } from "../stalls/contracts";
 import {
   applyCanonicalStalls,
   ensureStallTables,
@@ -13,15 +10,8 @@ import {
   getActiveStallIndex,
   getStallSlugIndex,
   insertSyncRun,
-} from '../stalls/repository';
-import { enrichOpeningTimesFromGoogleMaps } from './google-maps-hours';
-import {
-  fetchSheetCsv,
-  parseSheetRows,
-  resolveSheetCuisineOverride,
-  type SheetStallRow,
-} from './sheet-source';
-import { buildCanonicalStallsFromStaticData } from './static-seed';
+} from "../stalls/repository";
+import { enrichOpeningTimesFromGoogleMaps } from "./google-maps-hours";
 import {
   buildYouTubeVideoUrl,
   deriveSlug,
@@ -33,16 +23,23 @@ import {
   normalizeComparableText,
   normalizeDisplayText,
   normalizeYouTubeVideoId,
-} from './normalize';
+} from "./normalize";
+import {
+  fetchSheetCsv,
+  parseSheetRows,
+  resolveSheetCuisineOverride,
+  type SheetStallRow,
+} from "./sheet-source";
+import { buildCanonicalStallsFromStaticData } from "./static-seed";
+import { loadManualYouTubeOverrides, type ManualYouTubeOverride } from "./youtube-manual-overrides";
 import {
   fetchYouTubeVideos,
   searchYouTubeChannelVideoIdsByQuery,
   type YouTubeVideoEntry,
-} from './youtube-source';
-import { loadManualYouTubeOverrides, type ManualYouTubeOverride } from './youtube-manual-overrides';
+} from "./youtube-source";
 
-export type StallSyncMode = 'dry-run' | 'apply';
-export type StallSyncStatus = 'success' | 'failed' | 'guarded';
+export type StallSyncMode = "dry-run" | "apply";
+export type StallSyncStatus = "success" | "failed" | "guarded";
 
 export interface StallSyncSummary {
   runId: string;
@@ -93,42 +90,42 @@ interface StallAccumulator {
 }
 
 const GENERIC_YOUTUBE_MATCH_TOKENS = new Set([
-  'the',
-  'best',
-  'episode',
-  'ep',
-  'part',
-  'members',
-  'singapore',
-  'malaysia',
-  'thailand',
-  'hong',
-  'kong',
-  'bak',
-  'kut',
-  'teh',
-  'bakchor',
-  'chor',
-  'mee',
-  'wanton',
-  'wan',
-  'tan',
-  'mala',
-  'laksa',
-  'nasi',
-  'lemak',
-  'char',
-  'kway',
-  'teow',
-  'hokkien',
-  'prawn',
-  'soup',
-  'noodle',
-  'noodles',
-  'restaurant',
-  'stall',
-  'road',
-  'street',
+  "the",
+  "best",
+  "episode",
+  "ep",
+  "part",
+  "members",
+  "singapore",
+  "malaysia",
+  "thailand",
+  "hong",
+  "kong",
+  "bak",
+  "kut",
+  "teh",
+  "bakchor",
+  "chor",
+  "mee",
+  "wanton",
+  "wan",
+  "tan",
+  "mala",
+  "laksa",
+  "nasi",
+  "lemak",
+  "char",
+  "kway",
+  "teow",
+  "hokkien",
+  "prawn",
+  "soup",
+  "noodle",
+  "noodles",
+  "restaurant",
+  "stall",
+  "road",
+  "street",
 ]);
 const MAX_YOUTUBE_SEARCH_FALLBACK_QUERIES_PER_RUN = 12;
 
@@ -137,13 +134,13 @@ function nowIso(): string {
 }
 
 function boolFromValue(value: unknown, fallback: boolean): boolean {
-  if (typeof value === 'boolean') return value;
-  if (typeof value === 'number') return value !== 0;
-  if (typeof value !== 'string') return fallback;
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value !== 0;
+  if (typeof value !== "string") return fallback;
 
   const normalized = value.trim().toLowerCase();
-  if (['1', 'true', 'yes', 'y', 'on'].includes(normalized)) return true;
-  if (['0', 'false', 'no', 'n', 'off'].includes(normalized)) return false;
+  if (["1", "true", "yes", "y", "on"].includes(normalized)) return true;
+  if (["0", "false", "no", "n", "off"].includes(normalized)) return false;
 
   return fallback;
 }
@@ -162,7 +159,7 @@ function resolveSyncMode(args: RunStallSyncArgs): StallSyncMode {
     return args.modeOverride;
   }
 
-  return args.env.STALL_SYNC_MODE === 'apply' ? 'apply' : 'dry-run';
+  return args.env.STALL_SYNC_MODE === "apply" ? "apply" : "dry-run";
 }
 
 function shouldForceApply(args: RunStallSyncArgs): boolean {
@@ -177,7 +174,7 @@ function maxChangeRatio(env: WorkerEnv): number {
 }
 
 function shouldAlertOnSuccess(env: WorkerEnv): boolean {
-  return env.STALL_SYNC_ALERT_MODE !== 'failed';
+  return env.STALL_SYNC_ALERT_MODE !== "failed";
 }
 
 function computeRowScore(row: SheetStallRow): number {
@@ -195,9 +192,9 @@ function computeRowScore(row: SheetStallRow): number {
 
 function findBestYoutubeMatchByReference(
   reference: string | null | undefined,
-  videos: YouTubeVideoEntry[]
+  videos: YouTubeVideoEntry[],
 ): YouTubeVideoEntry | null {
-  const normalizedReference = normalizeComparableText(reference ?? '');
+  const normalizedReference = normalizeComparableText(reference ?? "");
   if (!normalizedReference) {
     return null;
   }
@@ -205,7 +202,7 @@ function findBestYoutubeMatchByReference(
   const referenceTokens = normalizedReference.split(/\s+/).filter((token) => token.length >= 3);
   const episodeTokenMatch = normalizedReference.match(/\bepisode\s+\d+\b/);
   const episodeToken = episodeTokenMatch?.[0] ?? null;
-  const requiresMembersToken = normalizedReference.includes('members');
+  const requiresMembersToken = normalizedReference.includes("members");
 
   let best: YouTubeVideoEntry | null = null;
   let bestScore = -1;
@@ -215,7 +212,7 @@ function findBestYoutubeMatchByReference(
     if (!normalizedTitle) {
       continue;
     }
-    if (requiresMembersToken && !normalizedTitle.includes('members')) {
+    if (requiresMembersToken && !normalizedTitle.includes("members")) {
       continue;
     }
 
@@ -253,7 +250,7 @@ function collectReferenceCandidates(group: StallAccumulator): string[] {
 
   const unique = new Set<string>();
   for (const reference of references) {
-    const normalized = normalizeDisplayText(reference ?? '');
+    const normalized = normalizeDisplayText(reference ?? "");
     if (!normalized) {
       continue;
     }
@@ -263,7 +260,10 @@ function collectReferenceCandidates(group: StallAccumulator): string[] {
   return [...unique];
 }
 
-function findBestYoutubeMatchByName(row: SheetStallRow, videos: YouTubeVideoEntry[]): YouTubeVideoEntry | null {
+function findBestYoutubeMatchByName(
+  row: SheetStallRow,
+  videos: YouTubeVideoEntry[],
+): YouTubeVideoEntry | null {
   const normalizedName = normalizeComparableText(row.name);
   if (!normalizedName) return null;
   const nameTokens = significantNameTokens(row.name);
@@ -314,7 +314,7 @@ function findBestYoutubeMatchByName(row: SheetStallRow, videos: YouTubeVideoEntr
 function findBestYoutubeMatch(
   row: SheetStallRow,
   videos: YouTubeVideoEntry[],
-  referenceCandidates: string[]
+  referenceCandidates: string[],
 ): YouTubeVideoEntry | null {
   for (const reference of referenceCandidates) {
     const byReference = findBestYoutubeMatchByReference(reference, videos);
@@ -327,12 +327,12 @@ function findBestYoutubeMatch(
 }
 
 function inferYoutubeTitleFromReference(reference: string | null | undefined): string {
-  const normalized = normalizeDisplayText(reference ?? '');
+  const normalized = normalizeDisplayText(reference ?? "");
   if (!normalized) {
-    return '';
+    return "";
   }
   if (buildYouTubeVideoUrl(normalized)) {
-    return '';
+    return "";
   }
   return normalized;
 }
@@ -354,7 +354,7 @@ function dedupeYouTubeEntries(entries: YouTubeVideoEntry[]): YouTubeVideoEntry[]
 
 function applyManualYouTubeOverrides(
   stalls: CanonicalStall[],
-  overrides: ManualYouTubeOverride[]
+  overrides: ManualYouTubeOverride[],
 ): { appliedCount: number; unusedSourceKeys: string[] } {
   if (overrides.length === 0 || stalls.length === 0) {
     return {
@@ -394,7 +394,9 @@ function applyManualYouTubeOverrides(
     }
   }
 
-  const unusedSourceKeys = [...bySourceKey.keys()].filter((sourceKey) => !usedSourceKeys.has(sourceKey));
+  const unusedSourceKeys = [...bySourceKey.keys()].filter(
+    (sourceKey) => !usedSourceKeys.has(sourceKey),
+  );
 
   return {
     appliedCount,
@@ -405,7 +407,7 @@ function applyManualYouTubeOverrides(
 function buildCanonicalFromSources(
   rows: SheetStallRow[],
   videos: YouTubeVideoEntry[],
-  syncedAtIso: string
+  syncedAtIso: string,
 ): CanonicalStall[] {
   const groups = new Map<string, StallAccumulator>();
 
@@ -461,17 +463,24 @@ function buildCanonicalFromSources(
     const referenceCandidates = collectReferenceCandidates(group);
     const explicitVideoId =
       normalizeYouTubeVideoId(bestRow.youtubeVideoUrl) ??
-      group.rows.map((row) => normalizeYouTubeVideoId(row.youtubeVideoUrl)).find((id) => Boolean(id)) ??
+      group.rows
+        .map((row) => normalizeYouTubeVideoId(row.youtubeVideoUrl))
+        .find((id) => Boolean(id)) ??
       null;
     const explicitVideoUrl =
       buildYouTubeVideoUrl(explicitVideoId ?? bestRow.youtubeVideoUrl) ??
-      group.rows.map((row) => buildYouTubeVideoUrl(row.youtubeVideoUrl)).find((url) => Boolean(url)) ??
+      group.rows
+        .map((row) => buildYouTubeVideoUrl(row.youtubeVideoUrl))
+        .find((url) => Boolean(url)) ??
       null;
 
-    const matchedVideo = explicitVideoUrl ? null : findBestYoutubeMatch(bestRow, videos, referenceCandidates);
+    const matchedVideo = explicitVideoUrl
+      ? null
+      : findBestYoutubeMatch(bestRow, videos, referenceCandidates);
 
     const youtubeVideoId =
-      explicitVideoId ?? normalizeYouTubeVideoId(matchedVideo?.videoId ?? matchedVideo?.videoUrl ?? null);
+      explicitVideoId ??
+      normalizeYouTubeVideoId(matchedVideo?.videoId ?? matchedVideo?.videoUrl ?? null);
     const youtubeVideoUrl =
       explicitVideoUrl ?? buildYouTubeVideoUrl(youtubeVideoId ?? matchedVideo?.videoUrl ?? null);
 
@@ -488,8 +497,9 @@ function buildCanonicalFromSources(
 
     const preferredPrimaryAddress = normalizeDisplayText(bestRow.address);
     const primaryLocation =
-      locations.find((location) => location.address.toLowerCase() === preferredPrimaryAddress.toLowerCase()) ??
-      locations[0];
+      locations.find(
+        (location) => location.address.toLowerCase() === preferredPrimaryAddress.toLowerCase(),
+      ) ?? locations[0];
 
     if (!primaryLocation) {
       continue;
@@ -499,7 +509,12 @@ function buildCanonicalFromSources(
       location.isPrimary = location.address.toLowerCase() === primaryLocation.address.toLowerCase();
     }
 
-    const sourceSheetHash = makeStableHash(group.rows.map((row) => row.sourceRowKey).sort().join('|'));
+    const sourceSheetHash = makeStableHash(
+      group.rows
+        .map((row) => row.sourceRowKey)
+        .sort()
+        .join("|"),
+    );
     const sourceYoutubeHash = youtubeVideoId ?? null;
 
     const canonical: CanonicalStall = {
@@ -523,13 +538,15 @@ function buildCanonicalFromSources(
       hits: [],
       misses: [],
       youtubeTitle: normalizeDisplayText(
-        bestRow.youtubeTitle || matchedVideo?.title || inferYoutubeTitleFromReference(bestRow.youtubeVideoUrl)
+        bestRow.youtubeTitle ||
+          matchedVideo?.title ||
+          inferYoutubeTitleFromReference(bestRow.youtubeVideoUrl),
       ),
       youtubeVideoUrl,
       youtubeVideoId,
       googleMapsName: normalizeDisplayText(bestRow.name),
       awards: [...group.awards].sort((a, b) => a.localeCompare(b)),
-      status: 'active',
+      status: "active",
       sourceRank: computeRowScore(bestRow) + (matchedVideo ? 2 : 0),
       sourceSheetHash,
       sourceYoutubeHash,
@@ -545,7 +562,7 @@ function buildCanonicalFromSources(
 
 function canonicalPayloadHash(stall: CanonicalStall): string {
   const asSqlPayloadPart = (value: string | number | null | undefined): string =>
-    value === null || value === undefined ? '' : String(value);
+    value === null || value === undefined ? "" : String(value);
 
   return [
     asSqlPayloadPart(stall.name),
@@ -573,12 +590,12 @@ function canonicalPayloadHash(stall: CanonicalStall): string {
     asSqlPayloadPart(stall.sourceRank),
     asSqlPayloadPart(stall.sourceSheetHash),
     asSqlPayloadPart(stall.sourceYoutubeHash),
-  ].join('|');
+  ].join("|");
 }
 
 function sanitizeExternalErrorMessage(message: string): string {
-  const oneLine = normalizeDisplayText(message).replace(/\s+/g, ' ');
-  const redacted = oneLine.replace(/AIza[0-9A-Za-z_-]{20,}/g, '[redacted]');
+  const oneLine = normalizeDisplayText(message).replace(/\s+/g, " ");
+  const redacted = oneLine.replace(/AIza[0-9A-Za-z_-]{20,}/g, "[redacted]");
 
   if (redacted.length <= 240) {
     return redacted;
@@ -587,12 +604,15 @@ function sanitizeExternalErrorMessage(message: string): string {
   return `${redacted.slice(0, 240)}...`;
 }
 
-function ensureUniqueCanonicalSlugs(stalls: CanonicalStall[], existingSlugIndex: Map<string, string>): number {
+function ensureUniqueCanonicalSlugs(
+  stalls: CanonicalStall[],
+  existingSlugIndex: Map<string, string>,
+): number {
   const occupiedSlugs = new Map<string, string>();
   let adjustedCount = 0;
 
   const canonicalOrdered = [...stalls].sort((left, right) =>
-    left.sourceStallKey.localeCompare(right.sourceStallKey)
+    left.sourceStallKey.localeCompare(right.sourceStallKey),
   );
 
   for (const stall of canonicalOrdered) {
@@ -648,13 +668,16 @@ function toTelegramMessage(summary: StallSyncSummary): string {
   }
 
   if (summary.warnings.length > 0) {
-    lines.push(`Warnings: ${summary.warnings.join(' | ')}`);
+    lines.push(`Warnings: ${summary.warnings.join(" | ")}`);
   }
 
-  return lines.join('\n');
+  return lines.join("\n");
 }
 
-async function sendTelegramAlert(env: WorkerEnv, summary: StallSyncSummary): Promise<Result<void, Error>> {
+async function sendTelegramAlert(
+  env: WorkerEnv,
+  summary: StallSyncSummary,
+): Promise<Result<void, Error>> {
   const botToken = env.TELEGRAM_BOT_TOKEN?.trim();
   const chatId = env.TELEGRAM_CHAT_ID?.trim();
 
@@ -664,24 +687,26 @@ async function sendTelegramAlert(env: WorkerEnv, summary: StallSyncSummary): Pro
 
   const responseResult = await Result.tryPromise(() =>
     fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'content-type': 'application/json; charset=utf-8',
+        "content-type": "application/json; charset=utf-8",
       },
       body: JSON.stringify({
         chat_id: chatId,
         text: toTelegramMessage(summary),
         disable_web_page_preview: true,
       }),
-    })
+    }),
   );
 
   if (Result.isError(responseResult)) {
-    return Result.err(new Error('Failed sending Telegram alert for stall sync.'));
+    return Result.err(new Error("Failed sending Telegram alert for stall sync."));
   }
 
   if (!responseResult.value.ok) {
-    return Result.err(new Error(`Telegram alert request failed with HTTP ${responseResult.value.status}.`));
+    return Result.err(
+      new Error(`Telegram alert request failed with HTTP ${responseResult.value.status}.`),
+    );
   }
 
   return Result.ok();
@@ -702,7 +727,7 @@ export async function runStallSync(args: RunStallSyncArgs): Promise<StallSyncSum
     runId,
     triggerSource: args.triggerSource,
     mode,
-    status: 'failed',
+    status: "failed",
     startedAt,
     finishedAt: startedAt,
     sourceStats: {
@@ -761,7 +786,13 @@ export async function runStallSync(args: RunStallSyncArgs): Promise<StallSyncSum
     const sheetSources =
       sheetFetchResult.value.sources.length > 0
         ? sheetFetchResult.value.sources
-        : [{ sourceUrl: sheetFetchResult.value.sourceUrl, gid: '', csv: sheetFetchResult.value.csv }];
+        : [
+            {
+              sourceUrl: sheetFetchResult.value.sourceUrl,
+              gid: "",
+              csv: sheetFetchResult.value.csv,
+            },
+          ];
 
     for (const source of sheetSources) {
       const sheetRowsResult = parseSheetRows(source.csv, {
@@ -785,7 +816,7 @@ export async function runStallSync(args: RunStallSyncArgs): Promise<StallSyncSum
     if (Result.isError(youtubeFetchResult)) {
       const reason = sanitizeExternalErrorMessage(youtubeFetchResult.error.message);
       pipelineWarnings.push(
-        `YouTube Data API fetch failed; proceeding with sheet-only enrichment. Reason: ${reason}`
+        `YouTube Data API fetch failed; proceeding with sheet-only enrichment. Reason: ${reason}`,
       );
     } else {
       youtubeEntries = youtubeFetchResult.value;
@@ -793,7 +824,9 @@ export async function runStallSync(args: RunStallSyncArgs): Promise<StallSyncSum
 
     const mapsHoursResult = await enrichOpeningTimesFromGoogleMaps(sheetRows, args.env);
     if (Result.isError(mapsHoursResult)) {
-      pipelineWarnings.push('Google Maps hours enrichment failed unexpectedly; proceeding with raw sheet opening times.');
+      pipelineWarnings.push(
+        "Google Maps hours enrichment failed unexpectedly; proceeding with raw sheet opening times.",
+      );
     } else {
       sheetRows = mapsHoursResult.value.rows;
       if (mapsHoursResult.value.warnings.length > 0) {
@@ -807,22 +840,29 @@ export async function runStallSync(args: RunStallSyncArgs): Promise<StallSyncSum
         canonical
           .filter((stall) => !stall.youtubeVideoUrl)
           .map((stall) => normalizeDisplayText(stall.youtubeTitle))
-          .filter((title) => title.length > 0 && !normalizeComparableText(title).includes('members'))
+          .filter(
+            (title) => title.length > 0 && !normalizeComparableText(title).includes("members"),
+          ),
       ),
     ];
     if (unresolvedSearchQueries.length > 0) {
-      const fallbackQueries = unresolvedSearchQueries.slice(0, MAX_YOUTUBE_SEARCH_FALLBACK_QUERIES_PER_RUN);
+      const fallbackQueries = unresolvedSearchQueries.slice(
+        0,
+        MAX_YOUTUBE_SEARCH_FALLBACK_QUERIES_PER_RUN,
+      );
       const fallbackEntries: YouTubeVideoEntry[] = [];
 
       for (const query of fallbackQueries) {
         const searchResult = await searchYouTubeChannelVideoIdsByQuery(args.env, query, 3);
         if (Result.isError(searchResult)) {
           const reason = sanitizeExternalErrorMessage(searchResult.error.message);
-          pipelineWarnings.push(`YouTube search fallback failed for query "${query}". Reason: ${reason}`);
+          pipelineWarnings.push(
+            `YouTube search fallback failed for query "${query}". Reason: ${reason}`,
+          );
           continue;
         }
 
-        const firstVideoId = searchResult.value[0] ?? '';
+        const firstVideoId = searchResult.value[0] ?? "";
         const fallbackUrl = buildYouTubeVideoUrl(firstVideoId);
         if (!fallbackUrl) {
           continue;
@@ -842,7 +882,7 @@ export async function runStallSync(args: RunStallSyncArgs): Promise<StallSyncSum
       }
       if (unresolvedSearchQueries.length > fallbackQueries.length) {
         pipelineWarnings.push(
-          `YouTube search fallback skipped ${unresolvedSearchQueries.length - fallbackQueries.length} unresolved title query(ies) to stay within per-run budget (${MAX_YOUTUBE_SEARCH_FALLBACK_QUERIES_PER_RUN}).`
+          `YouTube search fallback skipped ${unresolvedSearchQueries.length - fallbackQueries.length} unresolved title query(ies) to stay within per-run budget (${MAX_YOUTUBE_SEARCH_FALLBACK_QUERIES_PER_RUN}).`,
         );
       }
     }
@@ -856,19 +896,22 @@ export async function runStallSync(args: RunStallSyncArgs): Promise<StallSyncSum
     const manualOverridesResult = loadManualYouTubeOverrides(args.env);
     if (Result.isError(manualOverridesResult)) {
       pipelineWarnings.push(
-        `Manual YouTube override parsing failed; continuing without overrides. Reason: ${sanitizeExternalErrorMessage(manualOverridesResult.error.message)}`
+        `Manual YouTube override parsing failed; continuing without overrides. Reason: ${sanitizeExternalErrorMessage(manualOverridesResult.error.message)}`,
       );
     } else {
-      const manualOverrideApplyResult = applyManualYouTubeOverrides(canonical, manualOverridesResult.value);
+      const manualOverrideApplyResult = applyManualYouTubeOverrides(
+        canonical,
+        manualOverridesResult.value,
+      );
       if (manualOverrideApplyResult.appliedCount > 0) {
         pipelineWarnings.push(
-          `Applied ${manualOverrideApplyResult.appliedCount} manual YouTube override(s) for unresolved/member-only mappings.`
+          `Applied ${manualOverrideApplyResult.appliedCount} manual YouTube override(s) for unresolved/member-only mappings.`,
         );
       }
       if (manualOverrideApplyResult.unusedSourceKeys.length > 0) {
-        const examples = manualOverrideApplyResult.unusedSourceKeys.slice(0, 3).join(', ');
+        const examples = manualOverrideApplyResult.unusedSourceKeys.slice(0, 3).join(", ");
         pipelineWarnings.push(
-          `Manual YouTube overrides unmatched: ${manualOverrideApplyResult.unusedSourceKeys.length}${examples ? ` (e.g. ${examples})` : ''}.`
+          `Manual YouTube overrides unmatched: ${manualOverrideApplyResult.unusedSourceKeys.length}${examples ? ` (e.g. ${examples})` : ""}.`,
         );
       }
     }
@@ -909,7 +952,7 @@ export async function runStallSync(args: RunStallSyncArgs): Promise<StallSyncSum
 
     const summary: StallSyncSummary = {
       ...baseSummary,
-      status: 'success',
+      status: "success",
       finishedAt: nowIso(),
       sourceStats: {
         sheetRows: sheetRows.length,
@@ -929,7 +972,9 @@ export async function runStallSync(args: RunStallSyncArgs): Promise<StallSyncSum
     };
 
     if (usedStaticSeed) {
-      summary.warnings.push('Sheet source produced zero canonical rows; static dataset seed was used.');
+      summary.warnings.push(
+        "Sheet source produced zero canonical rows; static dataset seed was used.",
+      );
     }
     if (pipelineWarnings.length > 0) {
       summary.warnings.push(...pipelineWarnings);
@@ -938,7 +983,7 @@ export async function runStallSync(args: RunStallSyncArgs): Promise<StallSyncSum
       summary.warnings.push(`Adjusted ${slugAdjustments} slug(s) to avoid uniqueness collisions.`);
     }
 
-    if (mode === 'dry-run') {
+    if (mode === "dry-run") {
       summary.applyStats = {
         upsertedStalls: 0,
         upsertedLocations: 0,
@@ -948,9 +993,9 @@ export async function runStallSync(args: RunStallSyncArgs): Promise<StallSyncSum
     }
 
     if (!forceApply && existingCount > 0 && changeRatio > guardRatio) {
-      summary.status = 'guarded';
+      summary.status = "guarded";
       summary.warnings.push(
-        `Guardrail prevented apply mode: closure ratio ${(changeRatio * 100).toFixed(1)}% exceeded ${(guardRatio * 100).toFixed(1)}%.`
+        `Guardrail prevented apply mode: closure ratio ${(changeRatio * 100).toFixed(1)}% exceeded ${(guardRatio * 100).toFixed(1)}%.`,
       );
       return summary;
     }
@@ -972,9 +1017,12 @@ export async function runStallSync(args: RunStallSyncArgs): Promise<StallSyncSum
   const finalSummary: StallSyncSummary = Result.isError(syncResult)
     ? {
         ...baseSummary,
-        status: 'failed',
+        status: "failed",
         finishedAt: nowIso(),
-        error: syncResult.error instanceof Error ? syncResult.error.message : 'Unknown stall sync failure.',
+        error:
+          syncResult.error instanceof Error
+            ? syncResult.error.message
+            : "Unknown stall sync failure.",
       }
     : syncResult.value;
 
@@ -990,16 +1038,15 @@ export async function runStallSync(args: RunStallSyncArgs): Promise<StallSyncSum
   });
 
   if (Result.isError(runInsertResult)) {
-    finalSummary.warnings.push('Failed to persist sync run record to D1.');
+    finalSummary.warnings.push("Failed to persist sync run record to D1.");
   }
 
-  const shouldSendAlert =
-    finalSummary.status !== 'success' || shouldAlertOnSuccess(args.env);
+  const shouldSendAlert = finalSummary.status !== "success" || shouldAlertOnSuccess(args.env);
 
   if (shouldSendAlert) {
     const alertResult = await sendTelegramAlert(args.env, finalSummary);
     if (Result.isError(alertResult)) {
-      finalSummary.warnings.push('Failed to deliver Telegram alert.');
+      finalSummary.warnings.push("Failed to deliver Telegram alert.");
     }
   }
 

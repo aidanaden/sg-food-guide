@@ -36,10 +36,7 @@
     "ratingOriginal": 2,
     "ratingModerated": 3,
     "youtubeVideoLink": "【Best Prawn Mee】Heartlands, Part 1 - Episode 1",
-    "awards": [
-      "BEST DRY VERSION",
-      "BEST OVERALL"
-    ]
+    "awards": ["BEST DRY VERSION", "BEST OVERALL"]
   },
   {
     "sourceRow": 5,
@@ -78,9 +75,7 @@
     "ratingOriginal": 2,
     "ratingModerated": 3,
     "youtubeVideoLink": "【Best Prawn Mee】Heartlands, Part 2 - Episode 2",
-    "awards": [
-      "BEST SOUP"
-    ]
+    "awards": ["BEST SOUP"]
   },
   {
     "sourceRow": 8,

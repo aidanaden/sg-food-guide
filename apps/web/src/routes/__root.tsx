@@ -1,44 +1,45 @@
-import '@fontsource-variable/dm-sans';
-import '@fontsource-variable/bricolage-grotesque';
-import '@fontsource-variable/jetbrains-mono';
+import bricolageGrotesqueLatinWghtNormal from "@fontsource-variable/bricolage-grotesque/files/bricolage-grotesque-latin-wght-normal.woff2?url";
+import dmSansLatinWghtNormal from "@fontsource-variable/dm-sans/files/dm-sans-latin-wght-normal.woff2?url";
+import { HeadContent, Scripts, createRootRouteWithContext } from "@tanstack/react-router";
 
-import { HeadContent, Scripts, createRootRouteWithContext } from '@tanstack/react-router';
-import appCss from '../styles.css?url';
-import dmSansLatinWghtNormal from '@fontsource-variable/dm-sans/files/dm-sans-latin-wght-normal.woff2?url';
-import bricolageGrotesqueLatinWghtNormal from '@fontsource-variable/bricolage-grotesque/files/bricolage-grotesque-latin-wght-normal.woff2?url';
+import "@fontsource-variable/dm-sans";
+import "@fontsource-variable/bricolage-grotesque";
+import "@fontsource-variable/jetbrains-mono";
+import { AppNavHeader } from "../components/AppNavHeader";
+import appCss from "../styles.css?url";
 
 export const Route = createRootRouteWithContext<Record<string, never>>()({
   head: () => ({
     meta: [
-      { charSet: 'utf-8' },
-      { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+      { charSet: "utf-8" },
+      { name: "viewport", content: "width=device-width, initial-scale=1" },
       {
-        name: 'description',
+        name: "description",
         content:
           "The definitive guide to Singapore's best hawker food - 170+ stalls ranked, mapped, and reviewed across 10 cuisines.",
       },
-      { property: 'og:site_name', content: 'SG Food Guide' },
-      { property: 'og:locale', content: 'en_SG' },
-      { name: 'theme-color', content: '#1a1410' },
-      { title: 'SG Food Guide' },
+      { property: "og:site_name", content: "SG Food Guide" },
+      { property: "og:locale", content: "en_SG" },
+      { name: "theme-color", content: "#1a1410" },
+      { title: "SG Food Guide" },
     ],
     links: [
       {
-        rel: 'preload',
+        rel: "preload",
         href: dmSansLatinWghtNormal,
-        as: 'font',
-        type: 'font/woff2',
-        crossOrigin: 'anonymous',
+        as: "font",
+        type: "font/woff2",
+        crossOrigin: "anonymous",
       },
       {
-        rel: 'preload',
+        rel: "preload",
         href: bricolageGrotesqueLatinWghtNormal,
-        as: 'font',
-        type: 'font/woff2',
-        crossOrigin: 'anonymous',
+        as: "font",
+        type: "font/woff2",
+        crossOrigin: "anonymous",
       },
-      { rel: 'stylesheet', href: appCss },
-      { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
+      { rel: "stylesheet", href: appCss },
+      { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
     ],
   }),
   shellComponent: RootDocument,
@@ -46,11 +47,16 @@ export const Route = createRootRouteWithContext<Record<string, never>>()({
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="dark bg-background text-foreground antialiased" suppressHydrationWarning>
+    <html
+      lang="en"
+      className="dark bg-background text-foreground antialiased"
+      suppressHydrationWarning
+    >
       <head>
         <HeadContent />
       </head>
-      <body className="min-h-screen font-sans">
+      <body className="min-h-screen pb-20 font-sans md:pb-0">
+        <AppNavHeader />
         {children}
         <Scripts />
       </body>

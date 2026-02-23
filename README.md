@@ -27,6 +27,7 @@ This repository is a Bun + Turborepo monorepo:
 - `/cuisine/:cuisine`
 - `/stall/:slug`
 - `/community/stalls` (approved community-source stalls from YouTube comments)
+- `/admin/login` (Cloudflare Access sign-in handoff)
 - `/admin/comment-drafts` (admin-only draft review queue via Cloudflare Access)
 - `/api/geocode/search`
 - `/api/transit/plan`

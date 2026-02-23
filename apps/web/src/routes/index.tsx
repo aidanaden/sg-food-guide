@@ -1,4 +1,4 @@
-import { Link, createFileRoute } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 
 import {
@@ -20,6 +20,8 @@ import {
 
 import { StallCard } from "../components/StallCard";
 import type { Stall } from "../data/shared";
+import { getFavorites, getVisited, toggleFavorite, toggleVisited } from "../lib/preferences";
+import { loadHomeRouteData } from "../lib/route-loaders";
 import {
   getAreas,
   getAllTimeCategories,
@@ -29,8 +31,6 @@ import {
   timeCategoryLabels,
   countryLabels,
 } from "../lib/stall-utils";
-import { getFavorites, getVisited, toggleFavorite, toggleVisited } from "../lib/preferences";
-import { loadHomeRouteData } from "../lib/route-loaders";
 
 const ALL_FILTER_VALUE = "__all__";
 const sortLabelByValue: Record<string, string> = {
@@ -69,109 +69,106 @@ function HomePage() {
     setVisitedSet(getVisited());
   }, []);
 
-  const {
-    filtered,
-    areaOptions,
-    cuisineOptions,
-    countryOptions,
-    timeCategoryOptions,
-  } = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    const matchesSearchAndToggles = (stall: Stall) => {
-      if (query) {
-        const haystack =
-          `${stall.name} ${stall.dishName} ${stall.address} ${stall.cuisineLabel}`.toLowerCase();
-        if (!haystack.includes(query)) return false;
-      }
-      if (favoritesOnly && !favoriteSet.has(stall.slug)) return false;
-      if (hideVisited && visitedSet.has(stall.slug)) return false;
+  const { filtered, areaOptions, cuisineOptions, countryOptions, timeCategoryOptions } =
+    useMemo(() => {
+      const query = search.trim().toLowerCase();
+      const matchesSearchAndToggles = (stall: Stall) => {
+        if (query) {
+          const haystack =
+            `${stall.name} ${stall.dishName} ${stall.address} ${stall.cuisineLabel}`.toLowerCase();
+          if (!haystack.includes(query)) return false;
+        }
+        if (favoritesOnly && !favoriteSet.has(stall.slug)) return false;
+        if (hideVisited && visitedSet.has(stall.slug)) return false;
 
-      return true;
-    };
+        return true;
+      };
 
-    const matchesArea = (stall: Stall, selectedArea: string) => {
-      if (!selectedArea) return true;
+      const matchesArea = (stall: Stall, selectedArea: string) => {
+        if (!selectedArea) return true;
 
-      if (selectedArea === "Other") {
-        return getStallArea(stall) === "Other";
-      }
+        if (selectedArea === "Other") {
+          return getStallArea(stall) === "Other";
+        }
 
-      if (stall.address.toLowerCase().includes(selectedArea.toLowerCase())) return true;
+        if (stall.address.toLowerCase().includes(selectedArea.toLowerCase())) return true;
 
-      return getStallArea(stall) === selectedArea;
-    };
+        return getStallArea(stall) === selectedArea;
+      };
 
-    const matchesFilters = (
-      stall: Stall,
-      overrides?: {
-        area?: string;
-        cuisine?: string;
-        country?: string;
-        timeCategories?: string[];
-      },
-    ) => {
-      const nextArea = overrides?.area ?? area;
-      const nextCuisine = overrides?.cuisine ?? cuisine;
-      const nextCountry = overrides?.country ?? country;
-      const nextTimeCategories = overrides?.timeCategories ?? selectedTimeCategories;
+      const matchesFilters = (
+        stall: Stall,
+        overrides?: {
+          area?: string;
+          cuisine?: string;
+          country?: string;
+          timeCategories?: string[];
+        },
+      ) => {
+        const nextArea = overrides?.area ?? area;
+        const nextCuisine = overrides?.cuisine ?? cuisine;
+        const nextCountry = overrides?.country ?? country;
+        const nextTimeCategories = overrides?.timeCategories ?? selectedTimeCategories;
 
-      if (!matchesSearchAndToggles(stall)) return false;
-      if (!matchesArea(stall, nextArea)) return false;
-      if (nextCuisine && stall.cuisine !== nextCuisine) return false;
-      if (nextCountry && stall.country !== nextCountry) return false;
-      if (
-        nextTimeCategories.length > 0 &&
-        !nextTimeCategories.some((category) =>
-          stall.timeCategories.includes(category as (typeof stall.timeCategories)[number]),
-        )
-      ) {
-        return false;
-      }
+        if (!matchesSearchAndToggles(stall)) return false;
+        if (!matchesArea(stall, nextArea)) return false;
+        if (nextCuisine && stall.cuisine !== nextCuisine) return false;
+        if (nextCountry && stall.country !== nextCountry) return false;
+        if (
+          nextTimeCategories.length > 0 &&
+          !nextTimeCategories.some((category) =>
+            stall.timeCategories.includes(category as (typeof stall.timeCategories)[number]),
+          )
+        ) {
+          return false;
+        }
 
-      return true;
-    };
+        return true;
+      };
 
-    const nextAreas = getAreas(stalls.filter((stall: Stall) => matchesFilters(stall, { area: "" })));
-    const nextCuisines = getCuisines(
-      stalls.filter((stall: Stall) => matchesFilters(stall, { cuisine: "" })),
-    );
-    const nextCountries = getCountries(
-      stalls.filter((stall: Stall) => matchesFilters(stall, { country: "" })),
-    );
-    const nextTimeCategories = getAllTimeCategories(
-      stalls.filter((stall: Stall) => matchesFilters(stall, { timeCategories: [] })),
-    );
-    const next = stalls.filter((stall: Stall) => matchesFilters(stall));
+      const nextAreas = getAreas(
+        stalls.filter((stall: Stall) => matchesFilters(stall, { area: "" })),
+      );
+      const nextCuisines = getCuisines(
+        stalls.filter((stall: Stall) => matchesFilters(stall, { cuisine: "" })),
+      );
+      const nextCountries = getCountries(
+        stalls.filter((stall: Stall) => matchesFilters(stall, { country: "" })),
+      );
+      const nextTimeCategories = getAllTimeCategories(
+        stalls.filter((stall: Stall) => matchesFilters(stall, { timeCategories: [] })),
+      );
+      const next = stalls.filter((stall: Stall) => matchesFilters(stall));
 
-    const score = (v: number | null) => (v === null ? -1 : v);
+      const score = (v: number | null) => (v === null ? -1 : v);
 
-    if (sortBy === "rating-asc")
-      next.sort((a: Stall, b: Stall) => score(a.ratingModerated) - score(b.ratingModerated));
-    else if (sortBy === "price-asc") next.sort((a: Stall, b: Stall) => a.price - b.price);
-    else if (sortBy === "price-desc") next.sort((a: Stall, b: Stall) => b.price - a.price);
-    else if (sortBy === "episode-asc")
-      next.sort((a: Stall, b: Stall) => (a.episodeNumber ?? 9999) - (b.episodeNumber ?? 9999));
-    else next.sort((a: Stall, b: Stall) => score(b.ratingModerated) - score(a.ratingModerated));
+      if (sortBy === "rating-asc")
+        next.sort((a: Stall, b: Stall) => score(a.ratingModerated) - score(b.ratingModerated));
+      else if (sortBy === "price-asc") next.sort((a: Stall, b: Stall) => a.price - b.price);
+      else if (sortBy === "price-desc") next.sort((a: Stall, b: Stall) => b.price - a.price);
+      else if (sortBy === "episode-asc")
+        next.sort((a: Stall, b: Stall) => (a.episodeNumber ?? 9999) - (b.episodeNumber ?? 9999));
+      else next.sort((a: Stall, b: Stall) => score(b.ratingModerated) - score(a.ratingModerated));
 
-    return {
-      filtered: next,
-      areaOptions: nextAreas,
-      cuisineOptions: nextCuisines,
-      countryOptions: nextCountries,
-      timeCategoryOptions: nextTimeCategories,
-    };
-  }, [
-    search,
-    area,
-    cuisine,
-    country,
-    selectedTimeCategories,
-    favoritesOnly,
-    hideVisited,
-    sortBy,
-    favoriteSet,
-    visitedSet,
-  ]);
+      return {
+        filtered: next,
+        areaOptions: nextAreas,
+        cuisineOptions: nextCuisines,
+        countryOptions: nextCountries,
+        timeCategoryOptions: nextTimeCategories,
+      };
+    }, [
+      search,
+      area,
+      cuisine,
+      country,
+      selectedTimeCategories,
+      favoritesOnly,
+      hideVisited,
+      sortBy,
+      favoriteSet,
+      visitedSet,
+    ]);
 
   useEffect(() => {
     if (area && !areaOptions.includes(area)) {
@@ -215,14 +212,6 @@ function HomePage() {
           <p className="text-foreground-muted mt-2">
             {stalls.length} stalls ranked, mapped, and reviewed.
           </p>
-          <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
-            <Link to="/community/stalls" className="text-primary hover:underline">
-              Community source route
-            </Link>
-            <Link to="/admin/comment-drafts" className="text-foreground-faint hover:text-primary">
-              Admin draft queue
-            </Link>
-          </div>
         </div>
       </header>
 
@@ -250,14 +239,20 @@ function HomePage() {
             </Button>
 
             <ResponsiveDialog open={isFiltersOpen} onOpenChange={setIsFiltersOpen}>
-              <ResponsiveDialogContent showCloseButton={false} className="pt-0 sm:max-w-2xl sm:gap-0">
+              <ResponsiveDialogContent
+                showCloseButton={false}
+                className="pt-0 sm:max-w-2xl sm:gap-0"
+              >
                 <ResponsiveDialogHeader className="border-border -mx-4 border-b px-4 pb-3 sm:pt-3 sm:pb-2">
                   <div className="flex items-center justify-between">
                     <ResponsiveDialogTitle className="font-display text-lg font-bold">
                       Filters
                     </ResponsiveDialogTitle>
                     <ResponsiveDialogClose aria-label="Close filters">
-                      <span aria-hidden="true" className="iconify ph--x-bold text-foreground-muted size-4 shrink-0" />
+                      <span
+                        aria-hidden="true"
+                        className="iconify ph--x-bold text-foreground-muted size-4 shrink-0"
+                      />
                     </ResponsiveDialogClose>
                   </div>
                 </ResponsiveDialogHeader>
@@ -369,8 +364,10 @@ function HomePage() {
                               return "All Countries";
                             }
 
-                            return countryLabels[stringValue as keyof typeof countryLabels] ??
-                              "All Countries";
+                            return (
+                              countryLabels[stringValue as keyof typeof countryLabels] ??
+                              "All Countries"
+                            );
                           }}
                         </SelectValue>
                       </SelectTrigger>

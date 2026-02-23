@@ -1,9 +1,9 @@
-import { createFileRoute } from '@tanstack/react-router';
-import { Result } from 'better-result';
-import * as z from 'zod/mini';
+import { createFileRoute } from "@tanstack/react-router";
+import { Result } from "better-result";
+import * as z from "zod/mini";
 
-import { getWorkerEnvFromServerContext } from '../../../server/cloudflare/runtime';
-import { onRequestGet } from '../../../server/api/transit';
+import { onRequestGet } from "../../../server/api/transit";
+import { getWorkerEnvFromServerContext } from "../../../server/cloudflare/runtime";
 
 const transitEnvSchema = z.object({
   ONEMAP_EMAIL: z.optional(z.string()),
@@ -11,7 +11,7 @@ const transitEnvSchema = z.object({
   LTA_ACCOUNT_KEY: z.optional(z.string()),
 });
 
-export const Route = createFileRoute('/api/transit/plan')({
+export const Route = createFileRoute("/api/transit/plan")({
   server: {
     handlers: {
       GET: async ({ request, context }) => {
@@ -37,15 +37,15 @@ export const Route = createFileRoute('/api/transit/plan')({
         if (!parsedEnv.success) {
           return new Response(
             JSON.stringify({
-              error: 'Invalid transit environment configuration.',
+              error: "Invalid transit environment configuration.",
             }),
             {
               status: 500,
               headers: {
-                'content-type': 'application/json; charset=utf-8',
-                'cache-control': 'no-store',
+                "content-type": "application/json; charset=utf-8",
+                "cache-control": "no-store",
               },
-            }
+            },
           );
         }
 

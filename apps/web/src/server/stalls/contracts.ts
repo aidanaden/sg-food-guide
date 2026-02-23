@@ -1,30 +1,26 @@
-import { Result } from 'better-result';
-import * as z from 'zod/mini';
+import { Result } from "better-result";
+import * as z from "zod/mini";
 
-import {
-  type Stall,
-  type TimeCategory,
-  parseTimeCategories,
-} from '../../data/shared';
+import { type Stall, type TimeCategory, parseTimeCategories } from "../../data/shared";
 
 export const countryCodeSchema = z.union([
-  z.literal('SG'),
-  z.literal('MY'),
-  z.literal('TH'),
-  z.literal('HK'),
-  z.literal('CN'),
-  z.literal('JP'),
-  z.literal('ID'),
+  z.literal("SG"),
+  z.literal("MY"),
+  z.literal("TH"),
+  z.literal("HK"),
+  z.literal("CN"),
+  z.literal("JP"),
+  z.literal("ID"),
 ]);
 
 export type CountryCode = z.infer<typeof countryCodeSchema>;
 
 export const timeCategorySchema = z.union([
-  z.literal('early-morning'),
-  z.literal('lunch'),
-  z.literal('dinner'),
-  z.literal('late-night'),
-  z.literal('all-day'),
+  z.literal("early-morning"),
+  z.literal("lunch"),
+  z.literal("dinner"),
+  z.literal("late-night"),
+  z.literal("all-day"),
 ]);
 
 export type CanonicalTimeCategory = z.infer<typeof timeCategorySchema>;
@@ -65,7 +61,7 @@ export interface CanonicalStall {
   youtubeVideoId: string | null;
   googleMapsName: string;
   awards: string[];
-  status: 'active' | 'closed';
+  status: "active" | "closed";
   sourceRank: number;
   sourceSheetHash: string | null;
   sourceYoutubeHash: string | null;
@@ -98,7 +94,7 @@ const dbStallRowSchema = z.object({
   youtube_video_id: z.optional(z.union([z.string(), z.null()])),
   google_maps_name: z.string(),
   awards_json: z.string(),
-  status: z.union([z.literal('active'), z.literal('closed')]),
+  status: z.union([z.literal("active"), z.literal("closed")]),
   source_rank: z.union([z.number(), z.string()]),
   source_sheet_hash: z.optional(z.union([z.string(), z.null()])),
   source_youtube_hash: z.optional(z.union([z.string(), z.null()])),
@@ -107,7 +103,7 @@ const dbStallRowSchema = z.object({
 });
 
 function parseNumeric(input: unknown): number | null {
-  if (input === null || input === undefined || input === '') {
+  if (input === null || input === undefined || input === "") {
     return null;
   }
 
@@ -123,13 +119,13 @@ function parseNumericOrFallback(input: unknown, fallback: number): number {
 function parseStringArray(value: string): Result<string[], Error> {
   const parsedResult = Result.try(() => JSON.parse(value));
   if (Result.isError(parsedResult)) {
-    return Result.err(new Error('Invalid JSON array payload.'));
+    return Result.err(new Error("Invalid JSON array payload."));
   }
 
   const arraySchema = z.array(z.string());
   const parsedArray = arraySchema.safeParse(parsedResult.value);
   if (!parsedArray.success) {
-    return Result.err(new Error('Invalid string array payload.'));
+    return Result.err(new Error("Invalid string array payload."));
   }
 
   return Result.ok(parsedArray.data);
@@ -143,21 +139,23 @@ function parseTimeCategoryArray(value: string, openingTimes: string): TimeCatego
 
   const list = parsed.value;
   const allowedSet = new Set<TimeCategory>([
-    'early-morning',
-    'lunch',
-    'dinner',
-    'late-night',
-    'all-day',
+    "early-morning",
+    "lunch",
+    "dinner",
+    "late-night",
+    "all-day",
   ]);
 
-  const filtered = list.filter((item): item is TimeCategory => allowedSet.has(item as TimeCategory));
+  const filtered = list.filter((item): item is TimeCategory =>
+    allowedSet.has(item as TimeCategory),
+  );
   return filtered.length > 0 ? filtered : parseTimeCategories(openingTimes);
 }
 
 export function mapDbRowToStall(row: unknown): Result<Stall, Error> {
   const parsed = dbStallRowSchema.safeParse(row);
   if (!parsed.success) {
-    return Result.err(new Error('Invalid stall row returned from database.'));
+    return Result.err(new Error("Invalid stall row returned from database."));
   }
 
   const rowValue = parsed.data;
@@ -176,7 +174,10 @@ export function mapDbRowToStall(row: unknown): Result<Stall, Error> {
     return Result.err(awardsResult.error);
   }
 
-  const timeCategories = parseTimeCategoryArray(rowValue.time_categories_json, rowValue.opening_times);
+  const timeCategories = parseTimeCategoryArray(
+    rowValue.time_categories_json,
+    rowValue.opening_times,
+  );
   const price = parseNumericOrFallback(rowValue.price, 0);
   const ratingOriginal = parseNumeric(rowValue.rating_original);
   const ratingModerated = parseNumeric(rowValue.rating_moderated);

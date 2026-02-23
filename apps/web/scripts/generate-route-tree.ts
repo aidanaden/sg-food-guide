@@ -1,11 +1,11 @@
-import { Generator, getConfig } from '@tanstack/router-generator';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { Result } from 'better-result';
+import { Generator, getConfig } from "@tanstack/router-generator";
+import { Result } from "better-result";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 function getProjectRoot(): string {
   const filePath = fileURLToPath(import.meta.url);
-  return path.resolve(path.dirname(filePath), '..');
+  return path.resolve(path.dirname(filePath), "..");
 }
 
 async function main() {

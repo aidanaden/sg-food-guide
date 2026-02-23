@@ -31,7 +31,7 @@ const DrawerOverlay: React.FC<DrawerPrimitive.Backdrop.Props> = ({ className, ..
   <DrawerPrimitive.Backdrop
     data-slot="drawer-overlay"
     className={cn(
-      "fixed inset-0 z-50 bg-black/60 transition-all duration-300 ease-out data-[starting-style]:opacity-0 data-[ending-style]:opacity-0 motion-reduce:transition-none",
+      "fixed inset-0 z-50 bg-black/60 transition-all duration-300 ease-out data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 motion-reduce:transition-none",
       className,
     )}
     {...props}
@@ -45,11 +45,14 @@ const DrawerContent: React.FC<DrawerPrimitive.Popup.Props> = ({
 }) => (
   <DrawerPortal>
     <DrawerOverlay />
-    <DrawerPrimitive.Viewport data-slot="drawer-viewport" className="fixed inset-0 z-50 overflow-hidden">
+    <DrawerPrimitive.Viewport
+      data-slot="drawer-viewport"
+      className="fixed inset-0 z-50 overflow-hidden"
+    >
       <DrawerPrimitive.Popup
         data-slot="drawer-content"
         className={cn(
-          "bg-background border-border fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto flex-col rounded-t-xl border p-0 outline-none transition-all duration-300 ease-out data-[ending-style]:duration-200 data-[starting-style]:translate-y-full data-[starting-style]:opacity-0 data-[ending-style]:translate-y-full data-[ending-style]:opacity-0 motion-reduce:transition-none",
+          "bg-background border-border fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto flex-col rounded-t-xl border p-0 transition-all duration-300 ease-out outline-none data-[ending-style]:translate-y-full data-[ending-style]:opacity-0 data-[ending-style]:duration-200 data-[starting-style]:translate-y-full data-[starting-style]:opacity-0 motion-reduce:transition-none",
           className,
         )}
         {...props}
@@ -80,7 +83,10 @@ const DrawerHeader: React.FC<React.ComponentProps<"div">> = ({ className, ...pro
 const DrawerFooter: React.FC<React.ComponentProps<"div">> = ({ className, ...props }) => (
   <div
     data-slot="drawer-footer"
-    className={cn("bg-background border-border mt-auto flex flex-col gap-2 border-t p-4", className)}
+    className={cn(
+      "bg-background border-border mt-auto flex flex-col gap-2 border-t p-4",
+      className,
+    )}
     {...props}
   />
 );

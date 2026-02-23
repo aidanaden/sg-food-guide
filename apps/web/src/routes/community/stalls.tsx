@@ -1,9 +1,9 @@
-import { Link, createFileRoute } from '@tanstack/react-router';
+import { Link, createFileRoute } from "@tanstack/react-router";
 
-import { getPublicCommentSourceStalls } from '../../server/comment-suggestions/admin.functions';
-import type { ApprovedCommentSourceStall } from '../../server/comment-suggestions/contracts';
+import { getPublicCommentSourceStalls } from "../../server/comment-suggestions/admin.functions";
+import type { ApprovedCommentSourceStall } from "../../server/comment-suggestions/contracts";
 
-export const Route = createFileRoute('/community/stalls')({
+export const Route = createFileRoute("/community/stalls")({
   loader: async () => {
     const stalls = await getPublicCommentSourceStalls({
       data: {
@@ -22,20 +22,21 @@ export const Route = createFileRoute('/community/stalls')({
 
 function CommunityStallsPage() {
   const { stalls, generatedAt } = Route.useLoaderData();
-  const generatedAtDisplay = generatedAt.replace('T', ' ').slice(0, 16);
+  const generatedAtDisplay = generatedAt.replace("T", " ").slice(0, 16);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="bg-background min-h-screen">
       <header className="border-border bg-surface border-b px-4 py-8">
         <div className="mx-auto max-w-4xl">
-          <Link to="/" className="text-sm text-foreground-faint hover:text-primary">
+          <Link to="/" className="text-foreground-faint hover:text-primary text-sm">
             ← Back to main stalls
           </Link>
           <h1 className="font-display mt-3 text-3xl font-black tracking-tight sm:text-4xl">
             Community Suggestions
           </h1>
           <p className="text-foreground-muted mt-2 text-sm sm:text-base">
-            Admin-approved stalls discovered from YouTube comments. Last refreshed {generatedAtDisplay} UTC.
+            Admin-approved stalls discovered from YouTube comments. Last refreshed{" "}
+            {generatedAtDisplay} UTC.
           </p>
         </div>
       </header>
