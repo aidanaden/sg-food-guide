@@ -97,7 +97,12 @@ async function fetchApiJson<TSchema extends z.ZodTypeAny>(
   );
 
   if (Result.isError(responseResult)) {
-    return Result.err(new Error(`Failed to fetch YouTube Data API ${label}.`));
+    const reason =
+      responseResult.error instanceof Error
+        ? truncateErrorPayload(responseResult.error.message)
+        : truncateErrorPayload(String(responseResult.error));
+    const details = reason ? ` Reason: ${reason}` : '';
+    return Result.err(new Error(`Failed to fetch YouTube Data API ${label}.${details}`));
   }
 
   if (!responseResult.value.ok) {

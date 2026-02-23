@@ -387,6 +387,17 @@ function canonicalPayloadHash(stall: CanonicalStall): string {
   ].join('|');
 }
 
+function sanitizeExternalErrorMessage(message: string): string {
+  const oneLine = normalizeDisplayText(message).replace(/\s+/g, ' ');
+  const redacted = oneLine.replace(/AIza[0-9A-Za-z_-]{20,}/g, '[redacted]');
+
+  if (redacted.length <= 240) {
+    return redacted;
+  }
+
+  return `${redacted.slice(0, 240)}...`;
+}
+
 function ensureUniqueCanonicalSlugs(stalls: CanonicalStall[], existingSlugIndex: Map<string, string>): number {
   const occupiedSlugs = new Map<string, string>();
   let adjustedCount = 0;
@@ -591,7 +602,10 @@ export async function runStallSync(args: RunStallSyncArgs): Promise<StallSyncSum
     let youtubeEntries: YouTubeVideoEntry[] = [];
     const youtubeFetchResult = await fetchYouTubeVideos(args.env);
     if (Result.isError(youtubeFetchResult)) {
-      pipelineWarnings.push('YouTube Data API fetch failed; proceeding with sheet-only enrichment.');
+      const reason = sanitizeExternalErrorMessage(youtubeFetchResult.error.message);
+      pipelineWarnings.push(
+        `YouTube Data API fetch failed; proceeding with sheet-only enrichment. Reason: ${reason}`
+      );
     } else {
       youtubeEntries = youtubeFetchResult.value;
     }
