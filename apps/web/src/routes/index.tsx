@@ -1,5 +1,5 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   Button,
@@ -32,6 +32,12 @@ import {
   timeCategoryLabels,
   countryLabels,
 } from "../lib/stall-utils";
+import {
+  calculateDistance,
+  getCurrentLocation,
+  isGeolocationSupported,
+  type Coordinates,
+} from "../lib/geolocation";
 
 const ALL_FILTER_VALUE = "__all__";
 const sortLabelByValue: Record<string, string> = {
@@ -40,6 +46,7 @@ const sortLabelByValue: Record<string, string> = {
   "price-asc": "Cheapest First",
   "price-desc": "Priciest First",
   "episode-asc": "Episode Order",
+  "nearest": "Nearest",
 };
 
 export const Route = createFileRoute("/")({
@@ -60,10 +67,60 @@ function HomePage() {
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [favoriteSet, setFavoriteSet] = useState<Set<string>>(() => new Set<string>());
   const [visitedSet, setVisitedSet] = useState<Set<string>>(() => new Set<string>());
+
+  // Location state for "Near me" feature
+  const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [nearMeEnabled, setNearMeEnabled] = useState(false);
+
   const filterSelectTriggerClass =
     "h-11 w-full border-border bg-surface-raised text-foreground data-[placeholder]:text-foreground-faint";
   const filterButtonClass =
     "border-border bg-surface-raised text-foreground-muted hover:border-primary hover:text-primary relative z-20 h-11 flex-none touch-manipulation px-3 text-base sm:text-sm";
+
+  // Request location when "Near me" is toggled on
+  const requestLocation = useCallback(async () => {
+    if (!isGeolocationSupported()) {
+      setLocationError("Geolocation is not supported by your browser");
+      return;
+    }
+
+    setLocationLoading(true);
+    setLocationError(null);
+
+    const result = await getCurrentLocation();
+
+    if (result.success) {
+      setUserLocation(result.coordinates);
+    } else {
+      setLocationError(result.error.message);
+      setNearMeEnabled(false);
+    }
+
+    setLocationLoading(false);
+  }, []);
+
+  // Handle "Near me" toggle
+  const handleNearMeToggle = useCallback(() => {
+    if (!nearMeEnabled) {
+      // Turning on - request location
+      if (!userLocation) {
+        requestLocation();
+      }
+      setNearMeEnabled(true);
+    } else {
+      // Turning off
+      setNearMeEnabled(false);
+    }
+  }, [nearMeEnabled, userLocation, requestLocation]);
+
+  // Update location when enabled but not yet obtained
+  useEffect(() => {
+    if (nearMeEnabled && !userLocation && !locationLoading && isGeolocationSupported()) {
+      requestLocation();
+    }
+  }, [nearMeEnabled, userLocation, locationLoading, requestLocation]);
 
   useEffect(() => {
     setFavoriteSet(getFavorites());
@@ -143,7 +200,14 @@ function HomePage() {
 
       const score = (v: number | null) => (v === null ? -1 : v);
 
-      if (sortBy === "rating-asc")
+      // Sort by nearest distance if enabled
+      if (sortBy === "nearest" && userLocation) {
+        next.sort((a: Stall, b: Stall) => {
+          const distA = calculateDistance(userLocation, { lat: a.lat, lng: a.lng });
+          const distB = calculateDistance(userLocation, { lat: b.lat, lng: b.lng });
+          return distA - distB;
+        });
+      } else if (sortBy === "rating-asc")
         next.sort((a: Stall, b: Stall) => score(a.ratingModerated) - score(b.ratingModerated));
       else if (sortBy === "price-asc") next.sort((a: Stall, b: Stall) => a.price - b.price);
       else if (sortBy === "price-desc") next.sort((a: Stall, b: Stall) => b.price - a.price);
@@ -169,6 +233,7 @@ function HomePage() {
       sortBy,
       favoriteSet,
       visitedSet,
+      userLocation,
     ]);
 
   useEffect(() => {
@@ -236,19 +301,25 @@ function HomePage() {
               Based on your preferences and favorites
             </p>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {recommendations.map(({ stall, reason }) => (
-                <StallCard
-                  key={stall.slug}
-                  stall={stall}
-                  showCuisine
-                  isFavorite={favoriteSet.has(stall.slug)}
-                  isVisited={visitedSet.has(stall.slug)}
-                  relativeNow={generatedAt}
-                  onToggleFavorite={(slug) => setFavoriteSet(toggleFavorite(slug))}
-                  onToggleVisited={(slug) => setVisitedSet(toggleVisited(slug))}
-                  recommendationReason={reason.label}
-                />
-              ))}
+              {recommendations.map(({ stall, reason }) => {
+                const distanceKm = userLocation
+                  ? calculateDistance(userLocation, { lat: stall.lat, lng: stall.lng })
+                  : undefined;
+                return (
+                  <StallCard
+                    key={stall.slug}
+                    stall={stall}
+                    showCuisine
+                    isFavorite={favoriteSet.has(stall.slug)}
+                    isVisited={visitedSet.has(stall.slug)}
+                    relativeNow={generatedAt}
+                    onToggleFavorite={(slug) => setFavoriteSet(toggleFavorite(slug))}
+                    onToggleVisited={(slug) => setVisitedSet(toggleVisited(slug))}
+                    recommendationReason={reason.label}
+                    distanceKm={distanceKm}
+                  />
+                );
+              })}
             </div>
           </div>
         </section>
@@ -511,6 +582,7 @@ function HomePage() {
                         <SelectItem value="rating-asc">Lowest Rated</SelectItem>
                         <SelectItem value="price-asc">Cheapest First</SelectItem>
                         <SelectItem value="price-desc">Priciest First</SelectItem>
+                        <SelectItem value="nearest">Nearest</SelectItem>
                         <SelectItem value="episode-asc">Episode Order</SelectItem>
                       </SelectContent>
                     </Select>
@@ -518,6 +590,16 @@ function HomePage() {
                 </div>
 
                 <div className="mt-4 space-y-2 px-4 pb-4 sm:px-0 sm:pb-0">
+                  <Label className="border-border bg-surface-raised min-h-11 w-full rounded-lg border px-3 text-sm font-normal">
+                    <Checkbox
+                      variant="tick"
+                      checked={nearMeEnabled}
+                      onCheckedChange={() => handleNearMeToggle()}
+                      disabled={!isGeolocationSupported() || locationLoading}
+                    />
+                    Near me
+                  </Label>
+
                   <Label className="border-border bg-surface-raised min-h-11 w-full rounded-lg border px-3 text-sm font-normal">
                     <Checkbox
                       variant="tick"
@@ -535,27 +617,41 @@ function HomePage() {
                     />
                     Hide visited
                   </Label>
+
+                  {locationError && (
+                    <p className="text-destructive px-3 text-xs">{locationError}</p>
+                  )}
                 </div>
               </ResponsiveDialogContent>
             </ResponsiveDialog>
           </div>
         </section>
 
-        <p className="text-foreground-faint mb-4 text-xs">Showing {filtered.length} stalls</p>
+        <p className="text-foreground-faint mb-4 text-xs">
+          Showing {filtered.length} stalls
+          {nearMeEnabled && userLocation && " near you"}
+        </p>
 
         <section className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((stall: Stall) => (
-            <StallCard
-              key={stall.slug}
-              stall={stall}
-              showCuisine
-              isFavorite={favoriteSet.has(stall.slug)}
-              isVisited={visitedSet.has(stall.slug)}
-              relativeNow={generatedAt}
-              onToggleFavorite={(slug) => setFavoriteSet(toggleFavorite(slug))}
-              onToggleVisited={(slug) => setVisitedSet(toggleVisited(slug))}
-            />
-          ))}
+          {filtered.map((stall: Stall) => {
+            // Calculate distance if user location is available
+            const distanceKm = userLocation
+              ? calculateDistance(userLocation, { lat: stall.lat, lng: stall.lng })
+              : undefined;
+            return (
+              <StallCard
+                key={stall.slug}
+                stall={stall}
+                showCuisine
+                isFavorite={favoriteSet.has(stall.slug)}
+                isVisited={visitedSet.has(stall.slug)}
+                relativeNow={generatedAt}
+                onToggleFavorite={(slug) => setFavoriteSet(toggleFavorite(slug))}
+                onToggleVisited={(slug) => setVisitedSet(toggleVisited(slug))}
+                distanceKm={distanceKm}
+              />
+            );
+          })}
         </section>
       </main>
     </div>

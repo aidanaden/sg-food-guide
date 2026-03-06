@@ -10,6 +10,7 @@ import {
   getRatingVariant,
   getStallArea,
 } from "../lib/stall-utils";
+import { formatDistance } from "../lib/geolocation";
 
 type StallCardProps = {
   stall: Stall;
@@ -20,6 +21,7 @@ type StallCardProps = {
   onToggleFavorite: (slug: string) => void;
   onToggleVisited: (slug: string) => void;
   recommendationReason?: string;
+  distanceKm?: number;
 };
 
 export function StallCard({
@@ -31,6 +33,7 @@ export function StallCard({
   onToggleFavorite,
   onToggleVisited,
   recommendationReason,
+  distanceKm,
 }: StallCardProps) {
   const rating = stall.ratingModerated;
   const ratingVariant = getRatingVariant(rating);
@@ -39,6 +42,9 @@ export function StallCard({
   const countryLabel = countryLabels[stall.country];
   const locationLabel =
     stall.country === "SG" ? `${getStallArea(stall)} | ${countryLabel}` : countryLabel;
+
+  // Only show distance if it's valid (positive number)
+  const showDistance = typeof distanceKm === "number" && distanceKm >= 0;
 
   return (
     <article className="group border-border bg-surface-card relative rounded-xl border p-4 shadow-sm">
@@ -54,7 +60,15 @@ export function StallCard({
           <h3 className="font-display group-hover:text-primary text-lg leading-tight transition-colors">
             {stall.name}
           </h3>
-          <p className="text-foreground-faint mt-1 text-xs">{locationLabel}</p>
+          <p className="text-foreground-faint mt-1 text-xs">
+            {locationLabel}
+            {showDistance && (
+              <>
+                {" · "}
+                <span className="text-primary font-medium">{formatDistance(distanceKm!)}</span>
+              </>
+            )}
+          </p>
           {showCuisine ? (
             <p className="text-foreground-faint text-xs">{stall.cuisineLabel}</p>
           ) : null}
