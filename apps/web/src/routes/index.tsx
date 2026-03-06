@@ -21,6 +21,7 @@ import {
 import { StallCard } from "../components/StallCard";
 import type { Stall } from "../data/shared";
 import { getFavorites, getVisited, toggleFavorite, toggleVisited } from "../lib/preferences";
+import { getRecommendations, shouldShowRecommendations } from "../lib/recommendations";
 import { loadHomeRouteData } from "../lib/route-loaders";
 import {
   getAreas,
@@ -202,6 +203,15 @@ function HomePage() {
   const hasCountryOptions = countryOptions.length > 0;
   const hasTimeCategoryOptions = timeCategoryOptions.length > 0;
 
+  // Compute personalized recommendations
+  const recommendations = useMemo(() => {
+    return getRecommendations(stalls, favoriteSet, visitedSet, 6);
+  }, [stalls, favoriteSet, visitedSet]);
+
+  const showRecommendations = useMemo(() => {
+    return shouldShowRecommendations(stalls, favoriteSet, visitedSet);
+  }, [stalls, favoriteSet, visitedSet]);
+
   return (
     <div className="min-h-screen">
       <header className="border-border bg-surface border-b px-4 py-8">
@@ -214,6 +224,35 @@ function HomePage() {
           </p>
         </div>
       </header>
+
+      {showRecommendations && recommendations.length > 0 && (
+        <section className="border-border bg-surface-raised border-b px-4 py-6">
+          <div className="mx-auto max-w-6xl">
+            <div className="mb-4 flex items-center gap-2">
+              <span className="iconify ph--sparkle-fill text-primary text-lg" />
+              <h2 className="font-display text-lg font-bold">Recommended for You</h2>
+            </div>
+            <p className="text-foreground-muted mb-4 text-sm">
+              Based on your preferences and favorites
+            </p>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {recommendations.map(({ stall, reason }) => (
+                <StallCard
+                  key={stall.slug}
+                  stall={stall}
+                  showCuisine
+                  isFavorite={favoriteSet.has(stall.slug)}
+                  isVisited={visitedSet.has(stall.slug)}
+                  relativeNow={generatedAt}
+                  onToggleFavorite={(slug) => setFavoriteSet(toggleFavorite(slug))}
+                  onToggleVisited={(slug) => setVisitedSet(toggleVisited(slug))}
+                  recommendationReason={reason.label}
+                />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       <main className="mx-auto max-w-6xl px-4 py-6">
         <section className="mb-6">

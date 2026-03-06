@@ -19,6 +19,7 @@ type StallCardProps = {
   relativeNow: string;
   onToggleFavorite: (slug: string) => void;
   onToggleVisited: (slug: string) => void;
+  recommendationReason?: string;
 };
 
 export function StallCard({
@@ -29,6 +30,7 @@ export function StallCard({
   relativeNow,
   onToggleFavorite,
   onToggleVisited,
+  recommendationReason,
 }: StallCardProps) {
   const rating = stall.ratingModerated;
   const ratingVariant = getRatingVariant(rating);
