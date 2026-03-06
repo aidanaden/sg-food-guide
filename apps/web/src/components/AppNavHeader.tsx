@@ -1,4 +1,7 @@
+import { useState } from "react";
 import { Link, useLocation } from "@tanstack/react-router";
+
+import { SearchAutocomplete } from "./SearchAutocomplete";
 
 interface NavLinkItem {
   to: "/" | "/community/stalls" | "/admin/comment-drafts" | "/admin/login";
@@ -36,6 +39,7 @@ const navLinks: NavLinkItem[] = [
 
 export function AppNavHeader() {
   const location = useLocation();
+  const [searchExpanded, setSearchExpanded] = useState(false);
 
   const isNavItemActive = (to: NavLinkItem["to"]): boolean => {
     if (to === "/") {
@@ -47,7 +51,7 @@ export function AppNavHeader() {
 
   return (
     <>
-      <header className="border-border bg-surface hidden border-b md:block">
+      <header className="border-border bg-surface border-b md:block">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
           <Link
             to="/"
@@ -56,7 +60,12 @@ export function AppNavHeader() {
             <span className="text-primary">SG</span> Food Guide
           </Link>
 
-          <nav aria-label="Primary" className="flex min-w-0 items-center gap-1 overflow-x-auto">
+          <SearchAutocomplete
+            expanded={searchExpanded}
+            onExpandedChange={setSearchExpanded}
+          />
+
+          <nav aria-label="Primary" className="hidden min-w-0 items-center gap-1 overflow-x-auto lg:flex">
             {navLinks.map((item) => (
               <Link
                 key={item.to}
@@ -79,7 +88,7 @@ export function AppNavHeader() {
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         aria-label="Mobile navigation"
       >
-        <div className="grid h-14 grid-cols-4">
+        <div className="grid h-14 grid-cols-5">
           {navLinks.map((item) => (
             <Link
               key={item.to}
@@ -92,6 +101,14 @@ export function AppNavHeader() {
               <span>{item.mobileLabel}</span>
             </Link>
           ))}
+          <button
+            onClick={() => setSearchExpanded(true)}
+            className="flex flex-col items-center justify-center gap-1 text-xs text-foreground-faint"
+            aria-label="Search"
+          >
+            <span className="iconify ph--magnifying-glass text-base" />
+            <span>Search</span>
+          </button>
         </div>
       </nav>
     </>

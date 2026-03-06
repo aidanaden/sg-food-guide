@@ -47,6 +47,7 @@
     "@tanstack/start-storage-context": "catalog:tanstack",
     "better-result": "catalog:toolkit",
     "clsx": "catalog:ui",
+    "fuse.js": "^7.1.0",
     "jose": "catalog:api",
     "lucide-react": "catalog:ui",
     "react": "catalog:ui",
