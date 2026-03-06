@@ -72,6 +72,14 @@ export function StallCard({
       </div>
 
       <p className="text-foreground-muted mb-3 text-sm">{stall.dishName}</p>
+
+      {recommendationReason && (
+        <p className="text-primary mb-3 text-xs font-medium">
+          <span className="iconify ph--sparkle-fill mr-1" />
+          {recommendationReason}
+        </p>
+      )}
+
       <p className="text-foreground-faint mb-3 text-xs">Last updated {lastUpdatedAt}</p>
 
       <div className="relative z-20 flex items-center gap-2">
