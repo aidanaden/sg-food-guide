@@ -23,7 +23,7 @@ import {
   getRatingLabel,
   getRatingVariant,
 } from "../../lib/stall-utils";
-import { getStallBySlug } from "../../server/stalls/read.functions";
+import { getExternalReviewsByStallSlug, getReviewsByStallSlug, getStallBySlug } from "../../server/stalls/read.functions";
 
 const paramsSchema = z.object({ slug: z.string().min(1) });
 
@@ -35,13 +35,16 @@ export const Route = createFileRoute("/stall/$slug")({
     const stall = await getStallBySlug({ data: { slug: parsed.data.slug } });
     if (!stall) throw notFound();
 
-    return { stall, generatedAt: new Date().toISOString() };
+    const reviews = await getReviewsByStallSlug({ data: { slug: parsed.data.slug } });
+    const externalReviews = await getExternalReviewsByStallSlug({ data: { slug: parsed.data.slug } });
+
+    return { stall, reviews, externalReviews, generatedAt: new Date().toISOString() };
   },
   component: StallPage,
 });
 
 function StallPage() {
-  const { stall, generatedAt } = Route.useLoaderData();
+  const { stall, reviews, externalReviews, generatedAt } = Route.useLoaderData();
   const [favoriteSet, setFavoriteSet] = useState<Set<string>>(() => new Set<string>());
   const [visitedSet, setVisitedSet] = useState<Set<string>>(() => new Set<string>());
 
@@ -165,6 +168,65 @@ function StallPage() {
             </ul>
           </section>
         ) : null}
+
+        {reviews.length > 0 ? (
+          <section className="border-border bg-surface-raised mt-6 rounded-xl border p-4">
+            <h2 className="font-display mb-3 text-sm font-semibold">Community Reviews</h2>
+            <ul className="space-y-4">
+              {reviews.map((review) => (
+                <li key={review.id} className="border-border border-b pb-4 last:border-0 last:pb-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-primary font-semibold text-sm">
+                      {"★".repeat(review.rating)}
+                    </span>
+                    <span className="text-foreground-faint text-xs">
+                      {review.rating}/5
+                    </span>
+                  </div>
+                  <p className="text-foreground text-sm mb-1">{review.commentText}</p>
+                  <p className="text-foreground-faint text-xs">
+                    {review.authorName} · {formatRelativeStallTimestamp(review.createdAt, { now: generatedAt })}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : externalReviews.length > 0 ? (
+          <section className="border-border bg-surface-raised mt-6 rounded-xl border p-4">
+            <h2 className="font-display mb-3 text-sm font-semibold">External Reviews</h2>
+            <ul className="space-y-4">
+              {externalReviews.map((review) => (
+                <li key={review.id} className="border-border border-b pb-4 last:border-0 last:pb-0">
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-primary font-semibold text-sm">
+                        {"★".repeat(review.rating)}
+                      </span>
+                      <span className="text-foreground-faint text-xs">
+                        {review.rating}/5
+                      </span>
+                    </div>
+                    <span className="text-foreground-faint text-xs bg-surface px-2 py-0.5 rounded">
+                      {review.sourceName}
+                    </span>
+                  </div>
+                  <p className="text-foreground text-sm mb-1">{review.commentText}</p>
+                  <p className="text-foreground-faint text-xs">
+                    {review.authorName}
+                    {review.reviewDate && ` · ${review.reviewDate}`}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : (
+          <section className="border-border bg-surface-raised mt-6 rounded-xl border p-4">
+            <h2 className="font-display mb-2 text-sm font-semibold">Reviews</h2>
+            <p className="text-foreground-faint text-sm">
+              No reviews yet.
+            </p>
+          </section>
+        )}
 
         <section className="mt-8">
           <h2 className="font-display mb-3 text-sm font-bold">Location</h2>

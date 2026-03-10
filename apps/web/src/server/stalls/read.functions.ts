@@ -9,8 +9,15 @@ import {
   ensureStallTables,
   getActiveStallCount,
   getActiveStallBySlug,
+  getStallIdBySlug,
   listActiveStalls,
   listActiveStallsByCuisine,
+} from "./repository";
+import { ensureReviewTables, listApprovedReviewsByStallId } from "./repository";
+import {
+  ensureExternalReviewTables,
+  getExternalReviewStatsByStallSlug,
+  listExternalReviewsByStallSlug,
 } from "./repository";
 
 const cuisineSchema = z.object({
@@ -121,4 +128,98 @@ export const getStallBySlug = createServerFn()
     }
 
     return stallResult.value;
+  });
+
+export const getReviewsByStallSlug = createServerFn()
+  .inputValidator((input: unknown) => slugSchema.parse(input))
+  .handler(async ({ context, data }: { context: unknown; data: z.infer<typeof slugSchema> }) => {
+    const envResult = getWorkerEnvFromServerContext(context);
+    if (Result.isError(envResult)) {
+      throw envResult.error;
+    }
+
+    const tableResult = await ensureStallTables(envResult.value.STALLS_DB);
+    if (Result.isError(tableResult)) {
+      throw tableResult.error;
+    }
+
+    const reviewTableResult = await ensureReviewTables(envResult.value.STALLS_DB);
+    if (Result.isError(reviewTableResult)) {
+      throw reviewTableResult.error;
+    }
+
+    const stallIdResult = await getStallIdBySlug(envResult.value.STALLS_DB, data.slug);
+    if (Result.isError(stallIdResult)) {
+      throw stallIdResult.error;
+    }
+
+    const stallId = stallIdResult.value;
+    if (!stallId) {
+      return [];
+    }
+
+    const reviewsResult = await listApprovedReviewsByStallId(envResult.value.STALLS_DB, stallId);
+    if (Result.isError(reviewsResult)) {
+      throw reviewsResult.error;
+    }
+
+    return reviewsResult.value;
+  });
+
+export const getExternalReviewsByStallSlug = createServerFn()
+  .inputValidator((input: unknown) => slugSchema.parse(input))
+  .handler(async ({ context, data }: { context: unknown; data: z.infer<typeof slugSchema> }) => {
+    const envResult = getWorkerEnvFromServerContext(context);
+    if (Result.isError(envResult)) {
+      throw envResult.error;
+    }
+
+    const tableResult = await ensureStallTables(envResult.value.STALLS_DB);
+    if (Result.isError(tableResult)) {
+      throw tableResult.error;
+    }
+
+    const externalReviewTableResult = await ensureExternalReviewTables(envResult.value.STALLS_DB);
+    if (Result.isError(externalReviewTableResult)) {
+      throw externalReviewTableResult.error;
+    }
+
+    const reviewsResult = await listExternalReviewsByStallSlug(
+      envResult.value.STALLS_DB,
+      data.slug,
+    );
+    if (Result.isError(reviewsResult)) {
+      throw reviewsResult.error;
+    }
+
+    return reviewsResult.value;
+  });
+
+export const getExternalReviewStatsByStall = createServerFn()
+  .inputValidator((input: unknown) => slugSchema.parse(input))
+  .handler(async ({ context, data }: { context: unknown; data: z.infer<typeof slugSchema> }) => {
+    const envResult = getWorkerEnvFromServerContext(context);
+    if (Result.isError(envResult)) {
+      throw envResult.error;
+    }
+
+    const tableResult = await ensureStallTables(envResult.value.STALLS_DB);
+    if (Result.isError(tableResult)) {
+      throw tableResult.error;
+    }
+
+    const externalReviewTableResult = await ensureExternalReviewTables(envResult.value.STALLS_DB);
+    if (Result.isError(externalReviewTableResult)) {
+      throw externalReviewTableResult.error;
+    }
+
+    const statsResult = await getExternalReviewStatsByStallSlug(
+      envResult.value.STALLS_DB,
+      data.slug,
+    );
+    if (Result.isError(statsResult)) {
+      throw statsResult.error;
+    }
+
+    return statsResult.value;
   });
