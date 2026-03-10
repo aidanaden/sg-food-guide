@@ -4,7 +4,7 @@ import {
   type Stall,
   getStallArea,
   stalls as allStalls,
-} from "#/data/stalls";
+} from "../data/stalls";
 
 /** Search result item types */
 export type SearchResultType = "stall" | "cuisine" | "location";
@@ -60,7 +60,7 @@ function getCuisineLabels(): { id: string; label: string }[] {
 
 /** Build searchable items from stalls */
 function buildStallItems(): SearchableItem[] {
-  return allStalls.map((stall) => ({
+  return allStalls.map((stall: Stall) => ({
     id: `stall-${stall.slug}`,
     type: "stall" as SearchResultType,
     title: stall.name,

@@ -106,7 +106,7 @@ function HomePage() {
     if (!nearMeEnabled) {
       // Turning on - request location
       if (!userLocation) {
-        requestLocation();
+        void requestLocation();
       }
       setNearMeEnabled(true);
     } else {
@@ -118,7 +118,7 @@ function HomePage() {
   // Update location when enabled but not yet obtained
   useEffect(() => {
     if (nearMeEnabled && !userLocation && !locationLoading && isGeolocationSupported()) {
-      requestLocation();
+      void requestLocation();
     }
   }, [nearMeEnabled, userLocation, locationLoading, requestLocation]);
 

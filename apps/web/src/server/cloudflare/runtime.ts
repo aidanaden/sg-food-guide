@@ -40,6 +40,7 @@ const workerEnvSchema = z.object({
   STALL_SYNC_FORCE_APPLY: z.optional(z.union([z.string(), z.number()])),
   STALL_SYNC_MANUAL_YOUTUBE_OVERRIDES_JSON: z.optional(z.string()),
   COMMENT_SYNC_MODE: z.optional(modeSchema),
+  EXTERNAL_REVIEW_SYNC_MODE: z.optional(modeSchema),
   COMMENT_SYNC_FORCE_APPLY: z.optional(z.union([z.string(), z.number()])),
   COMMENT_SYNC_MAX_VIDEOS_PER_RUN: z.optional(z.union([z.string(), z.number()])),
   COMMENT_SYNC_TOP_LEVEL_LIMIT: z.optional(z.union([z.string(), z.number()])),
@@ -81,6 +82,7 @@ export interface WorkerEnv {
   STALL_SYNC_FORCE_APPLY?: string | number;
   STALL_SYNC_MANUAL_YOUTUBE_OVERRIDES_JSON?: string;
   COMMENT_SYNC_MODE?: "dry-run" | "apply";
+  EXTERNAL_REVIEW_SYNC_MODE?: "dry-run" | "apply";
   COMMENT_SYNC_FORCE_APPLY?: string | number;
   COMMENT_SYNC_MAX_VIDEOS_PER_RUN?: string | number;
   COMMENT_SYNC_TOP_LEVEL_LIMIT?: string | number;

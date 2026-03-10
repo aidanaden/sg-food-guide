@@ -2,10 +2,10 @@ import { Link, createFileRoute, useSearch } from "@tanstack/react-router";
 import { MapPin, Utensils, Store, Search, X } from "lucide-react";
 import clsx from "clsx";
 
-import { search, getSearchResultPath, type SearchResultItem, type SearchResultType } from "#/lib/search-index";
-import { addToSearchHistory } from "#/lib/search-history";
-import { stalls as allStalls, type Stall } from "#/data/stalls";
-import { getRatingLabel, getRatingVariant } from "#/data/stalls";
+import { search as runSearch, getSearchResultPath, type SearchResultItem, type SearchResultType } from "../lib/search-index";
+import { addToSearchHistory } from "../lib/search-history";
+import { stalls as allStalls, type Stall } from "../data/stalls";
+import { getRatingLabel, getRatingVariant } from "../data/stalls";
 
 export const Route = createFileRoute("/search")({
   validateSearch: (search: Record<string, unknown>) => {
@@ -13,12 +13,12 @@ export const Route = createFileRoute("/search")({
       q: (search.q as string) || "",
     };
   },
-  loader: ({ search }) => {
-    const query = search.q as string;
+  loader: ({ location }) => {
+    const query = new URLSearchParams(location.search).get("q") ?? "";
     if (!query || query.length < 2) {
       return { results: [], query: "" };
     }
-    const results = search(query, { limit: 20 });
+    const results = runSearch(query, { limit: 20 });
     return { results, query };
   },
   component: SearchPage,
@@ -37,18 +37,18 @@ const typeLabels: Record<SearchResultType, string> = {
 };
 
 function SearchPage() {
-  const { results, query } = Route.useLoaderData<typeof Route>();
+  const { results, query } = Route.useLoaderData();
   const searchParams = useSearch({ from: Route.fullPath });
   const currentQuery = searchParams.q || "";
 
   // Group results by type
-  const stalls = results.filter((r) => r.type === "stall");
-  const cuisines = results.filter((r) => r.type === "cuisine");
-  const locations = results.filter((r) => r.type === "location");
+  const stalls = results.filter((r: SearchResultItem) => r.type === "stall");
+  const cuisines = results.filter((r: SearchResultItem) => r.type === "cuisine");
+  const locations = results.filter((r: SearchResultItem) => r.type === "location");
 
   // Get full stall data for stall results
   const stallMap = new Map(allStalls.map((s) => [s.slug, s]));
-  const stallResults: Stall[] = stalls.map((r) => stallMap.get(r.slug)).filter(Boolean) as Stall[];
+  const stallResults: Stall[] = stalls.map((r: SearchResultItem) => stallMap.get(r.slug)).filter((stall: Stall | undefined): stall is Stall => Boolean(stall));
 
   const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -82,7 +82,7 @@ function SearchPage() {
             </div>
             <button
               type="submit"
-              className="rounded-lg bg-primary px-6 py-3 font-medium text-white transition-colors hover:bg-primary/90"
+              className="rounded-lg bg-primary px-6 py-3 font-medium text-white transition-colors hover:opacity-90"
             >
               Search
             </button>
@@ -185,7 +185,7 @@ function SearchPage() {
                   Cuisines ({cuisines.length})
                 </h2>
                 <div className="flex flex-wrap gap-2">
-                  {cuisines.map((cuisine) => (
+                  {cuisines.map((cuisine: SearchResultItem) => (
                     <Link
                       key={cuisine.id}
                       to={`/community/stalls?cuisine=${cuisine.slug}`}
@@ -208,7 +208,7 @@ function SearchPage() {
                   Locations ({locations.length})
                 </h2>
                 <div className="flex flex-wrap gap-2">
-                  {locations.map((location) => (
+                  {locations.map((location: SearchResultItem) => (
                     <Link
                       key={location.id}
                       to={`/community/stalls?area=${location.slug}`}

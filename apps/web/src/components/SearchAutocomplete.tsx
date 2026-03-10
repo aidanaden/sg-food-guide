@@ -8,12 +8,12 @@ import {
   getSearchResultPath,
   type SearchResultItem,
   type SearchResultType,
-} from "#/lib/search-index";
+} from "../lib/search-index";
 import {
   getSearchHistory,
   addToSearchHistory,
   clearSearchHistory,
-} from "#/lib/search-history";
+} from "../lib/search-history";
 
 const DEBOUNCE_MS = 300;
 
@@ -126,11 +126,11 @@ export function SearchAutocomplete({
     // Navigate
     if (typeof item === "string") {
       // It's a history item - go to search results page
-      navigate({ to: "/search", search: { q: item } });
+      void navigate({ to: "/search", search: { q: item } });
     } else {
       // It's a search result
       const path = getSearchResultPath(item);
-      navigate({ to: path });
+      void navigate({ to: path });
     }
 
     // Reset state

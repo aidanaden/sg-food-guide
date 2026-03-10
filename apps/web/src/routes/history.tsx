@@ -23,7 +23,7 @@ function HistoryPage() {
   }, []);
 
   const visitedStalls = useMemo(() => {
-    return stalls.filter((stall) => visitedSet.has(stall.slug));
+    return stalls.filter((stall: Stall) => visitedSet.has(stall.slug));
   }, [stalls, visitedSet]);
 
   const stats = useMemo(() => {
@@ -105,7 +105,7 @@ function HistoryPage() {
                   className="border-border bg-surface-raised hover:border-primary inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors"
                 >
                   <span className="text-foreground-faint">{item.cuisineLabel}</span>
-                  <span className="bg-primary/10 text-primary font-mono text-xs px-2 py-0.5 rounded-full">
+                  <span className="bg-primary-surface text-primary font-mono text-xs px-2 py-0.5 rounded-full">
                     {item.count}
                   </span>
                 </Link>
@@ -125,7 +125,7 @@ function HistoryPage() {
                   className="border-border bg-surface-raised inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm"
                 >
                   <span className="text-foreground-faint">{item.area}</span>
-                  <span className="bg-success-text/10 text-success-text font-mono text-xs px-2 py-0.5 rounded-full">
+                  <span className="bg-success-surface text-success-text font-mono text-xs px-2 py-0.5 rounded-full">
                     {item.count}
                   </span>
                 </span>
