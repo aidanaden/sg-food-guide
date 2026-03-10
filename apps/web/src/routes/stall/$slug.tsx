@@ -173,7 +173,7 @@ function StallPage() {
           <section className="border-border bg-surface-raised mt-6 rounded-xl border p-4">
             <h2 className="font-display mb-3 text-sm font-semibold">Community Reviews</h2>
             <ul className="space-y-4">
-              {reviews.map((review) => (
+              {reviews.map((review: (typeof reviews)[number]) => (
                 <li key={review.id} className="border-border border-b pb-4 last:border-0 last:pb-0">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-primary font-semibold text-sm">
@@ -195,7 +195,7 @@ function StallPage() {
           <section className="border-border bg-surface-raised mt-6 rounded-xl border p-4">
             <h2 className="font-display mb-3 text-sm font-semibold">External Reviews</h2>
             <ul className="space-y-4">
-              {externalReviews.map((review) => (
+              {externalReviews.map((review: (typeof externalReviews)[number]) => (
                 <li key={review.id} className="border-border border-b pb-4 last:border-0 last:pb-0">
                   <div className="flex items-center justify-between gap-2 mb-1">
                     <div className="flex items-center gap-2">
